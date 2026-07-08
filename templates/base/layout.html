@@ -7,7 +7,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>{% block title %}SECURTEK{% endblock %}</title>
+    <title>{% block title %}LabRepair{% endblock %}</title>
 
     <script>
         (function () {
@@ -25,17 +25,12 @@
     <!-- Tabler -->
     
     <link rel="stylesheet"
-      href="{% static '@tabler/core/dist/css/tabler.min.css' %}">
+      href="{% static 'vendor/tabler/css/tabler.min.css' %}">
 
     <link rel="stylesheet"
-      href="{% static '@tabler/icons-webfont/dist/tabler-icons.min.css' %}">
-   
-          <!-- Bootstrap Icons -->
-    <link rel="stylesheet"
-          href="{% static 'bootstrap-icons/font/bootstrap-icons.css' %}">
+      href="{% static 'vendor/tabler-icons/tabler-icons.min.css' %}">
 
     <!-- CSS progetto -->
-    <!-- CSS SECURTEK -->
     <link rel="stylesheet"
         href="{% static 'securtek/css/variables.css' %}">
 
@@ -53,10 +48,6 @@
 
     <link rel="stylesheet"
         href="{% static 'securtek/css/dashboard.css' %}">
-
-    <link rel="stylesheet"
-      href="{% static '@tabler/icons-webfont/dist/tabler-icons.min.css' %}">
-        
 
     {% block extra_css %}{% endblock %}
 
@@ -91,11 +82,11 @@
 
 </div>
 
-<script src="{% static '@tabler/core/dist/js/tabler.min.js' %}"></script>
+<script src="{% static 'vendor/tabler/js/tabler.min.js' %}"></script>
 
-<script defer src="{% static 'alpinejs/dist/cdn.min.js' %}"></script>
+<script defer src="{% static 'vendor/alpinejs/cdn.min.js' %}"></script>
 
-<script src="{% static 'htmx.org/dist/htmx.min.js' %}"></script>
+<script src="{% static 'vendor/htmx/htmx.min.js' %}"></script>
 
 <script src="{% static 'securtek/js/app.js' %}"></script>
 

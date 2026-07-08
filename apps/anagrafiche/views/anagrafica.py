@@ -64,7 +64,7 @@ class AnagraficaDetailView(LoginRequiredMixin, DetailView):
                     Pratica.Stato.ARCHIVIATA,
                 ]
             )
-            .select_related("responsabile")
+            .select_related("responsabile", "operatore")
             .prefetch_related(
                 Prefetch(
                     "categoria_collegamenti",

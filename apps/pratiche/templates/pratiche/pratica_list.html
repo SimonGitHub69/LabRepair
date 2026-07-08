@@ -1,7 +1,7 @@
 {% extends "base/layout.html" %}
 
 {% block page_title %}
-Pratiche
+Riparazioni
 {% endblock %}
 
 {% block content %}
@@ -9,13 +9,13 @@ Pratiche
 <div class="page-header d-print-none mb-3">
     <div class="row align-items-center">
         <div class="col">
-            <h2 class="page-title">Pratiche</h2>
-            <div class="text-secondary">Elenco pratiche operative</div>
+            <h2 class="page-title">Riparazioni</h2>
+            <div class="text-secondary">Elenco schede di riparazione</div>
         </div>
         <div class="col-auto">
             <a href="{% url 'pratiche:pratica_create' %}" class="btn btn-primary">
                 <i class="ti ti-plus"></i>
-                Nuova pratica
+                Nuova riparazione
             </a>
         </div>
     </div>
@@ -31,10 +31,10 @@ Pratiche
                            name="q"
                            value="{{ request.GET.q }}"
                            class="form-control"
-                           placeholder="Codice, titolo o cliente">
+                           placeholder="Numero, cliente, oggetto o riparatore">
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">Categoria</label>
+                    <label class="form-label">Tipo oggetto</label>
                     <select name="categoria" class="form-select">
                         <option value="">Tutte</option>
                         {% for categoria in categorie %}
@@ -82,52 +82,39 @@ Pratiche
         <table class="table table-vcenter">
             <thead>
                 <tr>
-                    <th>Codice</th>
-                    <th>Titolo</th>
+                    <th>Numero</th>
                     <th>Cliente</th>
+                    <th>Oggetto</th>
                     <th>Tipologia</th>
-                    <th>Macro-categoria</th>
-                    <th>Categoria</th>
                     <th>Stato</th>
-                    <th>Priorita</th>
-                    <th>Scadenza</th>
+                    <th>Operatore</th>
+                    <th>Riparatore</th>
+                    <th>Prev. consegna</th>
+                    <th class="text-end">Prezzo</th>
                     <th class="text-end">Azioni</th>
                 </tr>
             </thead>
             <tbody>
                 {% for pratica in pratiche %}
                     <tr>
-                        <td class="text-secondary">{{ pratica.codice }}</td>
                         <td>
                             <a href="{% url 'pratiche:pratica_detail' pratica.pk %}" class="text-reset fw-bold">
-                                {{ pratica.titolo }}
+                                {{ pratica.codice }}
                             </a>
                         </td>
                         <td>{{ pratica.cliente }}</td>
+                        <td>
+                            <div class="fw-bold">{{ pratica.tipo_oggetto|default:pratica.titolo }}</div>
+                            {% if pratica.descrizione %}
+                                <div class="text-secondary small">{{ pratica.descrizione|truncatechars:70 }}</div>
+                            {% endif %}
+                        </td>
                         <td>{{ pratica.get_tipologia_display }}</td>
-                        <td>
-                            {% for collegamento in pratica.macro_categorie_attive %}
-                                <span class="badge bg-purple-lt me-1 mb-1">
-                                    {{ collegamento.macro_categoria.denominazione }}
-                                </span>
-                            {% empty %}
-                                -
-                            {% endfor %}
-                        </td>
-                        <td>
-                            {% for collegamento in pratica.categorie_attive %}
-                                {% if collegamento.macro_categoria %}
-                                    {{ collegamento.macro_categoria.denominazione }} /
-                                {% endif %}
-                                {{ collegamento.categoria.denominazione }}{% if not forloop.last %}, {% endif %}
-                            {% empty %}
-                                -
-                            {% endfor %}
-                        </td>
                         <td>
                             <span class="badge bg-blue-lt">{{ pratica.get_stato_display }}</span>
                         </td>
-                        <td>{{ pratica.get_priorita_display }}</td>
+                        <td>{{ pratica.operatore|default:"-" }}</td>
+                        <td>{{ pratica.riparatore|default:"-" }}</td>
                         <td>
                             {% if pratica.data_scadenza %}
                                 <span class="{% if pratica.is_scaduta %}text-danger fw-bold{% endif %}">
@@ -137,6 +124,7 @@ Pratiche
                                 <span class="text-secondary">-</span>
                             {% endif %}
                         </td>
+                        <td class="text-end">{{ pratica.prezzo_al|floatformat:2 }}</td>
                         <td class="text-end">
                             <a href="{% url 'pratiche:pratica_detail' pratica.pk %}"
                                class="btn btn-icon btn-outline-primary"
@@ -148,7 +136,7 @@ Pratiche
                 {% empty %}
                     <tr>
                         <td colspan="10" class="text-center text-secondary py-4">
-                            Nessuna pratica presente
+                            Nessuna riparazione presente
                         </td>
                     </tr>
                 {% endfor %}

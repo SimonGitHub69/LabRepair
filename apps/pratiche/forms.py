@@ -8,6 +8,7 @@ from apps.pratiche.models import (
     ComunicazionePratica,
     IncaricoTecnico,
     MacroCategoriaPratica,
+    Operatore,
     Pratica,
     PraticaCategoriaAllegato,
     PraticaCategoria,
@@ -22,20 +23,33 @@ class PraticaForm(forms.ModelForm):
     class Meta:
         model = Pratica
         fields = [
-            "titolo",
             "cliente",
+            "negozio",
+            "operatore",
+            "data_apertura",
+            "titolo",
             "tipologia",
             "stato",
-            "priorita",
-            "data_apertura",
-            "data_scadenza",
-            "responsabile",
+            "tipo_oggetto",
             "descrizione",
+            "peso_grammi",
+            "riparatore",
+            "data_scadenza",
+            "data_riparatore",
+            "data_rientro",
+            "costo_lavorazione",
+            "costo_materiale",
+            "oro_aggiunto",
+            "prezzo_al",
+            "prezzo_pagato",
+            "data_vendita",
             "note",
+            "priorita",
         ]
         widgets = {
             "titolo": forms.TextInput(attrs={"class": "form-control"}),
             "cliente": forms.Select(attrs={"class": "form-select"}),
+            "negozio": forms.TextInput(attrs={"class": "form-control", "placeholder": "PT"}),
             "tipologia": forms.Select(attrs={"class": "form-select"}),
             "stato": forms.Select(attrs={"class": "form-select"}),
             "priorita": forms.Select(attrs={"class": "form-select"}),
@@ -47,18 +61,46 @@ class PraticaForm(forms.ModelForm):
                 attrs={"class": "form-control", "type": "date"},
                 format="%Y-%m-%d",
             ),
-            "responsabile": forms.Select(attrs={"class": "form-select"}),
+            "data_riparatore": forms.DateInput(
+                attrs={"class": "form-control", "type": "date"},
+                format="%Y-%m-%d",
+            ),
+            "data_rientro": forms.DateInput(
+                attrs={"class": "form-control", "type": "date"},
+                format="%Y-%m-%d",
+            ),
+            "data_vendita": forms.DateInput(
+                attrs={"class": "form-control", "type": "date"},
+                format="%Y-%m-%d",
+            ),
+            "operatore": forms.Select(attrs={"class": "form-select"}),
+            "tipo_oggetto": forms.TextInput(attrs={"class": "form-control"}),
             "descrizione": forms.Textarea(attrs={"class": "form-control", "rows": 4}),
+            "peso_grammi": forms.NumberInput(attrs={"class": "form-control", "step": "0.001", "min": "0"}),
+            "riparatore": forms.TextInput(attrs={"class": "form-control"}),
+            "costo_lavorazione": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "min": "0"}),
+            "costo_materiale": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "min": "0"}),
+            "oro_aggiunto": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "min": "0"}),
+            "prezzo_al": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "min": "0"}),
+            "prezzo_pagato": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "min": "0"}),
             "note": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["cliente"].queryset = Anagrafica.objects.filter(is_active=True)
-        self.fields["responsabile"].required = False
+        self.fields["operatore"].queryset = Operatore.objects.filter(is_active=True)
+        self.fields["operatore"].required = False
+        self.fields["titolo"].required = False
         self.fields["data_apertura"].input_formats = ["%Y-%m-%d"]
         self.fields["data_scadenza"].required = False
         self.fields["data_scadenza"].input_formats = ["%Y-%m-%d"]
+        self.fields["data_riparatore"].required = False
+        self.fields["data_riparatore"].input_formats = ["%Y-%m-%d"]
+        self.fields["data_rientro"].required = False
+        self.fields["data_rientro"].input_formats = ["%Y-%m-%d"]
+        self.fields["data_vendita"].required = False
+        self.fields["data_vendita"].input_formats = ["%Y-%m-%d"]
 
         if not self.instance.pk and not self.initial.get("data_apertura"):
             self.initial["data_apertura"] = timezone.localdate()
@@ -122,6 +164,19 @@ class IncaricoTecnicoForm(forms.ModelForm):
         widgets = {
             "denominazione": forms.TextInput(attrs={"class": "form-control"}),
             "descrizione": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+            "note": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+        }
+
+
+class OperatoreForm(forms.ModelForm):
+    class Meta:
+        model = Operatore
+        fields = [
+            "nominativo",
+            "note",
+        ]
+        widgets = {
+            "nominativo": forms.TextInput(attrs={"class": "form-control"}),
             "note": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
         }
 

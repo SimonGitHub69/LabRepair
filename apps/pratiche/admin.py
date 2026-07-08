@@ -5,6 +5,7 @@ from apps.pratiche.models import (
     ComunicazionePratica,
     IncaricoTecnico,
     MacroCategoriaPratica,
+    Operatore,
     Pratica,
     PraticaCategoriaAllegato,
     PraticaCategoria,
@@ -64,6 +65,13 @@ class StudioTecnicoAdmin(admin.ModelAdmin):
     list_filter = ("is_active",)
 
 
+@admin.register(Operatore)
+class OperatoreAdmin(admin.ModelAdmin):
+    list_display = ("nominativo", "is_active")
+    search_fields = ("nominativo",)
+    list_filter = ("is_active",)
+
+
 class TecnicoInline(admin.TabularInline):
     model = Tecnico
     extra = 0
@@ -84,10 +92,29 @@ class PraticaMacroCategoriaInline(admin.TabularInline):
 
 @admin.register(Pratica)
 class PraticaAdmin(admin.ModelAdmin):
-    list_display = ("codice", "titolo", "cliente", "categorie_display", "stato", "priorita", "data_scadenza", "is_active")
-    search_fields = ("codice", "titolo", "cliente__ragione_sociale", "categoria_collegamenti__categoria__denominazione")
-    list_filter = ("stato", "priorita", "categoria_collegamenti__categoria", "is_active")
-    autocomplete_fields = ("cliente", "responsabile")
+    list_display = (
+        "codice",
+        "cliente",
+        "tipo_oggetto",
+        "tipologia",
+        "stato",
+        "operatore",
+        "riparatore",
+        "data_scadenza",
+        "prezzo_al",
+        "is_active",
+    )
+    search_fields = (
+        "codice",
+        "titolo",
+        "tipo_oggetto",
+        "riparatore",
+        "operatore__nominativo",
+        "cliente__ragione_sociale",
+        "categoria_collegamenti__categoria__denominazione",
+    )
+    list_filter = ("stato", "tipologia", "priorita", "operatore", "categoria_collegamenti__categoria", "is_active")
+    autocomplete_fields = ("cliente", "responsabile", "operatore")
     inlines = (PraticaMacroCategoriaInline, PraticaCategoriaInline, TecnicoInline)
 
     @admin.display(description="Categorie")

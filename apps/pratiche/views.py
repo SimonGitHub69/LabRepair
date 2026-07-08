@@ -74,6 +74,7 @@ from apps.pratiche.forms import (
     ComunicazionePraticaForm,
     IncaricoTecnicoForm,
     MacroCategoriaPraticaForm,
+    OperatoreForm,
     PraticaForm,
     PraticaCategoriaAllegatoUploadForm,
     PraticaCategoriaForm,
@@ -91,6 +92,7 @@ from apps.pratiche.models import (
     ComunicazionePratica,
     IncaricoTecnico,
     MacroCategoriaPratica,
+    Operatore,
     Pratica,
     PraticaCategoriaAllegato,
     PraticaCategoria,
@@ -551,7 +553,7 @@ class PraticaListView(LoginRequiredMixin, ListView):
     def get_queryset(self):
         queryset = (
             Pratica.objects.filter(is_active=True)
-            .select_related("cliente", "responsabile")
+            .select_related("cliente", "responsabile", "operatore")
             .prefetch_related(
                 Prefetch(
                     "categoria_collegamenti",
@@ -575,6 +577,9 @@ class PraticaListView(LoginRequiredMixin, ListView):
             queryset = queryset.filter(
                 Q(codice__icontains=q)
                 | Q(titolo__icontains=q)
+                | Q(tipo_oggetto__icontains=q)
+                | Q(riparatore__icontains=q)
+                | Q(operatore__nominativo__icontains=q)
                 | Q(cliente__ragione_sociale__icontains=q)
                 | Q(categoria_collegamenti__categoria__denominazione__icontains=q)
                 | Q(macro_categoria_collegamenti__macro_categoria__denominazione__icontains=q)
@@ -603,7 +608,7 @@ class PraticaDetailView(LoginRequiredMixin, DetailView):
     model = Pratica
     template_name = "pratiche/pratica_detail.html"
     context_object_name = "pratica"
-    queryset = Pratica.objects.select_related("cliente", "responsabile").prefetch_related(
+    queryset = Pratica.objects.select_related("cliente", "responsabile", "operatore").prefetch_related(
         Prefetch(
             "categoria_collegamenti",
             queryset=PraticaCategoria.objects.filter(is_active=True).select_related("categoria", "macro_categoria"),
@@ -701,7 +706,7 @@ class PraticaCreateView(LoginRequiredMixin, CreateView):
                         f"Template pratica applicato: categorie aggiunte {categorie_create}.",
                     )
 
-        messages.success(self.request, "Pratica creata correttamente.")
+        messages.success(self.request, "Riparazione creata correttamente.")
         return redirect(self.get_success_url())
 
     def forms_invalid(self, form, formsets):
@@ -732,7 +737,7 @@ class PraticaCreateView(LoginRequiredMixin, CreateView):
         form.instance.updated_by = self.request.user
         if not form.instance.responsabile:
             form.instance.responsabile = self.request.user
-        messages.success(self.request, "Pratica creata correttamente.")
+        messages.success(self.request, "Riparazione creata correttamente.")
         return super().form_valid(form)
 
     def get_context_data(self, **kwargs):
@@ -789,7 +794,7 @@ class PraticaUpdateView(LoginRequiredMixin, UpdateView):
             self.object = form.save()
             self.save_inline_formsets(formsets)
 
-        messages.success(self.request, "Pratica aggiornata correttamente.")
+        messages.success(self.request, "Riparazione aggiornata correttamente.")
         return redirect(self.get_success_url())
 
     def forms_invalid(self, form, formsets):
@@ -816,7 +821,7 @@ class PraticaUpdateView(LoginRequiredMixin, UpdateView):
 
     def form_valid(self, form):
         form.instance.updated_by = self.request.user
-        messages.success(self.request, "Pratica aggiornata correttamente.")
+        messages.success(self.request, "Riparazione aggiornata correttamente.")
         return super().form_valid(form)
 
     def get_context_data(self, **kwargs):
@@ -838,7 +843,7 @@ class PraticaDeleteView(LoginRequiredMixin, View):
     def post(self, request, *args, **kwargs):
         pratica = get_object_or_404(Pratica, pk=kwargs["pk"], is_active=True)
         pratica.soft_delete(user=request.user)
-        messages.success(request, "Pratica eliminata correttamente.")
+        messages.success(request, "Riparazione eliminata correttamente.")
         return redirect("pratiche:pratica_list")
 
 
@@ -1778,6 +1783,68 @@ class IncaricoTecnicoDeleteView(LoginRequiredMixin, View):
         incarico.soft_delete(user=request.user)
         messages.success(request, "Incarico eliminato correttamente.")
         return redirect("pratiche:incarico_tecnico_list")
+
+
+class OperatoreListView(LoginRequiredMixin, ListView):
+    model = Operatore
+    template_name = "pratiche/operatore_list.html"
+    context_object_name = "operatori"
+    paginate_by = 20
+
+    def get_queryset(self):
+        queryset = Operatore.objects.filter(is_active=True).annotate(
+            riparazioni_attive=Count(
+                "riparazioni",
+                filter=Q(riparazioni__is_active=True),
+                distinct=True,
+            )
+        )
+        q = (self.request.GET.get("q") or "").strip()
+
+        if q:
+            queryset = queryset.filter(nominativo__icontains=q)
+
+        return queryset.order_by("nominativo")
+
+
+class OperatoreCreateView(LoginRequiredMixin, CreateView):
+    model = Operatore
+    form_class = OperatoreForm
+    template_name = "pratiche/operatore_form.html"
+
+    def form_valid(self, form):
+        form.instance.created_by = self.request.user
+        form.instance.updated_by = self.request.user
+        messages.success(self.request, "Operatore creato correttamente.")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse("pratiche:operatore_list")
+
+
+class OperatoreUpdateView(LoginRequiredMixin, UpdateView):
+    model = Operatore
+    form_class = OperatoreForm
+    template_name = "pratiche/operatore_form.html"
+
+    def get_queryset(self):
+        return Operatore.objects.filter(is_active=True)
+
+    def form_valid(self, form):
+        form.instance.updated_by = self.request.user
+        messages.success(self.request, "Operatore aggiornato correttamente.")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse("pratiche:operatore_list")
+
+
+class OperatoreDeleteView(LoginRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        operatore = get_object_or_404(Operatore, pk=kwargs["pk"], is_active=True)
+        operatore.soft_delete(user=request.user)
+        messages.success(request, "Operatore eliminato correttamente.")
+        return redirect("pratiche:operatore_list")
 
 
 class TecnicoCreateView(LoginRequiredMixin, CreateView):

@@ -5,81 +5,169 @@
 {% block extra_css %}
 {{ block.super }}
 <style>
-.st-kpi-grid {
+.lr-dashboard {
     display: grid;
     gap: 1rem;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.st-kpi-card {
-    align-items: stretch;
+.lr-header {
+    align-items: flex-end;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+}
+
+.lr-header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+.lr-kpi-grid {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.lr-kpi {
     background: var(--tblr-bg-surface, #fff);
     border: 1px solid var(--tblr-border-color, #e6e8eb);
     border-radius: 8px;
-    box-shadow: 0 0.125rem 0.25rem rgba(15, 23, 42, 0.04);
     color: inherit;
     display: flex;
-    min-height: 116px;
-    overflow: hidden;
+    flex-direction: column;
+    min-height: 104px;
+    padding: 0.9rem;
     text-decoration: none;
 }
 
-.st-kpi-card:hover {
+.lr-kpi:hover {
     border-color: var(--tblr-primary, #206bc4);
     color: inherit;
     text-decoration: none;
 }
 
-.st-kpi-accent {
-    flex: 0 0 4px;
-}
-
-.st-kpi-content {
+.lr-kpi-top {
+    align-items: center;
     display: flex;
-    flex: 1;
     justify-content: space-between;
-    padding: 1rem;
 }
 
-.st-kpi-label {
+.lr-kpi-label {
     color: var(--tblr-secondary, #667085);
-    font-size: 0.875rem;
-    margin-bottom: 0.35rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: uppercase;
 }
 
-.st-kpi-value {
-    font-size: 1.75rem;
+.lr-kpi-value {
+    font-size: 1.8rem;
     font-weight: 700;
-    line-height: 1;
+    line-height: 1.1;
+    margin-top: 0.55rem;
 }
 
-.st-kpi-hint {
+.lr-kpi-note {
     color: var(--tblr-secondary, #667085);
-    font-size: 0.75rem;
-    margin-top: 0.45rem;
+    font-size: 0.78rem;
+    margin-top: auto;
 }
 
-.st-kpi-icon {
+.lr-kpi-icon {
     align-items: center;
     border-radius: 8px;
     display: flex;
-    height: 42px;
+    height: 34px;
     justify-content: center;
-    width: 42px;
+    width: 34px;
 }
 
-.st-kpi-icon .ti {
-    font-size: 1.35rem;
+.lr-main-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
 }
 
-@media (max-width: 992px) {
-    .st-kpi-grid {
+.lr-section-title {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+}
+
+.lr-status-list {
+    display: grid;
+    gap: 0.55rem;
+}
+
+.lr-status-row {
+    align-items: center;
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.lr-status-bar {
+    background: var(--tblr-bg-surface-secondary, #f8fafc);
+    border-radius: 999px;
+    height: 8px;
+    overflow: hidden;
+}
+
+.lr-status-fill {
+    background: var(--tblr-primary, #206bc4);
+    height: 100%;
+    min-width: 8px;
+}
+
+.lr-table-title {
+    font-weight: 600;
+    max-width: 260px;
+}
+
+.lr-muted-line {
+    color: var(--tblr-secondary, #667085);
+    font-size: 0.8rem;
+}
+
+.lr-money {
+    font-variant-numeric: tabular-nums;
+}
+
+.lr-empty {
+    color: var(--tblr-secondary, #667085);
+    padding: 1.5rem;
+    text-align: center;
+}
+
+@media (max-width: 1200px) {
+    .lr-kpi-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .lr-main-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .lr-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .lr-header-actions {
+        justify-content: flex-start;
+    }
+
+    .lr-kpi-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
-@media (max-width: 576px) {
-    .st-kpi-grid {
+@media (max-width: 520px) {
+    .lr-kpi-grid {
         grid-template-columns: 1fr;
     }
 }
@@ -88,152 +176,199 @@
 
 {% block content %}
 
-<div class="page-header d-print-none mb-3">
-    <div class="row align-items-center">
-        <div class="col">
-            <h2 class="page-title">Dashboard</h2>
-            <div class="text-secondary">Panoramica operativa SECURTEK</div>
+<div class="lr-dashboard">
+    <div class="lr-header d-print-none">
+        <div>
+            <h2 class="page-title mb-1">LabRepair</h2>
+            <div class="text-secondary">Cruscotto operativo riparazioni</div>
         </div>
-    </div>
-</div>
-
-<div class="st-kpi-grid mb-4">
-
-    <a href="{% url 'pratiche:pratica_list' %}" class="st-kpi-card">
-        <div class="st-kpi-accent bg-primary"></div>
-        <div class="st-kpi-content">
-            <div>
-                <div class="st-kpi-label">Pratiche aperte</div>
-                <div class="st-kpi-value">{{ kpi.pratiche }}</div>
-                <div class="st-kpi-hint">Vai alle pratiche</div>
-            </div>
-            <div class="st-kpi-icon bg-primary-lt text-primary">
-                <i class="ti ti-folder"></i>
-            </div>
-        </div>
-    </a>
-
-    <a href="{% url 'anagrafiche:anagrafica_list' %}" class="st-kpi-card">
-        <div class="st-kpi-accent bg-success"></div>
-        <div class="st-kpi-content">
-            <div>
-                <div class="st-kpi-label">Clienti</div>
-                <div class="st-kpi-value">{{ kpi.clienti }}</div>
-                <div class="st-kpi-hint">Vai alle anagrafiche</div>
-            </div>
-            <div class="st-kpi-icon bg-success-lt text-success">
-                <i class="ti ti-users"></i>
-            </div>
-        </div>
-    </a>
-
-    <a href="{% url 'agenda:calendar' %}" class="st-kpi-card">
-        <div class="st-kpi-accent bg-warning"></div>
-        <div class="st-kpi-content">
-            <div>
-                <div class="st-kpi-label">Scadenze</div>
-                <div class="st-kpi-value">{{ kpi.scadenze }}</div>
-                <div class="st-kpi-hint">Vai all'agenda</div>
-            </div>
-            <div class="st-kpi-icon bg-warning-lt text-warning">
-                <i class="ti ti-calendar-event"></i>
-            </div>
-        </div>
-    </a>
-
-    <a href="#" class="st-kpi-card">
-        <div class="st-kpi-accent bg-info"></div>
-        <div class="st-kpi-content">
-            <div>
-                <div class="st-kpi-label">Documenti</div>
-                <div class="st-kpi-value">{{ kpi.documenti }}</div>
-                <div class="st-kpi-hint">Archivio da collegare</div>
-            </div>
-            <div class="st-kpi-icon bg-info-lt text-info">
-                <i class="ti ti-file-text"></i>
-            </div>
-        </div>
-    </a>
-
-</div>
-
-<div class="row row-cards">
-    <div class="col-lg-5">
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">Azioni rapide</h3>
-            </div>
-            <div class="list-group list-group-flush">
-                <a href="{% url 'anagrafiche:anagrafica_create' %}" class="list-group-item list-group-item-action">
-                    <div class="d-flex align-items-center gap-3">
-                        <span class="avatar bg-primary-lt text-primary">
-                            <i class="ti ti-building-plus"></i>
-                        </span>
-                        <div>
-                            <div class="fw-bold">Nuova anagrafica</div>
-                            <div class="text-secondary small">Crea cliente, contatti e indirizzi</div>
-                        </div>
-                    </div>
-                </a>
-                <a href="{% url 'pratiche:pratica_create' %}" class="list-group-item list-group-item-action">
-                    <div class="d-flex align-items-center gap-3">
-                        <span class="avatar bg-blue-lt text-blue">
-                            <i class="ti ti-folder-plus"></i>
-                        </span>
-                        <div>
-                            <div class="fw-bold">Nuova pratica</div>
-                            <div class="text-secondary small">Apri una pratica collegata a un cliente</div>
-                        </div>
-                    </div>
-                </a>
-                <a href="{% url 'anagrafiche:anagrafica_list' %}" class="list-group-item list-group-item-action">
-                    <div class="d-flex align-items-center gap-3">
-                        <span class="avatar bg-success-lt text-success">
-                            <i class="ti ti-list-search"></i>
-                        </span>
-                        <div>
-                            <div class="fw-bold">Gestisci anagrafiche</div>
-                            <div class="text-secondary small">Apri schede, modifica dati, elimina record</div>
-                        </div>
-                    </div>
-                </a>
-            </div>
+        <div class="lr-header-actions">
+            <a href="{% url 'pratiche:pratica_create' %}" class="btn btn-primary">
+                <i class="ti ti-tool"></i>
+                Nuova riparazione
+            </a>
+            <a href="{% url 'anagrafiche:anagrafica_create' %}" class="btn btn-outline-secondary">
+                <i class="ti ti-user-plus"></i>
+                Nuovo cliente
+            </a>
+            <a href="{% url 'agenda:calendar' %}" class="btn btn-outline-secondary">
+                <i class="ti ti-calendar"></i>
+                Agenda
+            </a>
         </div>
     </div>
 
-    <div class="col-lg-7">
+    <div class="lr-kpi-grid">
+        <a href="{% url 'pratiche:pratica_list' %}" class="lr-kpi">
+            <div class="lr-kpi-top">
+                <div class="lr-kpi-label">Aperte</div>
+                <div class="lr-kpi-icon bg-primary-lt text-primary"><i class="ti ti-clipboard-list"></i></div>
+            </div>
+            <div class="lr-kpi-value">{{ kpi.pratiche }}</div>
+            <div class="lr-kpi-note">Schede non chiuse</div>
+        </a>
+
+        <a href="{% url 'pratiche:pratica_list' %}?stato=riparatore" class="lr-kpi">
+            <div class="lr-kpi-top">
+                <div class="lr-kpi-label">In laboratorio</div>
+                <div class="lr-kpi-icon bg-cyan-lt text-cyan"><i class="ti ti-tools"></i></div>
+            </div>
+            <div class="lr-kpi-value">{{ kpi.in_laboratorio }}</div>
+            <div class="lr-kpi-note">Accettate o dal riparatore</div>
+        </a>
+
+        <a href="{% url 'pratiche:pratica_list' %}?stato=in_consegna" class="lr-kpi">
+            <div class="lr-kpi-top">
+                <div class="lr-kpi-label">Da consegnare</div>
+                <div class="lr-kpi-icon bg-green-lt text-green"><i class="ti ti-package-export"></i></div>
+            </div>
+            <div class="lr-kpi-value">{{ kpi.da_consegnare }}</div>
+            <div class="lr-kpi-note">Pronte per il cliente</div>
+        </a>
+
+        <a href="{% url 'agenda:calendar' %}" class="lr-kpi">
+            <div class="lr-kpi-top">
+                <div class="lr-kpi-label">Scadute</div>
+                <div class="lr-kpi-icon bg-red-lt text-red"><i class="ti ti-alert-triangle"></i></div>
+            </div>
+            <div class="lr-kpi-value">{{ kpi.scadute }}</div>
+            <div class="lr-kpi-note">Consegna oltre data</div>
+        </a>
+
+        <a href="{% url 'pratiche:pratica_list' %}" class="lr-kpi">
+            <div class="lr-kpi-top">
+                <div class="lr-kpi-label">Valore aperto</div>
+                <div class="lr-kpi-icon bg-yellow-lt text-yellow"><i class="ti ti-cash"></i></div>
+            </div>
+            <div class="lr-kpi-value lr-money">{{ kpi.incasso_previsto|floatformat:0 }}</div>
+            <div class="lr-kpi-note">Totale prezzi schede aperte</div>
+        </a>
+    </div>
+
+    <div class="lr-main-grid">
         <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">Ultime anagrafiche</h3>
+            <div class="card-header lr-section-title">
+                <h3 class="card-title">Ultime riparazioni</h3>
+                <a href="{% url 'pratiche:pratica_list' %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="ti ti-list"></i>
+                    Elenco
+                </a>
             </div>
             <div class="table-responsive">
                 <table class="table table-vcenter card-table">
+                    <thead>
+                        <tr>
+                            <th>Numero</th>
+                            <th>Cliente e oggetto</th>
+                            <th>Stato</th>
+                            <th>Consegna</th>
+                            <th class="text-end">Prezzo</th>
+                        </tr>
+                    </thead>
                     <tbody>
-                        {% for anagrafica in ultime_anagrafiche %}
+                        {% for pratica in ultime_riparazioni %}
                             <tr>
+                                <td class="text-secondary">{{ pratica.codice }}</td>
                                 <td>
-                                    <a href="{% url 'anagrafiche:anagrafica_detail' anagrafica.pk %}" class="text-reset fw-bold">
-                                        {{ anagrafica.ragione_sociale }}
+                                    <a href="{% url 'pratiche:pratica_detail' pratica.pk %}" class="text-reset lr-table-title">
+                                        {{ pratica.cliente }}
                                     </a>
-                                    <div class="text-secondary small">
-                                        {{ anagrafica.email|default:"Email non indicata" }}
+                                    <div class="lr-muted-line">
+                                        {{ pratica.tipo_oggetto|default:pratica.titolo|default:"Oggetto non indicato" }}
+                                        {% if pratica.riparatore %} · {{ pratica.riparatore }}{% endif %}
                                     </div>
                                 </td>
-                                <td class="text-end">
-                                    <a href="{% url 'anagrafiche:anagrafica_detail' anagrafica.pk %}" class="btn btn-icon btn-outline-primary">
-                                        <i class="ti ti-edit"></i>
-                                    </a>
+                                <td><span class="badge bg-blue-lt">{{ pratica.get_stato_display }}</span></td>
+                                <td>
+                                    {% if pratica.data_scadenza %}
+                                        <span class="{% if pratica.is_scaduta %}text-danger fw-bold{% endif %}">
+                                            {{ pratica.data_scadenza|date:"d/m/Y" }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-secondary">-</span>
+                                    {% endif %}
                                 </td>
+                                <td class="text-end lr-money">{{ pratica.prezzo_al|floatformat:2 }}</td>
                             </tr>
                         {% empty %}
                             <tr>
-                                <td class="text-center text-secondary py-4">
-                                    Nessuna anagrafica presente
-                                </td>
+                                <td colspan="5" class="lr-empty">Nessuna riparazione presente</td>
                             </tr>
                         {% endfor %}
                     </tbody>
                 </table>
+            </div>
+        </div>
+
+        <div class="d-grid gap-3">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Stati riparazioni</h3>
+                </div>
+                <div class="card-body">
+                    {% if stati_riparazioni %}
+                        <div class="lr-status-list">
+                            {% for item in stati_riparazioni %}
+                                <div>
+                                    <div class="lr-status-row mb-1">
+                                        <span>{{ item.label }}</span>
+                                        <span class="fw-bold">{{ item.totale }}</span>
+                                    </div>
+                                    <div class="lr-status-bar">
+                                        <div class="lr-status-fill" style="width: {% widthratio item.totale totale_stati_riparazioni 100 %}%"></div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="lr-empty">Nessuno stato da mostrare</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header lr-section-title">
+                    <h3 class="card-title">Consegne vicine</h3>
+                    <a href="{% url 'agenda:calendar' %}" class="btn btn-outline-secondary btn-sm">
+                        <i class="ti ti-calendar"></i>
+                    </a>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% for pratica in riparazioni_in_scadenza %}
+                        <a href="{% url 'pratiche:pratica_detail' pratica.pk %}" class="list-group-item list-group-item-action">
+                            <div class="d-flex justify-content-between gap-3">
+                                <div>
+                                    <div class="fw-bold">{{ pratica.codice }}</div>
+                                    <div class="lr-muted-line">{{ pratica.cliente }}</div>
+                                </div>
+                                <div class="text-end">
+                                    <div class="{% if pratica.is_scaduta %}text-danger fw-bold{% endif %}">
+                                        {{ pratica.data_scadenza|date:"d/m/Y" }}
+                                    </div>
+                                    <div class="lr-muted-line">{{ pratica.get_stato_display }}</div>
+                                </div>
+                            </div>
+                        </a>
+                    {% empty %}
+                        <div class="lr-empty">Nessuna consegna pianificata</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Anagrafiche recenti</h3>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% for anagrafica in ultime_anagrafiche %}
+                        <a href="{% url 'anagrafiche:anagrafica_detail' anagrafica.pk %}" class="list-group-item list-group-item-action">
+                            <div class="fw-bold">{{ anagrafica.ragione_sociale }}</div>
+                            <div class="lr-muted-line">{{ anagrafica.email|default:"Email non indicata" }}</div>
+                        </a>
+                    {% empty %}
+                        <div class="lr-empty">Nessuna anagrafica presente</div>
+                    {% endfor %}
+                </div>
             </div>
         </div>
     </div>

@@ -143,7 +143,7 @@
 <div class="page-header d-print-none mb-3">
     <div class="row align-items-center">
         <div class="col">
-            <h2 class="page-title">{{ pratica.titolo }}</h2>
+            <h2 class="page-title">{{ pratica.codice }}</h2>
             <div class="text-secondary">{{ pratica.codice }} · {{ pratica.cliente }}</div>
         </div>
         <div class="col-auto">
@@ -163,7 +163,7 @@
     <div class="col-lg-7">
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title">Dati pratica</h3>
+                <h3 class="card-title">Dati riparazione</h3>
             </div>
             <div class="card-body">
                 <dl class="row">
@@ -174,12 +174,20 @@
                         </a>
                     </dd>
 
-                    <dt class="col-sm-4">Tipologia</dt>
+                    <dt class="col-sm-4">Negozio</dt>
+                    <dd class="col-sm-8">{{ pratica.negozio|default:"-" }}</dd>
+
+                    <dt class="col-sm-4">Operatore</dt>
+                    <dd class="col-sm-8">{{ pratica.operatore|default:"-" }}</dd>
+
+                    <dt class="col-sm-4">Tipologia oggetto</dt>
                     <dd class="col-sm-8">{{ pratica.get_tipologia_display|default:"-" }}</dd>
 
+                    <dt class="col-sm-4">Tipo oggetto</dt>
+                    <dd class="col-sm-8">{{ pratica.tipo_oggetto|default:pratica.titolo|default:"-" }}</dd>
 
-                    <dt class="col-sm-4">Responsabile</dt>
-                    <dd class="col-sm-8">{{ pratica.responsabile|default:"-" }}</dd>
+                    <dt class="col-sm-4">Peso</dt>
+                    <dd class="col-sm-8">{{ pratica.peso_grammi|floatformat:3 }} gr</dd>
 
                     <dt class="col-sm-4">Descrizione</dt>
                     <dd class="col-sm-8">{{ pratica.descrizione|linebreaksbr|default:"-" }}</dd>
@@ -202,10 +210,10 @@
                     <span class="badge bg-secondary-lt">{{ pratica.get_priorita_display }}</span>
                 </p>
                 <dl class="row mb-0">
-                    <dt class="col-sm-5">Apertura</dt>
+                    <dt class="col-sm-5">Accettazione</dt>
                     <dd class="col-sm-7">{{ pratica.data_apertura|date:"d/m/Y" }}</dd>
 
-                    <dt class="col-sm-5">Scadenza</dt>
+                    <dt class="col-sm-5">Prev. consegna</dt>
                     <dd class="col-sm-7">
                         {% if pratica.data_scadenza %}
                             <span class="{% if pratica.is_scaduta %}text-danger fw-bold{% endif %}">
@@ -218,7 +226,53 @@
 
                     <dt class="col-sm-5">Chiusura</dt>
                     <dd class="col-sm-7">{{ pratica.data_chiusura|date:"d/m/Y"|default:"-" }}</dd>
+
+                    <dt class="col-sm-5">Riparatore</dt>
+                    <dd class="col-sm-7">{{ pratica.riparatore|default:"-" }}</dd>
+
+                    <dt class="col-sm-5">Data riparatore</dt>
+                    <dd class="col-sm-7">{{ pratica.data_riparatore|date:"d/m/Y"|default:"-" }}</dd>
+
+                    <dt class="col-sm-5">Data rientro</dt>
+                    <dd class="col-sm-7">{{ pratica.data_rientro|date:"d/m/Y"|default:"-" }}</dd>
+
+                    <dt class="col-sm-5">Data vendita</dt>
+                    <dd class="col-sm-7">{{ pratica.data_vendita|date:"d/m/Y"|default:"-" }}</dd>
                 </dl>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Valori economici</h3>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-2">
+                        <div class="text-secondary small">Costo lavorazione</div>
+                        <div class="fw-bold">{{ pratica.costo_lavorazione|floatformat:2 }}</div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="text-secondary small">Costo materiale</div>
+                        <div class="fw-bold">{{ pratica.costo_materiale|floatformat:2 }}</div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="text-secondary small">Oro aggiunto</div>
+                        <div class="fw-bold">{{ pratica.oro_aggiunto|floatformat:2 }} gr</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-secondary small">Prezzo al</div>
+                        <div class="fw-bold">{{ pratica.prezzo_al|floatformat:2 }}</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-secondary small">Prezzo pagato</div>
+                        <div class="fw-bold">{{ pratica.prezzo_pagato|floatformat:2 }}</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

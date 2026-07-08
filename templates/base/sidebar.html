@@ -3,8 +3,8 @@
 <aside class="st-sidebar">
 
     <div class="st-sidebar-brand">
-        <img class="st-logo" src="{% static 'securtek/img/securtek-logo.png' %}" alt="Securtek">
-        <div class="st-brand-subtitle">Gestione Pratiche</div>
+        <img class="st-logo" src="{% static 'securtek/img/labrepair-logo.png' %}" alt="Centro Orafo Pistoiese">
+        <div class="st-brand-subtitle">LabRepair</div>
     </div>
 
     <nav class="st-sidebar-nav">
@@ -16,9 +16,9 @@
 
         <div class="st-nav-section">Gestione</div>
 
-        <a class="st-nav-link {% if request.path|slice:':10' == '/pratiche/' and '/pratiche/categorie/' not in request.path and '/pratiche/macro-categorie/' not in request.path and '/pratiche/template-pratiche/' not in request.path and '/pratiche/studi-tecnici/' not in request.path and '/pratiche/incarichi/' not in request.path %}active{% endif %}" href="/pratiche/">
+        <a class="st-nav-link {% if request.path|slice:':10' == '/pratiche/' and '/pratiche/categorie/' not in request.path and '/pratiche/macro-categorie/' not in request.path and '/pratiche/template-pratiche/' not in request.path and '/pratiche/studi-tecnici/' not in request.path and '/pratiche/incarichi/' not in request.path and '/pratiche/operatori/' not in request.path %}active{% endif %}" href="/pratiche/">
             <i class="ti ti-folder"></i>
-            <span>Pratiche</span>
+            <span>Riparazioni</span>
         </a>
 
         <a class="st-nav-link {% if request.path|slice:':13' == '/anagrafiche/' %}active{% endif %}" href="/anagrafiche/">
@@ -28,7 +28,7 @@
 
         <a class="st-nav-link {% if request.path|slice:':24' == '/pratiche/studi-tecnici/' %}active{% endif %}" href="/pratiche/studi-tecnici/">
             <i class="ti ti-briefcase"></i>
-            <span>Studi Tecnici</span>
+            <span>Riparatori</span>
         </a>
 
         <a class="st-nav-link {% if request.path|slice:':8' == '/agenda/' and request.path != '/agenda/parametri-mail/' %}active{% endif %}" href="/agenda/">
@@ -62,12 +62,17 @@
 
         <a class="st-nav-link {% if request.path|slice:':28' == '/pratiche/template-pratiche/' %}active{% endif %}" href="/pratiche/template-pratiche/">
             <i class="ti ti-template"></i>
-            <span>Template pratiche</span>
+            <span>Template riparazioni</span>
         </a>
 
         <a class="st-nav-link {% if request.path|slice:':20' == '/pratiche/incarichi/' %}active{% endif %}" href="/pratiche/incarichi/">
             <i class="ti ti-id-badge-2"></i>
             <span>Incarichi</span>
+        </a>
+
+        <a class="st-nav-link {% if request.path|slice:':20' == '/pratiche/operatori/' %}active{% endif %}" href="/pratiche/operatori/">
+            <i class="ti ti-users"></i>
+            <span>Operatori</span>
         </a>
 
         <a class="st-nav-link {% if request.path == '/agenda/parametri-mail/' %}active{% endif %}" href="/agenda/parametri-mail/">

@@ -40,14 +40,19 @@ class MacroCategoriaPratica(BaseModel):
 
 class Pratica(BaseModel):
     class Stato(models.TextChoices):
+        ACCETTAZIONE = "accettazione", "Accettazione"
+        RIPARATORE = "riparatore", "Riparatore"
+        IN_CONSEGNA = "in_consegna", "In consegna"
+        EVASA = "evasa", "Evasa"
+        NON_RITIRATA = "non_ritirata", "Non ritirata"
+        ANNULLATA = "annullata", "Annullata"
+        ARCHIVIATA = "archiviata", "Archiviata"
         BOZZA = "bozza", "Bozza"
         APERTA = "aperta", "Aperta"
         IN_LAVORAZIONE = "in_lavorazione", "In lavorazione"
         IN_ATTESA_CLIENTE = "in_attesa_cliente", "In attesa cliente"
         IN_ATTESA_ESTERNA = "in_attesa_esterna", "In attesa esterna"
         COMPLETATA = "completata", "Completata"
-        ANNULLATA = "annullata", "Annullata"
-        ARCHIVIATA = "archiviata", "Archiviata"
 
     class Priorita(models.TextChoices):
         BASSA = "bassa", "Bassa"
@@ -56,29 +61,30 @@ class Pratica(BaseModel):
         URGENTE = "urgente", "Urgente"
 
     class Tipologia(models.TextChoices):
-        IMPIANTO_ELETTRICO = "impianto_elettrico", "Impianto elettrico"
-        IMPIANTO_TERMICO = "impianto_termico", "Impianto termico"
-        ENEA = "enea", "ENEA"
-        ATEX = "atex", "ATEX"
+        PREZIOSO = "prezioso", "Prezioso"
+        NON_PREZIOSO = "non_prezioso", "Non prezioso"
 
     codice = models.CharField("Codice", max_length=30, unique=True, blank=True)
-    titolo = models.CharField("Titolo", max_length=200)
+    titolo = models.CharField("Oggetto / titolo scheda", max_length=200, blank=True)
     cliente = models.ForeignKey(
         Anagrafica,
         on_delete=models.PROTECT,
         related_name="pratiche",
         verbose_name="Cliente",
     )
+    negozio = models.CharField("Negozio", max_length=20, blank=True)
     tipologia = models.CharField(
-        "Tipologia",
+        "Tipologia oggetto",
         max_length=30,
         choices=Tipologia.choices,
+        default=Tipologia.NON_PREZIOSO,
     )
+    tipo_oggetto = models.CharField("Tipo oggetto", max_length=120, blank=True)
     stato = models.CharField(
         "Stato",
         max_length=30,
         choices=Stato.choices,
-        default=Stato.APERTA,
+        default=Stato.ACCETTAZIONE,
     )
     priorita = models.CharField(
         "Priorita",
@@ -89,19 +95,37 @@ class Pratica(BaseModel):
     data_apertura = models.DateField("Data apertura", default=timezone.localdate)
     data_scadenza = models.DateField("Data scadenza", null=True, blank=True)
     data_chiusura = models.DateField("Data chiusura", null=True, blank=True)
+    data_riparatore = models.DateField("Data riparatore", null=True, blank=True)
+    data_rientro = models.DateField("Data rientro", null=True, blank=True)
+    data_vendita = models.DateField("Data vendita", null=True, blank=True)
     responsabile = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name="pratiche_assegnate",
-        verbose_name="Responsabile",
+        verbose_name="Responsabile accesso",
+    )
+    operatore = models.ForeignKey(
+        "Operatore",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="riparazioni",
+        verbose_name="Operatore",
     )
     descrizione = models.TextField("Descrizione", blank=True)
+    peso_grammi = models.DecimalField("Peso (gr)", max_digits=10, decimal_places=3, default=0)
+    riparatore = models.CharField("Riparatore", max_length=150, blank=True)
+    costo_lavorazione = models.DecimalField("Costo lavorazione (EUR)", max_digits=10, decimal_places=2, default=0)
+    costo_materiale = models.DecimalField("Costo materiale (EUR)", max_digits=10, decimal_places=2, default=0)
+    oro_aggiunto = models.DecimalField("Oro aggiunto (gr)", max_digits=10, decimal_places=2, default=0)
+    prezzo_al = models.DecimalField("Prezzo al", max_digits=10, decimal_places=2, default=0)
+    prezzo_pagato = models.DecimalField("Prezzo pagato", max_digits=10, decimal_places=2, default=0)
 
     class Meta:
         verbose_name = "Pratica"
-        verbose_name_plural = "Pratiche"
+        verbose_name_plural = "Riparazioni"
         ordering = ["-data_apertura", "-id"]
 
     def __str__(self):
@@ -111,6 +135,7 @@ class Pratica(BaseModel):
     def is_finale(self):
         return self.stato in {
             self.Stato.COMPLETATA,
+            self.Stato.EVASA,
             self.Stato.ANNULLATA,
             self.Stato.ARCHIVIATA,
         }
@@ -122,7 +147,7 @@ class Pratica(BaseModel):
     def save(self, *args, **kwargs):
         if not self.codice:
             current_year = timezone.localdate().year
-            prefix = f"PR-{current_year}-"
+            prefix = f"RP-{current_year}-"
             last_pratica = (
                 Pratica.objects.filter(codice__startswith=prefix)
                 .order_by("-codice")
@@ -133,7 +158,10 @@ class Pratica(BaseModel):
                 next_number = int(last_pratica.codice.rsplit("-", 1)[-1]) + 1
             self.codice = f"{prefix}{next_number:04d}"
 
-        if self.stato in {self.Stato.COMPLETATA, self.Stato.ANNULLATA} and not self.data_chiusura:
+        if not self.titolo:
+            self.titolo = self.tipo_oggetto or f"Riparazione {self.codice}"
+
+        if self.stato in {self.Stato.EVASA, self.Stato.COMPLETATA, self.Stato.ANNULLATA} and not self.data_chiusura:
             self.data_chiusura = timezone.localdate()
 
         super().save(*args, **kwargs)
@@ -366,6 +394,18 @@ class IncaricoTecnico(BaseModel):
 
     def __str__(self):
         return self.denominazione
+
+
+class Operatore(BaseModel):
+    nominativo = models.CharField("Nominativo", max_length=150, unique=True)
+
+    class Meta:
+        verbose_name = "Operatore"
+        verbose_name_plural = "Operatori"
+        ordering = ["nominativo"]
+
+    def __str__(self):
+        return self.nominativo
 
 
 class Tecnico(BaseModel):

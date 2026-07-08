@@ -1,7 +1,7 @@
 {% extends "base/layout.html" %}
 
 {% block page_title %}
-Pratica
+Riparazione
 {% endblock %}
 
 {% block extra_css %}
@@ -290,9 +290,9 @@ Pratica
     <div class="row align-items-center">
         <div class="col">
             <h2 class="page-title">
-                {% if object %}Modifica pratica{% else %}Nuova pratica{% endif %}
+                {% if object %}Modifica riparazione{% else %}Nuova riparazione{% endif %}
             </h2>
-            <div class="text-secondary">Dati principali della pratica</div>
+            <div class="text-secondary">Scheda di accettazione e avanzamento riparazione</div>
         </div>
     </div>
 </div>
@@ -311,7 +311,7 @@ Pratica
 
             <div class="row">
                 {% for field in form %}
-                    <div class="{% if field.name in 'descrizione note' %}col-12{% elif field.name in 'data_apertura data_scadenza priorita stato' %}col-md-3{% else %}col-md-6{% endif %}">
+                    <div class="{% if field.name == 'descrizione' or field.name == 'note' %}col-12{% elif field.name == 'data_apertura' or field.name == 'data_scadenza' or field.name == 'data_riparatore' or field.name == 'data_rientro' or field.name == 'data_vendita' or field.name == 'priorita' or field.name == 'stato' or field.name == 'negozio' or field.name == 'peso_grammi' or field.name == 'costo_lavorazione' or field.name == 'costo_materiale' or field.name == 'oro_aggiunto' or field.name == 'prezzo_al' or field.name == 'prezzo_pagato' %}col-md-3{% else %}col-md-6{% endif %}">
                         <div class="mb-3">
                             <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
                             {{ field }}

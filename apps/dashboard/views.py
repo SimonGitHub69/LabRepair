@@ -1,6 +1,8 @@
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import TemplateView
 from django.conf import settings
 from django.db import connection
+from django.db.models import Count, Sum
 from django.urls import reverse
 from django.utils import timezone
 from datetime import datetime
@@ -14,6 +16,7 @@ from apps.pratiche.models import (
     ComunicazionePratica,
     IncaricoTecnico,
     MacroCategoriaPratica,
+    Operatore,
     Pratica,
     PraticaCategoriaAllegato,
     PraticaCategoria,
@@ -257,7 +260,7 @@ def count_agenda_items():
     return eventi_agenda + scadenze_pratiche
 
 
-class DashboardView(TemplateView):
+class DashboardView(LoginRequiredMixin, TemplateView):
     template_name = "dashboard/index.html"
 
     def get_context_data(self, **kwargs):
@@ -265,20 +268,47 @@ class DashboardView(TemplateView):
 
         anagrafiche = Anagrafica.objects.filter(is_active=True)
         pratiche = Pratica.objects.filter(is_active=True).exclude(stato=Pratica.Stato.ARCHIVIATA)
+        stati_finali = [Pratica.Stato.EVASA, Pratica.Stato.COMPLETATA, Pratica.Stato.ANNULLATA, Pratica.Stato.ARCHIVIATA]
+        riparazioni_aperte = pratiche.exclude(stato__in=stati_finali)
+        oggi = timezone.localdate()
 
         context["kpi"] = {
             "anagrafiche": anagrafiche.count(),
             "clienti": anagrafiche.count(),
-            "pratiche": pratiche.count(),
+            "pratiche": riparazioni_aperte.count(),
+            "in_laboratorio": pratiche.filter(stato__in=[Pratica.Stato.ACCETTAZIONE, Pratica.Stato.RIPARATORE]).count(),
+            "da_consegnare": pratiche.filter(stato=Pratica.Stato.IN_CONSEGNA).count(),
+            "scadute": riparazioni_aperte.filter(data_scadenza__lt=oggi).count(),
             "documenti": count_linked_documents(),
             "scadenze": count_agenda_items(),
+            "incasso_previsto": riparazioni_aperte.aggregate(total=Sum("prezzo_al"))["total"] or 0,
         }
         context["ultime_anagrafiche"] = anagrafiche.order_by("-created_at")[:5]
+        context["ultime_riparazioni"] = (
+            pratiche.select_related("cliente", "responsabile")
+            .order_by("-data_apertura", "-id")[:8]
+        )
+        stato_labels = dict(Pratica.Stato.choices)
+        stati_riparazioni = [
+            {
+                "stato": item["stato"],
+                "label": stato_labels.get(item["stato"], item["stato"]),
+                "totale": item["totale"],
+            }
+            for item in pratiche.values("stato").annotate(totale=Count("id")).order_by("stato")
+        ]
+        context["stati_riparazioni"] = stati_riparazioni
+        context["totale_stati_riparazioni"] = sum(item["totale"] for item in stati_riparazioni)
+        context["riparazioni_in_scadenza"] = (
+            riparazioni_aperte.filter(data_scadenza__isnull=False)
+            .select_related("cliente")
+            .order_by("data_scadenza", "id")[:6]
+        )
 
         return context
 
 
-class DocumentiView(TemplateView):
+class DocumentiView(LoginRequiredMixin, TemplateView):
     template_name = "dashboard/documenti.html"
 
     def get_context_data(self, **kwargs):
@@ -347,7 +377,7 @@ class DocumentiView(TemplateView):
         return context
 
 
-class SistemaView(TemplateView):
+class SistemaView(LoginRequiredMixin, TemplateView):
     template_name = "dashboard/sistema.html"
 
     def get_context_data(self, **kwargs):
@@ -382,6 +412,7 @@ class SistemaView(TemplateView):
             {"label": "Template pratiche", "value": TemplatePratica.objects.filter(is_active=True).count()},
             {"label": "Studi tecnici", "value": StudioTecnico.objects.filter(is_active=True).count()},
             {"label": "Incarichi", "value": IncaricoTecnico.objects.filter(is_active=True).count()},
+            {"label": "Operatori", "value": Operatore.objects.filter(is_active=True).count()},
         ]
         context["system_links"] = [
             {
