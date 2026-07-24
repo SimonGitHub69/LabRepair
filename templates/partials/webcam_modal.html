@@ -1,0 +1,48 @@
+<div class="st-webcam-modal" id="webcamModal" hidden>
+    <div class="st-webcam-dialog" role="dialog" aria-modal="true" aria-labelledby="webcamModalTitle">
+        <div class="st-webcam-header">
+            <h3 class="st-webcam-title" id="webcamModalTitle">Webcam</h3>
+            <button type="button" class="btn btn-icon btn-outline-secondary" data-webcam-close aria-label="Chiudi">
+                <i class="ti ti-x"></i>
+            </button>
+        </div>
+
+        <div class="st-webcam-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label" for="webcamDeviceSelect">Videocamera</label>
+                    <select id="webcamDeviceSelect" class="form-select" data-webcam-device-select></select>
+                    <div class="text-secondary small mt-2" data-webcam-status>
+                        Collega la webcam e consenti l&apos;accesso al browser.
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <div class="st-webcam-preview-wrap">
+                        <video class="st-webcam-preview" data-webcam-preview autoplay playsinline muted></video>
+                        <img class="st-webcam-capture-preview" data-webcam-capture-preview hidden alt="Anteprima scatto">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="st-webcam-footer">
+            <button type="button" class="btn btn-outline-secondary" data-webcam-close>Annulla</button>
+            <button type="button" class="btn btn-outline-primary" data-webcam-retake hidden>
+                <i class="ti ti-refresh"></i>
+                Nuovo scatto{% if webcam_tasto_nuovo_scatto %} ({{ webcam_tasto_nuovo_scatto }}){% endif %}
+            </button>
+            <button type="button" class="btn btn-primary" data-webcam-capture>
+                <i class="ti ti-camera"></i>
+                Scatta foto{% if webcam_tasto_scatto %} ({{ webcam_tasto_scatto }}){% endif %}
+            </button>
+            <button type="button" class="btn btn-success" data-webcam-use hidden>
+                <i class="ti ti-check"></i>
+                Usa foto{% if webcam_tasto_usa_foto %} ({{ webcam_tasto_usa_foto }}){% endif %}
+            </button>
+            <a class="btn btn-success" data-webcam-download hidden download="webcam.jpg">
+                <i class="ti ti-download"></i>
+                Scarica foto
+            </a>
+        </div>
+    </div>
+</div>

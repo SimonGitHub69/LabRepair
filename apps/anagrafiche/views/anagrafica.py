@@ -3,16 +3,40 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic import ListView, CreateView, UpdateView, DetailView, View
 from django.db.models import Count, Prefetch, Q
 from django.contrib.messages.views import SuccessMessageMixin
 
 from apps.anagrafiche.models import Anagrafica, Contatto, Indirizzo
-from apps.anagrafiche.forms import AnagraficaForm, ContattoFormSet, IndirizzoFormSet
+from apps.anagrafiche.forms import AnagraficaForm, ContattoFormSet
+from apps.anagrafiche.forms.anagrafica import build_indirizzo_formset
+from apps.anagrafiche.search import (
+    annotate_anagrafica_name_search,
+    build_anagrafica_name_search_q,
+)
+from apps.core.list_pagination import ConfigurablePaginationMixin
+from apps.core.negozi import apply_negozio_queryset_filter, normalize_negozio_code
+from apps.pratiche.cliente_documento import is_documento_identita_scaduto
 from apps.pratiche.models import Pratica, PraticaCategoria
 
 
-class AnagraficaListView(LoginRequiredMixin, ListView):
+def get_safe_next_url(request):
+    next_url = (request.GET.get("next") or request.POST.get("next") or "").strip()
+    if not next_url:
+        return ""
+    if not next_url.startswith("/") or next_url.startswith("//"):
+        return ""
+    if not url_has_allowed_host_and_scheme(
+        next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return ""
+    return next_url
+
+
+class AnagraficaListView(LoginRequiredMixin, ConfigurablePaginationMixin, ListView):
     model = Anagrafica
     template_name = "anagrafiche/anagrafica_list.html"
     context_object_name = "anagrafiche"
@@ -33,17 +57,26 @@ class AnagraficaListView(LoginRequiredMixin, ListView):
         )
 
         q = (self.request.GET.get("q") or "").strip()
+        tipo = (self.request.GET.get("tipo") or "").strip()
 
         if q:
-            queryset = queryset.filter(
-                Q(ragione_sociale__icontains=q) |
-                Q(partita_iva__icontains=q) |
-                Q(codice_fiscale__icontains=q) |
-                Q(email__icontains=q) |
-                Q(telefono__icontains=q)
+            queryset = annotate_anagrafica_name_search(queryset).filter(
+                build_anagrafica_name_search_q(q, include_contacts=False)
             )
 
-        return queryset.order_by("ragione_sociale")
+        if tipo:
+            queryset = queryset.filter(tipo=tipo)
+
+        return queryset.order_by("cognome", "nome", "ragione_sociale")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["tipi_anagrafica"] = Anagrafica.Tipo.choices
+        context["selected_tipo"] = (self.request.GET.get("tipo") or "").strip()
+        query_dict = self.request.GET.copy()
+        query_dict.pop("page", None)
+        context["filters_query"] = query_dict.urlencode()
+        return context
 
 
 class AnagraficaDetailView(LoginRequiredMixin, DetailView):
@@ -55,7 +88,7 @@ class AnagraficaDetailView(LoginRequiredMixin, DetailView):
         context = super().get_context_data(**kwargs)
         context["contatti"] = self.object.contatti.filter(is_active=True)
         context["indirizzi"] = self.object.indirizzi.filter(is_active=True)
-        context["pratiche_in_essere"] = (
+        context["pratiche_in_essere"] = apply_negozio_queryset_filter(
             self.object.pratiche.filter(is_active=True)
             .exclude(
                 stato__in=[
@@ -71,7 +104,8 @@ class AnagraficaDetailView(LoginRequiredMixin, DetailView):
                     queryset=PraticaCategoria.objects.filter(is_active=True).select_related("categoria"),
                     to_attr="categorie_attive",
                 )
-            )
+            ),
+            normalize_negozio_code(self.request.session.get("negozio")),
         )
         return context
 
@@ -79,6 +113,25 @@ class AnagraficaDetailView(LoginRequiredMixin, DetailView):
 class AnagraficaFormsetMixin:
     contatto_prefix = "contatti"
     indirizzo_prefix = "indirizzi"
+
+    def is_prezioso_context(self):
+        return (
+            self.request.GET.get("prezioso") == "1"
+            or self.request.GET.get("tipologia") == "prezioso"
+            or self.request.POST.get("prezioso_mode") == "1"
+        )
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["prezioso"] = self.is_prezioso_context()
+        return kwargs
+
+    def get_initial(self):
+        initial = super().get_initial()
+        if not getattr(self, "object", None):
+            if self.request.GET.get("tipo") == "cliente" or self.is_prezioso_context():
+                initial.setdefault("tipo", Anagrafica.Tipo.CLIENTE)
+        return initial
 
     def get_contatto_queryset(self):
         if self.object:
@@ -101,12 +154,23 @@ class AnagraficaFormsetMixin:
         )
 
     def get_indirizzo_formset(self):
-        return IndirizzoFormSet(
+        queryset = self.get_indirizzo_queryset()
+        # Un form vuoto solo in creazione / senza indirizzi già salvati.
+        # Con extra=1 fisso compare un secondo "Indirizzo di residenza" vuoto in modifica.
+        has_existing = bool(self.object and self.object.pk and queryset.exists())
+        FormSet = build_indirizzo_formset(extra=0 if has_existing else 1)
+        formset = FormSet(
             self.request.POST or None,
             instance=self.object,
             prefix=self.indirizzo_prefix,
-            queryset=self.get_indirizzo_queryset(),
+            queryset=queryset,
         )
+        if not self.object:
+            for form in formset.forms:
+                form.initial.setdefault("tipo", Indirizzo.TipoIndirizzo.RESIDENZA)
+                form.initial.setdefault("principale", True)
+                form.initial.setdefault("nazione", "Italia")
+        return formset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -117,6 +181,20 @@ class AnagraficaFormsetMixin:
         if "indirizzo_formset" not in context:
             context["indirizzo_formset"] = self.get_indirizzo_formset()
 
+        context["cliente_prezioso"] = self.is_prezioso_context()
+        context["next_url"] = get_safe_next_url(self.request)
+        context["documento_scaduto_required"] = (
+            self.request.GET.get("documento_scaduto") == "1"
+            or self.request.POST.get("documento_scaduto") == "1"
+        )
+        if (
+            context["documento_scaduto_required"]
+            and getattr(self, "object", None)
+            and is_documento_identita_scaduto(self.object)
+        ):
+            context["documento_ancora_scaduto"] = True
+        else:
+            context["documento_ancora_scaduto"] = False
         return context
 
     def form_valid(self, form):
@@ -125,6 +203,14 @@ class AnagraficaFormsetMixin:
 
         if not contatto_formset.is_valid() or not indirizzo_formset.is_valid():
             return self.form_invalid_with_formsets(form, contatto_formset, indirizzo_formset)
+
+        if form.cleaned_data.get("tipo") == Anagrafica.Tipo.CLIENTE and self.is_prezioso_context():
+            if not self._has_residenza(indirizzo_formset):
+                form.add_error(
+                    None,
+                    "Per oggetti preziosi inserisci almeno un indirizzo di residenza completo.",
+                )
+                return self.form_invalid_with_formsets(form, contatto_formset, indirizzo_formset)
 
         with transaction.atomic():
             self.object = form.save(commit=False)
@@ -164,6 +250,20 @@ class AnagraficaFormsetMixin:
                 instance.created_by = self.request.user
             instance.save()
 
+    @staticmethod
+    def _has_residenza(indirizzo_formset):
+        for indirizzo_form in indirizzo_formset:
+            cleaned_data = getattr(indirizzo_form, "cleaned_data", None) or {}
+            if not cleaned_data or cleaned_data.get("DELETE"):
+                continue
+            indirizzo = (cleaned_data.get("indirizzo") or "").strip()
+            comune = (cleaned_data.get("comune") or "").strip()
+            cap = (cleaned_data.get("cap") or "").strip()
+            provincia = (cleaned_data.get("provincia") or "").strip()
+            if indirizzo and comune and cap and provincia:
+                return True
+        return False
+
 
 class AnagraficaCreateView(LoginRequiredMixin, AnagraficaFormsetMixin, SuccessMessageMixin, CreateView):
     model = Anagrafica
@@ -182,6 +282,9 @@ class AnagraficaUpdateView(LoginRequiredMixin, AnagraficaFormsetMixin, SuccessMe
     success_message = "Anagrafica aggiornata correttamente."
 
     def get_success_url(self):
+        next_url = get_safe_next_url(self.request)
+        if next_url:
+            return next_url
         return reverse("anagrafiche:anagrafica_detail", kwargs={"pk": self.object.pk})
 
 

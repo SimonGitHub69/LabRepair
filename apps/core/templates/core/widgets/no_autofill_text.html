@@ -1,0 +1,21 @@
+{% comment %}Legacy path kept for compatibility; widget renders HTML in Python.{% endcomment %}
+<input type="hidden"
+       name="{{ widget.name }}"
+       value="{{ widget.value|default:'' }}"
+       {% if widget.attrs.id %}id="{{ widget.attrs.id }}_store"{% endif %}
+       data-no-autofill-store="1">
+<textarea
+    {% if widget.attrs.id %}id="{{ widget.attrs.id }}"{% endif %}
+    class="{{ widget.attrs.class }}"
+    rows="{{ widget.attrs.rows|default:'1' }}"
+    wrap="{{ widget.attrs.wrap|default:'off' }}"
+    spellcheck="{{ widget.attrs.spellcheck|default:'false' }}"
+    autocomplete="off"
+    data-no-autofill-mirror="1"
+    data-store-name="{{ widget.name }}"
+    {% for name, value in widget.attrs.items %}
+        {% if name != 'id' and name != 'class' and name != 'rows' and name != 'wrap' and name != 'spellcheck' and name != 'autocomplete' and name != 'type' and value is not False %}
+            {% if value is True %}{{ name }}{% else %}{{ name }}="{{ value }}"{% endif %}
+        {% endif %}
+    {% endfor %}
+>{{ widget.value|default:'' }}</textarea>

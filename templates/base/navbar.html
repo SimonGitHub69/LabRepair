@@ -1,102 +1,91 @@
-<header class="navbar navbar-expand-lg border-bottom bg-white">
+<header class="navbar st-navbar navbar-expand-lg">
 
-    <div class="container-fluid">
+    <div class="container-fluid gap-2">
 
-        <!-- Titolo pagina -->
-        <div class="d-flex align-items-center">
+        <button
+            type="button"
+            class="btn btn-icon btn-outline-secondary st-sidebar-toggle"
+            data-sidebar-toggle
+            aria-label="Apri menu"
+            title="Menu">
+            <i class="ti ti-menu-2"></i>
+        </button>
 
-            <h3 class="mb-0 fw-bold">
+        <div class="d-flex align-items-center min-w-0">
+            <h1 class="st-navbar navbar-title text-truncate">
                 {% block page_title %}
                     Dashboard
                 {% endblock %}
-            </h3>
-
+            </h1>
         </div>
 
-        <!-- Parte destra -->
-        <div class="d-flex align-items-center ms-auto gap-3">
+        <div class="d-flex align-items-center ms-auto gap-2 gap-md-3">
 
-            <!-- Ricerca -->
             <form class="d-none d-lg-block" method="get" action="{% url 'anagrafiche:anagrafica_list' %}">
-
                 <input
                     type="text"
                     name="q"
                     value="{{ request.GET.q }}"
                     class="form-control"
-                    style="width:300px"
-                    placeholder="Cerca...">
-
+                    placeholder="Cerca anagrafiche...">
             </form>
 
-            <!-- Notifiche -->
-            <button class="btn btn-icon btn-outline-secondary">
+            {% if current_negozio_code %}
+            <span class="badge bg-azure-lt text-azure st-negozio-badge d-none d-md-inline-flex">
+                {{ current_negozio_code }} · {{ current_negozio_label }}
+            </span>
+            {% endif %}
 
+            <button type="button" class="btn btn-icon btn-outline-secondary" aria-label="Notifiche" title="Notifiche">
                 <i class="ti ti-bell"></i>
-
             </button>
 
-            <!-- Tema -->
+            {% if comandi_voce_attivi and user.is_authenticated %}
+            <button
+                type="button"
+                class="btn btn-icon btn-outline-secondary st-voice-btn"
+                id="stVoiceCommandBtn"
+                aria-label="Comandi vocali"
+                aria-pressed="false"
+                title="Comandi vocali">
+                <i class="ti ti-microphone"></i>
+            </button>
+            {% endif %}
+
             <button
                 type="button"
                 class="btn btn-icon btn-outline-secondary"
                 data-theme-toggle
                 aria-label="Attiva tema scuro"
                 title="Attiva tema scuro">
-
                 <i class="ti ti-moon" data-theme-toggle-icon></i>
-
             </button>
 
-            <!-- Utente -->
             <div class="dropdown">
-
                 <a href="#"
                    class="d-flex align-items-center text-decoration-none"
                    data-bs-toggle="dropdown">
 
                     <div class="avatar avatar-sm bg-primary text-white">
-
                         {{ request.user.first_name|default:request.user.username|first|upper }}
-
                     </div>
 
-                    <div class="ms-2 text-start">
-
-                        <div class="fw-semibold">
-
+                    <div class="ms-2 text-start d-none d-md-block">
+                        <div class="st-navbar-user-name">
                             {{ request.user.get_full_name|default:request.user.username }}
-
                         </div>
-
-                        <small class="text-secondary">
-
+                        <div class="st-navbar-user-role">
                             Amministratore
-
-                        </small>
-
+                        </div>
                     </div>
-
                 </a>
 
                 <div class="dropdown-menu dropdown-menu-end">
-
-                    <a class="dropdown-item" href="#">
-                        Profilo
-                    </a>
-
-                    <a class="dropdown-item" href="#">
-                        Impostazioni
-                    </a>
-
+                    <a class="dropdown-item" href="#">Profilo</a>
+                    <a class="dropdown-item" href="#">Impostazioni</a>
                     <div class="dropdown-divider"></div>
-
-                    <a class="dropdown-item text-danger" href="{% url 'admin:logout' %}">
-                        Logout
-                    </a>
-
+                    <a class="dropdown-item text-danger" href="{% url 'accounts:logout' %}">Logout</a>
                 </div>
-
             </div>
 
         </div>
@@ -104,4 +93,3 @@
     </div>
 
 </header>
-

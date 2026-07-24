@@ -1,0 +1,132 @@
+{% extends "base/layout.html" %}
+
+{% block page_title %}
+{% if object %}Modifica postazione PC{% else %}Nuova postazione PC{% endif %}
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header d-print-none mb-3">
+    <div class="row align-items-center">
+        <div class="col">
+            <h2 class="page-title">
+                {% if object %}Modifica postazione PC{% else %}Nuova postazione PC{% endif %}
+            </h2>
+            <div class="text-secondary">
+                Nome fisico del computer, negozio predefinito e stile interfaccia
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <form method="post" autocomplete="off" data-block-suggestions="1">
+        {% csrf_token %}
+
+        <div class="card-body">
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ form.nome_pc.id_for_label }}">
+                            {{ form.nome_pc.label }}<span class="text-danger"> *</span>
+                        </label>
+                        {{ form.nome_pc }}
+                        {% if nome_pc_auto %}
+                            {% if nome_pc_rilevato %}
+                                <div class="form-hint">
+                                    Nome rilevato dal sistema (es. PC-MONTALE) e non modificabile.
+                                </div>
+                            {% else %}
+                                <div class="form-hint text-warning">
+                                    Il browser non puo' leggere il nome Windows.
+                                    Apri LabRepair con il collegamento <strong>LabRepair</strong>
+                                    (passa il nome PC automaticamente), oppure digitato qui
+                                    (es. PC-MONTALE).
+                                </div>
+                            {% endif %}
+                        {% else %}
+                            <div class="form-hint">Nome fisico del computer: non modificabile.</div>
+                        {% endif %}
+                        {% if form.nome_pc.errors %}
+                            <div class="invalid-feedback d-block">{{ form.nome_pc.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ form.descrizione.id_for_label }}">
+                            {{ form.descrizione.label }}
+                        </label>
+                        {{ form.descrizione }}
+                        {% if form.descrizione.help_text %}
+                            <div class="form-hint">{{ form.descrizione.help_text }}</div>
+                        {% endif %}
+                        {% if form.descrizione.errors %}
+                            <div class="invalid-feedback d-block">{{ form.descrizione.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ form.negozio_default.id_for_label }}">
+                            {{ form.negozio_default.label }}<span class="text-danger"> *</span>
+                        </label>
+                        {{ form.negozio_default }}
+                        {% if form.negozio_default.help_text %}
+                            <div class="form-hint">{{ form.negozio_default.help_text }}</div>
+                        {% endif %}
+                        {% if form.negozio_default.errors %}
+                            <div class="invalid-feedback d-block">{{ form.negozio_default.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label d-block mb-2">
+                            {{ form.layout_stile.label }}<span class="text-danger"> *</span>
+                        </label>
+                        {% for option in form.layout_stile %}
+                            <label class="form-check form-check-inline">
+                                {{ option.tag }}
+                                <span class="form-check-label">{{ option.choice_label }}</span>
+                            </label>
+                        {% endfor %}
+                        {% if form.layout_stile.help_text %}
+                            <div class="form-hint">{{ form.layout_stile.help_text }}</div>
+                        {% endif %}
+                        {% if form.layout_stile.errors %}
+                            <div class="invalid-feedback d-block">{{ form.layout_stile.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="mb-0">
+                        <label class="form-label" for="{{ form.note.id_for_label }}">
+                            {{ form.note.label }}
+                        </label>
+                        {{ form.note }}
+                        {% if form.note.errors %}
+                            <div class="invalid-feedback d-block">{{ form.note.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-footer text-end">
+            <a href="{% url 'agenda:configurazione_pc_list' %}" class="btn btn-secondary">
+                Annulla
+            </a>
+            <button type="submit" class="btn btn-primary">
+                <i class="ti ti-device-floppy"></i>
+                Salva
+            </button>
+        </div>
+    </form>
+</div>
+
+{% endblock %}

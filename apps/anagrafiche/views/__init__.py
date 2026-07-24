@@ -15,3 +15,5 @@ from .indirizzo import (
     IndirizzoUpdateView,
     IndirizzoDeleteView,
 )
+from .import_clienti import ImportClientiCsvView
+from .cie import AnagraficaCieReadView

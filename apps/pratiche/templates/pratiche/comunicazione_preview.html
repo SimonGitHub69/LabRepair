@@ -4,25 +4,6 @@
 Anteprima comunicazione
 {% endblock %}
 
-{% block extra_css %}
-{{ block.super }}
-<style>
-.st-mail-body {
-    background: var(--tblr-bg-surface-secondary, #f8fafc);
-    border: 1px solid var(--tblr-border-color, #e6e8eb);
-    border-radius: 8px;
-    padding: 1rem;
-    white-space: pre-wrap;
-}
-
-.st-mail-frame {
-    border: 1px solid var(--tblr-border-color, #e6e8eb);
-    border-radius: 8px;
-    min-height: 420px;
-    width: 100%;
-}
-</style>
-{% endblock %}
 
 {% block content %}
 
@@ -42,7 +23,7 @@ Anteprima comunicazione
             </a>
             <a href="{% url 'pratiche:pratica_detail' comunicazione.pratica.pk %}" class="btn btn-outline-secondary">
                 <i class="ti ti-arrow-left"></i>
-                Pratica
+                Riparazione
             </a>
         </div>
     </div>

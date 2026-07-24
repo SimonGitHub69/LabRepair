@@ -4,87 +4,6 @@
 Categorie
 {% endblock %}
 
-{% block extra_css %}
-{{ block.super }}
-<style>
-.st-confirm {
-    background: rgba(15, 23, 42, 0.45);
-    bottom: 0;
-    display: flex;
-    left: 0;
-    padding: 1rem;
-    position: fixed;
-    right: 0;
-    top: 0;
-    z-index: 1080;
-}
-
-.st-confirm[hidden] {
-    display: none;
-}
-
-.st-confirm-dialog {
-    background: var(--tblr-bg-surface, #fff);
-    border-radius: 8px;
-    box-shadow: 0 1rem 3rem rgba(15, 23, 42, 0.2);
-    margin: auto;
-    max-width: 420px;
-    overflow: hidden;
-    width: 100%;
-}
-
-.st-confirm-body {
-    display: flex;
-    gap: 1rem;
-    padding: 1.25rem 1.25rem 1rem;
-}
-
-.st-confirm-icon {
-    align-items: center;
-    background: rgba(214, 57, 57, 0.12);
-    border-radius: 8px;
-    color: var(--tblr-danger, #d63939);
-    display: flex;
-    flex: 0 0 44px;
-    height: 44px;
-    justify-content: center;
-    width: 44px;
-}
-
-.st-confirm-icon .ti {
-    font-size: 1.35rem;
-}
-
-.st-confirm-title {
-    color: var(--tblr-body-color, #1f2937);
-    font-size: 1rem;
-    font-weight: 600;
-    line-height: 1.35;
-    margin-bottom: 0.35rem;
-}
-
-.st-confirm-text {
-    color: var(--tblr-secondary, #667085);
-    font-size: 0.875rem;
-    line-height: 1.45;
-}
-
-.st-confirm-name {
-    color: var(--tblr-body-color, #1f2937);
-    font-weight: 600;
-}
-
-.st-confirm-footer {
-    align-items: center;
-    background: var(--tblr-bg-surface-secondary, #f8fafc);
-    border-top: 1px solid var(--tblr-border-color, #e6e8eb);
-    display: flex;
-    gap: 0.5rem;
-    justify-content: flex-end;
-    padding: 0.75rem 1.25rem;
-}
-</style>
-{% endblock %}
 
 {% block content %}
 
@@ -92,7 +11,7 @@ Categorie
     <div class="row align-items-center">
         <div class="col">
             <h2 class="page-title">Categorie</h2>
-            <div class="text-secondary">Categorie disponibili per classificare le pratiche</div>
+            <div class="text-secondary">Categorie disponibili per classificare le riparazioni</div>
         </div>
         <div class="col-auto">
             <a href="{% url 'pratiche:categoria_pratica_create' %}" class="btn btn-primary">
@@ -133,7 +52,7 @@ Categorie
                 <tr>
                     <th>Categoria</th>
                     <th>Descrizione</th>
-                    <th>Pratiche</th>
+                    <th>Riparazioni</th>
                     <th class="text-end">Azioni</th>
                 </tr>
             </thead>
@@ -170,6 +89,7 @@ Categorie
             </tbody>
         </table>
     </div>
+    {% include "partials/pagination.html" %}
 </div>
 
 <div class="st-confirm" id="deleteCategoriaModal" hidden>

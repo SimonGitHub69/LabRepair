@@ -1,0 +1,344 @@
+{% extends "base/layout.html" %}
+
+{% block page_title %}
+Parametri programma
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header d-print-none mb-3">
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+        <div>
+            <h2 class="page-title">Parametri programma</h2>
+            <div class="text-secondary">Interfaccia, barcode e regole operative di LabRepair</div>
+        </div>
+        <div>
+            <a href="{% url 'dashboard:sistema' %}" class="btn btn-outline-secondary">
+                <i class="ti ti-arrow-left"></i>
+                Sistema
+            </a>
+        </div>
+    </div>
+</div>
+
+<form method="post" id="parametriProgrammaForm">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="save" id="parametriProgrammaAction">
+
+    {% if form.non_field_errors %}
+        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <div class="card mb-3">
+        <div class="card-header">
+            <h3 class="card-title mb-0">
+                <i class="ti ti-adjustments me-1"></i>
+                Interfaccia
+            </h3>
+        </div>
+        <div class="card-body">
+            <div class="mb-4">
+                <label class="form-label d-block mb-2">{{ form.modalita_accettazione.label }}</label>
+                {% for option in form.modalita_accettazione %}
+                    <label class="form-check mb-2">
+                        {{ option.tag }}
+                        <span class="form-check-label">{{ option.choice_label }}</span>
+                    </label>
+                {% endfor %}
+                {% if form.modalita_accettazione.errors %}
+                    <div class="invalid-feedback d-block">{{ form.modalita_accettazione.errors|join:", " }}</div>
+                {% endif %}
+                <div class="form-hint mt-2">
+                    Con <strong>Operatore per primo</strong>, in <em>Nuova riparazione</em> il primo campo da compilare è l'operatore.
+                    La modifica di una riparazione esistente resta invariata.
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label d-block mb-2">{{ form.layout_stile.label }}</label>
+                {% for option in form.layout_stile %}
+                    <label class="form-check mb-2">
+                        {{ option.tag }}
+                        <span class="form-check-label">{{ option.choice_label }}</span>
+                    </label>
+                {% endfor %}
+                {% if form.layout_stile.errors %}
+                    <div class="invalid-feedback d-block">{{ form.layout_stile.errors|join:", " }}</div>
+                {% endif %}
+                <div class="form-hint mt-2">
+                    <strong>Grafica standard</strong>: layout attuale, più arioso.
+                    <strong>Grafica compatta</strong>: stesse informazioni, più vicine tra loro,
+                    su <em>Riparazioni</em> e <em>Anagrafiche</em>, con meno scorrimento.
+                    Se la postazione è definita in <em>Parametri PC</em>, prevale lo stile di quel PC.
+                </div>
+            </div>
+
+            <div class="mb-0" style="max-width: 12rem;">
+                <label class="form-label" for="{{ form.liste_righe_per_pagina.id_for_label }}">{{ form.liste_righe_per_pagina.label }}</label>
+                {{ form.liste_righe_per_pagina }}
+                {% if form.liste_righe_per_pagina.errors %}
+                    <div class="invalid-feedback d-block">{{ form.liste_righe_per_pagina.errors|join:", " }}</div>
+                {% endif %}
+                <div class="form-hint mt-2">
+                    Valore iniziale nelle liste; si può cambiare anche dalla barra di paginazione.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header">
+            <h3 class="card-title mb-0">
+                <i class="ti ti-barcode me-1"></i>
+                Numerazione barcode GS
+            </h3>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-0">
+                        <label class="form-label" for="{{ form.barcode_iniziale.id_for_label }}">{{ form.barcode_iniziale.label }}</label>
+                        {{ form.barcode_iniziale }}
+                        {% if form.barcode_iniziale.errors %}
+                            <div class="invalid-feedback d-block">{{ form.barcode_iniziale.errors|join:", " }}</div>
+                        {% endif %}
+                        <div class="form-hint mt-2">
+                            Primo barcode assegnato alle riparazioni sincronizzate su MS-SQL.
+                            I successivi vengono calcolati automaticamente come massimo esistente + 1
+                            a partire da questo valore.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header">
+            <h3 class="card-title mb-0">
+                <i class="ti ti-camera me-1"></i>
+                Webcam
+            </h3>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label" for="{{ form.webcam_tasto_scatto.id_for_label }}">{{ form.webcam_tasto_scatto.label }}</label>
+                    {{ form.webcam_tasto_scatto }}
+                    {% if form.webcam_tasto_scatto.errors %}
+                        <div class="invalid-feedback d-block">{{ form.webcam_tasto_scatto.errors|join:", " }}</div>
+                    {% endif %}
+                    <div class="form-hint mt-2">
+                        Apre <em>Scatta con webcam</em> oppure, con il modale aperto, esegue <em>Scatta foto</em>.
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="{{ form.webcam_tasto_usa_foto.id_for_label }}">{{ form.webcam_tasto_usa_foto.label }}</label>
+                    {{ form.webcam_tasto_usa_foto }}
+                    {% if form.webcam_tasto_usa_foto.errors %}
+                        <div class="invalid-feedback d-block">{{ form.webcam_tasto_usa_foto.errors|join:", " }}</div>
+                    {% endif %}
+                    <div class="form-hint mt-2">
+                        Conferma la foto scattata con <em>Usa foto</em>.
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="{{ form.webcam_tasto_nuovo_scatto.id_for_label }}">{{ form.webcam_tasto_nuovo_scatto.label }}</label>
+                    {{ form.webcam_tasto_nuovo_scatto }}
+                    {% if form.webcam_tasto_nuovo_scatto.errors %}
+                        <div class="invalid-feedback d-block">{{ form.webcam_tasto_nuovo_scatto.errors|join:", " }}</div>
+                    {% endif %}
+                    <div class="form-hint mt-2">
+                        Scarta l&apos;anteprima e prepara un <em>Nuovo scatto</em>.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header">
+            <h3 class="card-title mb-0">
+                <i class="ti ti-mail me-1"></i>
+                Comunicazioni
+            </h3>
+        </div>
+        <div class="card-body">
+            <div class="mb-4">
+                <label class="form-label d-block mb-2">{{ form.comunicazioni_formato_data.label }}</label>
+                {% for option in form.comunicazioni_formato_data %}
+                    <label class="form-check mb-2">
+                        {{ option.tag }}
+                        <span class="form-check-label">{{ option.choice_label }}</span>
+                    </label>
+                {% endfor %}
+                {% if form.comunicazioni_formato_data.errors %}
+                    <div class="invalid-feedback d-block">{{ form.comunicazioni_formato_data.errors|join:", " }}</div>
+                {% endif %}
+                <div class="form-hint mt-2">
+                    Scegli se mostrare <strong>Solo data</strong>, <strong>Data e ora</strong>
+                    oppure nascondere il campo e usare automaticamente la data/ora corrente.
+                </div>
+            </div>
+
+            <label class="form-check mb-0">
+                {{ form.comunicazioni_mostra_allegato }}
+                <span class="form-check-label">{{ form.comunicazioni_mostra_allegato.label }}</span>
+            </label>
+            {% if form.comunicazioni_mostra_allegato.errors %}
+                <div class="invalid-feedback d-block">{{ form.comunicazioni_mostra_allegato.errors|join:", " }}</div>
+            {% endif %}
+            <div class="form-hint mt-2">
+                Se disattivato, nella scheda riparazione sparisce il blocco <em>Mail o allegato</em>
+                con upload file, drag&amp;drop e scatto foto.
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header">
+            <h3 class="card-title mb-0">
+                <i class="ti ti-mail-forward me-1"></i>
+                Mail da elenco riparazioni
+            </h3>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info mb-3">
+                Dai filtri <em>Non ritirate</em> / <em>Ritardo lavorazione</em> LabRepair apre il
+                <strong>client di posta</strong> del computer (<code>mailto</code>):
+                la mail parte solo se l&apos;utente la invia dal client.
+                Qui sotto puoi vedere l&apos;anteprima e, se SMTP è attivo in
+                <a href="{% url 'agenda:configurazione_email' %}">Parametri mail</a>,
+                inviare una mail di prova dal server.
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label" for="{{ form.mailto_oggetto.id_for_label }}">{{ form.mailto_oggetto.label }}</label>
+                {{ form.mailto_oggetto }}
+                {% if form.mailto_oggetto.errors %}
+                    <div class="invalid-feedback d-block">{{ form.mailto_oggetto.errors|join:", " }}</div>
+                {% endif %}
+                <div class="form-hint mt-2">
+                    Segnaposto:
+                    <code>{codice}</code>,
+                    <code>{cliente}</code>,
+                    <code>{nome}</code>,
+                    <code>{cognome}</code>.
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label" for="{{ form.mailto_corpo.id_for_label }}">{{ form.mailto_corpo.label }}</label>
+                {{ form.mailto_corpo }}
+                {% if form.mailto_corpo.errors %}
+                    <div class="invalid-feedback d-block">{{ form.mailto_corpo.errors|join:", " }}</div>
+                {% endif %}
+                <div class="form-hint mt-2">
+                    Segnaposto:
+                    <code>{codice}</code>,
+                    <code>{cliente}</code>,
+                    <code>{nome}</code>,
+                    <code>{cognome}</code>,
+                    <code>{cellulare}</code>,
+                    <code>{telefono}</code>.
+                    Lascia vuoto se non vuoi un testo automatico nel corpo.
+                </div>
+            </div>
+
+            <div class="card bg-light border-0 mb-4">
+                <div class="card-body">
+                    <div class="fw-semibold mb-2">Anteprima (esempio {{ mailto_preview.esempio_codice }} · {{ mailto_preview.esempio_cliente }})</div>
+                    <div class="mb-2">
+                        <span class="text-secondary">Oggetto:</span>
+                        <strong>{{ mailto_preview.oggetto|default:"(vuoto)" }}</strong>
+                    </div>
+                    <div class="text-secondary mb-1">Testo:</div>
+                    <pre class="mb-0 small st-mailto-preview-body">{% if mailto_preview.corpo %}{{ mailto_preview.corpo }}{% else %}(nessun testo predefinito){% endif %}</pre>
+                </div>
+            </div>
+
+            <div class="row g-2 align-items-end">
+                <div class="col-md-6">
+                    <label class="form-label" for="mailtoDestinatarioInput">Destinatario prova</label>
+                    <input type="email"
+                           class="form-control"
+                           id="mailtoDestinatarioInput"
+                           name="mailto_destinatario"
+                           value="{{ mailto_destinatario }}"
+                           placeholder="es. tua@email.it"
+                           autocomplete="off">
+                </div>
+                <div class="col-md-6">
+                    <button type="submit"
+                            class="btn {% if smtp_attivo %}btn-outline-primary{% else %}btn-outline-secondary{% endif %}"
+                            onclick="document.getElementById('parametriProgrammaAction').value='test_mailto';"
+                            {% if not smtp_attivo %}title="Attiva prima SMTP in Parametri mail"{% endif %}>
+                        <i class="ti ti-send"></i>
+                        Invia mail di prova
+                    </button>
+                    {% if not smtp_attivo %}
+                        <div class="form-hint mt-2">
+                            Per la prova serve SMTP attivo in
+                            <a href="{% url 'agenda:configurazione_email' %}">Parametri mail</a>.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header">
+            <h3 class="card-title mb-0">
+                <i class="ti ti-file-description me-1"></i>
+                Scheda Privacy
+            </h3>
+        </div>
+        <div class="card-body">
+            <div class="mb-4">
+                <label class="form-label" for="{{ form.privacy_testo_dichiarazione.id_for_label }}">{{ form.privacy_testo_dichiarazione.label }}</label>
+                {{ form.privacy_testo_dichiarazione }}
+                {% if form.privacy_testo_dichiarazione.errors %}
+                    <div class="invalid-feedback d-block">{{ form.privacy_testo_dichiarazione.errors|join:", " }}</div>
+                {% endif %}
+                <div class="form-hint mt-2">
+                    Dichiarazione del cliente sulla provenienza e sui diritti degli oggetti.
+                    Lascia vuoto per usare il testo predefinito
+                    (<em>riparazione/modifica</em>).
+                </div>
+            </div>
+
+            <label class="form-label" for="{{ form.privacy_testo_diritti.id_for_label }}">{{ form.privacy_testo_diritti.label }}</label>
+            {{ form.privacy_testo_diritti }}
+            {% if form.privacy_testo_diritti.errors %}
+                <div class="invalid-feedback d-block">{{ form.privacy_testo_diritti.errors|join:", " }}</div>
+            {% endif %}
+            <div class="form-hint mt-2">
+                Testo stampato in calce alla scheda Privacy, nella sezione
+                <em>Trattamento dei dati personali</em>.
+                Lascia vuoto per generarlo automaticamente dai dati azienda.
+                Usa una riga per ogni paragrafo.
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <label class="form-label" for="{{ form.note.id_for_label }}">{{ form.note.label }}</label>
+            {{ form.note }}
+            {% if form.note.errors %}
+                <div class="invalid-feedback d-block">{{ form.note.errors|join:", " }}</div>
+            {% endif %}
+        </div>
+        <div class="card-footer text-end">
+            <button type="submit"
+                    class="btn btn-primary"
+                    onclick="document.getElementById('parametriProgrammaAction').value='save';">
+                <i class="ti ti-device-floppy"></i>
+                Salva parametri programma
+            </button>
+        </div>
+    </div>
+</form>
+
+{% endblock %}

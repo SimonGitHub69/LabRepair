@@ -1,0 +1,68 @@
+{% extends "base/layout.html" %}
+{% load static %}
+
+{% block title %}Webcam{% endblock %}
+
+{% block content %}
+<div class="page-header d-print-none mb-3">
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+        <div>
+            <h2 class="page-title">Webcam</h2>
+            <div class="text-secondary">
+                Verifica collegamento e acquisizione foto con la webcam USB (es. Mediacom) o altra videocamera.
+            </div>
+        </div>
+        <div>
+            <a href="{% url 'dashboard:sistema' %}" class="btn btn-outline-secondary">
+                <i class="ti ti-arrow-left"></i>
+                Sistema
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title mb-0">Test videocamera</h3>
+            </div>
+            <div class="card-body">
+                <p class="text-secondary mb-3">
+                    Clicca il pulsante qui sotto per aprire l&apos;anteprima live, selezionare la videocamera e scattare una foto di prova.
+                </p>
+                <button type="button"
+                        class="btn btn-primary"
+                        data-webcam-trigger
+                        data-webcam-mode="download">
+                    <i class="ti ti-camera"></i>
+                    Apri webcam
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title mb-0">Note</h3>
+            </div>
+            <div class="card-body">
+                <ul class="mb-0 ps-3">
+                    <li>La prima volta il browser chiederà il permesso di usare la camera.</li>
+                    <li>Se compare pi&ugrave; di una videocamera, scegli quella Mediacom/USB dall&apos;elenco.</li>
+                    <li>Le foto scattate in riparazione si salvano nella sezione <strong>Foto oggetto</strong> della scheda.</li>
+                    <li>Serve HTTPS o <code>localhost</code> per l&apos;accesso alla webcam.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% include "partials/webcam_modal.html" %}
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script src="{% static 'securtek/js/webcam_capture.js' %}"></script>
+{% endblock %}

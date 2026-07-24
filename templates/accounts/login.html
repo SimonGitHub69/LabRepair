@@ -1,0 +1,70 @@
+{% load static %}
+<!doctype html>
+<html lang="it">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Accesso · LabRepair</title>
+    <link rel="icon" href="{% static 'securtek/img/favicon.svg' %}" type="image/svg+xml">
+    {# CSS leggeri: niente Tabler completo (rallentava il logout sulla LAN) #}
+    <link rel="stylesheet" href="{% static 'securtek/css/variables.css' %}">
+    <link rel="stylesheet" href="{% static 'securtek/css/login.css' %}">
+    <link rel="stylesheet" href="{% static 'vendor/tabler-icons/tabler-icons.min.css' %}">
+</head>
+<body class="st-login-page">
+    <div class="page page-center">
+        <div class="container-tight py-4">
+            <div class="st-login-brand">
+                <div class="st-login-mark">
+                    <i class="ti ti-tool"></i>
+                </div>
+                <h1 class="st-login-title">LabRepair</h1>
+                <div class="st-login-subtitle">Accedi e seleziona il negozio di lavoro</div>
+            </div>
+
+            <div class="card card-md st-login-card">
+                <div class="card-body">
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                    {% endif %}
+
+                    <form method="post" autocomplete="off" id="loginForm">
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label class="form-label" for="{{ form.negozio.id_for_label }}">{{ form.negozio.label }}</label>
+                            {{ form.negozio }}
+                            {% if form.negozio.errors %}
+                                <div class="invalid-feedback d-block">{{ form.negozio.errors|join:", " }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label" for="{{ form.username.id_for_label }}">Utente</label>
+                            {{ form.username }}
+                            {% if form.username.errors %}
+                                <div class="invalid-feedback d-block">{{ form.username.errors|join:", " }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label" for="{{ form.password.id_for_label }}">Password</label>
+                            {{ form.password }}
+                            {% if form.password.errors %}
+                                <div class="invalid-feedback d-block">{{ form.password.errors|join:", " }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-footer">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="ti ti-login"></i>
+                                Accedi
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

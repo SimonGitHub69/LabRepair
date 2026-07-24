@@ -1,0 +1,180 @@
+{% extends "base/layout.html" %}
+
+{% block page_title %}
+Aziende
+{% endblock %}
+
+
+{% block content %}
+
+<div class="page-header d-print-none mb-3">
+    <div class="row align-items-center">
+        <div class="col">
+            <h2 class="page-title">Aziende</h2>
+            <div class="text-secondary">Dati aziendali e logo per documenti e comunicazioni</div>
+        </div>
+        <div class="col-auto">
+            <a href="{% url 'dashboard:azienda_create' %}" class="btn btn-primary">
+                <i class="ti ti-plus"></i>
+                Nuova azienda
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label">Ricerca</label>
+                    <input type="text"
+                           name="q"
+                           value="{{ request.GET.q }}"
+                           class="form-control"
+                           placeholder="Ragione sociale, P.IVA, email o comune">
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-secondary">Cerca</button>
+                </div>
+                <div class="col-auto">
+                    <a href="{% url 'dashboard:azienda_list' %}" class="btn btn-outline-secondary">Pulisci</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-vcenter">
+            <thead>
+                <tr>
+                    <th>Logo</th>
+                    <th>Ragione sociale</th>
+                    <th>P.IVA</th>
+                    <th>Email</th>
+                    <th>Comune</th>
+                    <th class="text-end">Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for azienda in aziende %}
+                    <tr>
+                        <td>
+                            {% if azienda.logo %}
+                                <img src="{{ azienda.logo.url }}" alt="{{ azienda.ragione_sociale }}" class="st-azienda-logo">
+                            {% else %}
+                                <span class="text-secondary">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="fw-bold">{{ azienda.ragione_sociale }}</td>
+                        <td>{{ azienda.partita_iva|default:"-" }}</td>
+                        <td>{{ azienda.email|default:"-" }}</td>
+                        <td>{{ azienda.comune|default:"-" }}</td>
+                        <td class="text-end">
+                            <a href="{% url 'dashboard:azienda_update' azienda.pk %}"
+                               class="btn btn-icon btn-outline-primary"
+                               title="Modifica">
+                                <i class="ti ti-edit"></i>
+                            </a>
+                            <button type="button"
+                                    class="btn btn-icon btn-outline-danger js-delete-azienda"
+                                    title="Elimina"
+                                    data-delete-action="{% url 'dashboard:azienda_delete' azienda.pk %}"
+                                    data-delete-name="{{ azienda.ragione_sociale }}">
+                                <i class="ti ti-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-secondary py-4">
+                            Nessuna azienda presente
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% include "partials/pagination.html" %}
+</div>
+
+<div class="st-confirm" id="deleteAziendaModal" hidden>
+    <div class="st-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="deleteAziendaTitle">
+        <form method="post" id="deleteAziendaForm">
+            {% csrf_token %}
+
+            <div class="st-confirm-body">
+                <div class="st-confirm-icon">
+                    <i class="ti ti-trash"></i>
+                </div>
+
+                <div>
+                    <div class="st-confirm-title" id="deleteAziendaTitle">
+                        Eliminare questa azienda?
+                    </div>
+                    <div class="st-confirm-text">
+                        <span class="st-confirm-name" id="deleteAziendaName">Azienda selezionata</span>
+                        non sarà più disponibile nella lista.
+                    </div>
+                </div>
+            </div>
+
+            <div class="st-confirm-footer">
+                <button type="button" class="btn btn-outline-secondary js-delete-cancel">
+                    Annulla
+                </button>
+                <button type="submit" class="btn btn-danger">
+                    <i class="ti ti-trash"></i>
+                    Elimina
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const modalElement = document.getElementById("deleteAziendaModal");
+    const form = document.getElementById("deleteAziendaForm");
+    const nameElement = document.getElementById("deleteAziendaName");
+    const cancelButton = modalElement ? modalElement.querySelector(".js-delete-cancel") : null;
+
+    if (!modalElement || !form || !nameElement || !cancelButton) {
+        return;
+    }
+
+    function closeModal() {
+        modalElement.hidden = true;
+        form.removeAttribute("action");
+    }
+
+    document.querySelectorAll(".js-delete-azienda").forEach(function (button) {
+        button.addEventListener("click", function () {
+            form.action = button.dataset.deleteAction;
+            nameElement.textContent = button.dataset.deleteName || "Azienda selezionata";
+            modalElement.hidden = false;
+        });
+    });
+
+    cancelButton.addEventListener("click", closeModal);
+
+    modalElement.addEventListener("click", function (event) {
+        if (event.target === modalElement) {
+            closeModal();
+        }
+    });
+
+    document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape" && !modalElement.hidden) {
+            closeModal();
+        }
+    });
+});
+</script>
+{% endblock %}

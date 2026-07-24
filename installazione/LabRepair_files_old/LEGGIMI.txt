@@ -1,0 +1,22 @@
+LabRepair - Lettore CIE sul PC client
+=====================================
+
+Sul PC con il Bit4id (NON sul server):
+
+1. Estrai questo zip in una cartella, es. C:\LabRepair
+2. Apri PowerShell come utente normale:
+   cd C:\LabRepair
+   .\scripts\install_cie_agent_client.ps1
+3. Se manca .NET 8, installa "Desktop Runtime" da dotnet.microsoft.com
+4. Collega il Bit4id e verifica in Gestione dispositivi -> Lettori smart card
+5. Apri LabRepair con LabRepairApp.vbs (avvia anche l'agent CIE)
+6. In Anagrafica -> Leggi CIE
+
+Test rapido agent:
+  http://127.0.0.1:17345/health  -> deve rispondere {"ok":true,...}
+
+Se non funziona:
+- agent non avviato
+- .NET 8 mancante
+- servizio Smart Card fermo
+- CIE non appoggiata sul lettore

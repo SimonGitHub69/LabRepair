@@ -10,8 +10,16 @@
     <div class="row align-items-center">
         <div class="col">
             <h2 class="page-title">{{ page_title }}</h2>
-            <div class="text-secondary">Evento, scadenza o lavoro collegato a una pratica</div>
+            <div class="text-secondary">Evento, scadenza o lavoro collegato a una riparazione</div>
         </div>
+        {% if pratica_corrente %}
+            <div class="col-auto">
+                <a href="{% url 'pratiche:pratica_detail' pratica_corrente.pk %}" class="btn btn-outline-secondary">
+                    <i class="ti ti-arrow-left"></i>
+                    Torna a {{ pratica_corrente.codice }}
+                </a>
+            </div>
+        {% endif %}
     </div>
 </div>
 
@@ -26,7 +34,7 @@
 
             <div class="row">
                 {% for field in form %}
-                    <div class="{% if field.name in 'descrizione note' %}col-12{% elif field.name in 'data_inizio data_fine ora_inizio ora_fine tipo stato' %}col-md-3{% else %}col-md-6{% endif %}">
+                    <div class="{% if field.name in 'descrizione note' %}col-12{% elif field.name == 'data_ora' %}col-md-4{% elif field.name in 'tipo stato' %}col-md-3{% else %}col-md-6{% endif %}">
                         <div class="mb-3">
                             <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
                             {{ field }}

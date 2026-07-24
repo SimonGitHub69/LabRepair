@@ -1,27 +1,32 @@
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.views.generic import TemplateView
+from django.db.models import Count, Q, Sum
+from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse
+from django.views import View
+from django.views.generic import CreateView, ListView, TemplateView, UpdateView
 from django.conf import settings
 from django.db import connection
-from django.db.models import Count, Sum
-from django.urls import reverse
 from django.utils import timezone
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import quote
 
 from apps.anagrafiche.models import Anagrafica
+from apps.core.list_pagination import ConfigurablePaginationMixin
+from apps.core.models import Azienda, ConfigurazioneMssql
+from apps.core.mssql import get_mssql_config
+from apps.core.negozi import apply_negozio_queryset_filter, normalize_negozio_code
+from apps.dashboard.forms import AziendaForm
 from apps.agenda.models import EventoAgenda
 from apps.pratiche.models import (
-    CategoriaPratica,
     ComunicazionePratica,
-    IncaricoTecnico,
-    MacroCategoriaPratica,
     Operatore,
     Pratica,
     PraticaCategoriaAllegato,
     PraticaCategoria,
     StudioTecnico,
-    TemplatePratica,
+    TipoOggetto,
 )
 
 SUPPORTED_DOCUMENT_EXTENSIONS = {
@@ -235,7 +240,7 @@ def count_linked_documents():
     return categoria_files + allegati_singoli + comunicazioni
 
 
-def count_agenda_items():
+def count_agenda_items(negozio=""):
     stati_finali = [
         Pratica.Stato.COMPLETATA,
         Pratica.Stato.ANNULLATA,
@@ -249,15 +254,17 @@ def count_agenda_items():
         )
         .exclude(stato__in=[EventoAgenda.Stato.COMPLETATO, EventoAgenda.Stato.ANNULLATO])
         .exclude(pratica__stato__in=stati_finali)
-        .count()
     )
-    scadenze_pratiche = (
-        Pratica.objects.filter(is_active=True, data_scadenza__isnull=False)
-        .exclude(stato__in=stati_finali)
-        .count()
+    if negozio:
+        eventi_agenda = eventi_agenda.filter(pratica__negozio=negozio)
+    scadenze_pratiche = apply_negozio_queryset_filter(
+        Pratica.objects.filter(is_active=True, data_scadenza__isnull=False).exclude(
+            stato__in=stati_finali
+        ),
+        negozio,
     )
 
-    return eventi_agenda + scadenze_pratiche
+    return eventi_agenda.count() + scadenze_pratiche.count()
 
 
 class DashboardView(LoginRequiredMixin, TemplateView):
@@ -267,7 +274,11 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         context = super().get_context_data(**kwargs)
 
         anagrafiche = Anagrafica.objects.filter(is_active=True)
-        pratiche = Pratica.objects.filter(is_active=True).exclude(stato=Pratica.Stato.ARCHIVIATA)
+        negozio = normalize_negozio_code(self.request.session.get("negozio"))
+        pratiche = apply_negozio_queryset_filter(
+            Pratica.objects.filter(is_active=True).exclude(stato=Pratica.Stato.ARCHIVIATA),
+            negozio,
+        )
         stati_finali = [Pratica.Stato.EVASA, Pratica.Stato.COMPLETATA, Pratica.Stato.ANNULLATA, Pratica.Stato.ARCHIVIATA]
         riparazioni_aperte = pratiche.exclude(stato__in=stati_finali)
         oggi = timezone.localdate()
@@ -280,12 +291,12 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             "da_consegnare": pratiche.filter(stato=Pratica.Stato.IN_CONSEGNA).count(),
             "scadute": riparazioni_aperte.filter(data_scadenza__lt=oggi).count(),
             "documenti": count_linked_documents(),
-            "scadenze": count_agenda_items(),
+            "scadenze": count_agenda_items(negozio),
             "incasso_previsto": riparazioni_aperte.aggregate(total=Sum("prezzo_al"))["total"] or 0,
         }
         context["ultime_anagrafiche"] = anagrafiche.order_by("-created_at")[:5]
         context["ultime_riparazioni"] = (
-            pratiche.select_related("cliente", "responsabile")
+            pratiche.select_related("cliente", "responsabile", "riparatore", "centro_assistenza")
             .order_by("-data_apertura", "-id")[:8]
         )
         stato_labels = dict(Pratica.Stato.choices)
@@ -396,6 +407,11 @@ class SistemaView(LoginRequiredMixin, TemplateView):
                 "icon": "ti-database",
             },
             {
+                "label": "MS-SQL",
+                "value": self._mssql_status_label(),
+                "icon": "ti-plug-connected",
+            },
+            {
                 "label": "Media",
                 "value": media_root or "Non configurato",
                 "icon": "ti-folder-cog",
@@ -407,14 +423,32 @@ class SistemaView(LoginRequiredMixin, TemplateView):
             },
         ]
         context["registry_counts"] = [
-            {"label": "Categorie", "value": CategoriaPratica.objects.filter(is_active=True).count()},
-            {"label": "Macro-categorie", "value": MacroCategoriaPratica.objects.filter(is_active=True).count()},
-            {"label": "Template pratiche", "value": TemplatePratica.objects.filter(is_active=True).count()},
-            {"label": "Studi tecnici", "value": StudioTecnico.objects.filter(is_active=True).count()},
-            {"label": "Incarichi", "value": IncaricoTecnico.objects.filter(is_active=True).count()},
+            {
+                "label": "Clienti",
+                "value": Anagrafica.objects.filter(is_active=True, tipo=Anagrafica.Tipo.CLIENTE).count(),
+            },
+            {
+                "label": "Fornitori",
+                "value": Anagrafica.objects.filter(is_active=True, tipo=Anagrafica.Tipo.FORNITORE).count(),
+            },
+            {
+                "label": "Centro assistenza",
+                "value": Anagrafica.objects.filter(
+                    is_active=True, tipo=Anagrafica.Tipo.CENTRO_ASSISTENZA
+                ).count(),
+            },
+            {"label": "Tipi oggetto", "value": TipoOggetto.objects.filter(is_active=True).count()},
+            {"label": "Riparatori", "value": StudioTecnico.objects.filter(is_active=True).count()},
             {"label": "Operatori", "value": Operatore.objects.filter(is_active=True).count()},
+            {"label": "Aziende", "value": Azienda.objects.filter(is_active=True).count()},
         ]
         context["system_links"] = [
+            {
+                "label": "Aziende",
+                "description": "Dati aziendali e logo.",
+                "url": reverse("dashboard:azienda_list"),
+                "icon": "ti-building-store",
+            },
             {
                 "label": "Admin Django",
                 "description": "Gestione tecnica avanzata dei dati.",
@@ -422,17 +456,111 @@ class SistemaView(LoginRequiredMixin, TemplateView):
                 "icon": "ti-shield-cog",
             },
             {
-                "label": "Parametri mail",
-                "description": "Configurazione notifiche per scadenze e agenda.",
+                "label": "Parametri mail e SQL",
+                "description": "SMTP notifiche e collegamento MS-SQL.",
                 "url": reverse("agenda:configurazione_email"),
                 "icon": "ti-mail-cog",
             },
             {
-                "label": "Template pratiche",
-                "description": "Categorie automatiche per tipologia pratica.",
-                "url": reverse("pratiche:template_pratica_list"),
-                "icon": "ti-template",
+                "label": "Parametri programma",
+                "description": "Interfaccia, barcode e regole operative.",
+                "url": reverse("agenda:configurazione_programma"),
+                "icon": "ti-adjustments",
+            },
+            {
+                "label": "Parametri PC",
+                "description": "Negozio e grafica per ogni postazione.",
+                "url": reverse("agenda:configurazione_pc_list"),
+                "icon": "ti-device-desktop",
+            },
+            {
+                "label": "Comandi vocali",
+                "description": "Attiva il microfono e personalizza le frasi riconosciute.",
+                "url": reverse("agenda:comandi_voce"),
+                "icon": "ti-microphone",
+            },
+            {
+                "label": "Webcam",
+                "description": "Test videocamera e acquisizione foto.",
+                "url": reverse("dashboard:webcam"),
+                "icon": "ti-camera",
             },
         ]
 
         return context
+
+    @staticmethod
+    def _mssql_status_label():
+        config = get_mssql_config()
+        if not config.attiva:
+            return "Disattivato"
+        if not config.is_configured:
+            return "Da configurare"
+        return config.server_display
+
+
+class WebcamView(LoginRequiredMixin, TemplateView):
+    template_name = "dashboard/webcam.html"
+
+
+class AziendaListView(LoginRequiredMixin, ConfigurablePaginationMixin, ListView):
+    model = Azienda
+    template_name = "dashboard/azienda_list.html"
+    context_object_name = "aziende"
+    paginate_by = 20
+
+    def get_queryset(self):
+        queryset = Azienda.objects.filter(is_active=True)
+        q = (self.request.GET.get("q") or "").strip()
+
+        if q:
+            queryset = queryset.filter(
+                Q(ragione_sociale__icontains=q)
+                | Q(partita_iva__icontains=q)
+                | Q(codice_fiscale__icontains=q)
+                | Q(email__icontains=q)
+                | Q(pec__icontains=q)
+                | Q(comune__icontains=q)
+            )
+
+        return queryset.order_by("ragione_sociale")
+
+
+class AziendaCreateView(LoginRequiredMixin, CreateView):
+    model = Azienda
+    form_class = AziendaForm
+    template_name = "dashboard/azienda_form.html"
+
+    def form_valid(self, form):
+        form.instance.created_by = self.request.user
+        form.instance.updated_by = self.request.user
+        messages.success(self.request, "Azienda creata correttamente.")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse("dashboard:azienda_list")
+
+
+class AziendaUpdateView(LoginRequiredMixin, UpdateView):
+    model = Azienda
+    form_class = AziendaForm
+    template_name = "dashboard/azienda_form.html"
+
+    def get_queryset(self):
+        return Azienda.objects.filter(is_active=True)
+
+    def form_valid(self, form):
+        form.instance.updated_by = self.request.user
+        messages.success(self.request, "Azienda aggiornata correttamente.")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse("dashboard:azienda_list")
+
+
+class AziendaDeleteView(LoginRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        azienda = get_object_or_404(Azienda, pk=kwargs["pk"], is_active=True)
+        azienda.soft_delete(user=request.user)
+        messages.success(request, "Azienda eliminata correttamente.")
+        return redirect("dashboard:azienda_list")

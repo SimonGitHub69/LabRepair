@@ -1,6 +1,7 @@
 from django import forms
 
 from apps.anagrafiche.models import Indirizzo
+from apps.core.widgets import NoAutofillTextInput
 
 
 class IndirizzoForm(forms.ModelForm):
@@ -18,20 +19,22 @@ class IndirizzoForm(forms.ModelForm):
             "note",
         ]
         widgets = {
-            "tipo": forms.Select(attrs={"class": "form-select"}),
-            "indirizzo": forms.TextInput(attrs={"class": "form-control"}),
-            "civico": forms.TextInput(attrs={"class": "form-control"}),
-            "cap": forms.TextInput(attrs={"class": "form-control"}),
-            "comune": forms.TextInput(attrs={"class": "form-control"}),
-            "provincia": forms.TextInput(attrs={"class": "form-control"}),
-            "nazione": forms.TextInput(attrs={"class": "form-control"}),
+            "tipo": forms.Select(attrs={"class": "form-select", "autocomplete": "off"}),
+            "indirizzo": NoAutofillTextInput(),
+            "civico": NoAutofillTextInput(),
+            "cap": NoAutofillTextInput(),
+            "comune": NoAutofillTextInput(),
+            "provincia": NoAutofillTextInput(),
+            "nazione": NoAutofillTextInput(),
             "principale": forms.CheckboxInput(attrs={"class": "form-check-input"}),
-            "note": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+            "note": forms.Textarea(attrs={"class": "form-control", "rows": 3, "autocomplete": "off"}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["indirizzo"].required = False
+        for field in self.fields.values():
+            field.widget.attrs.setdefault("autocomplete", "off")
 
     def clean(self):
         cleaned_data = super().clean()

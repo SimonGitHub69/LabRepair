@@ -1,0 +1,52 @@
+<div class="{{ col|default:'col-12' }}">
+    <div class="mb-3 st-cliente-search-field"
+         data-cliente-search-root
+         data-search-url="{% url 'pratiche:cliente_search' %}"
+         {% if referente_url_template %}data-referente-url-template="{{ referente_url_template }}"{% endif %}>
+        <div class="st-cliente-search-header">
+            <label class="form-label mb-0" for="clienteSearchInput">
+                {{ form.cliente.label }}
+                <span class="text-secondary small fw-normal">(oppure Nome e Cognome)</span>
+            </label>
+            <a href="{% url 'anagrafiche:anagrafica_create' %}?tipo=cliente&amp;prezioso=1"
+               class="btn btn-sm btn-outline-secondary js-nuovo-cliente-link"
+               id="nuovoClienteLink"
+               target="_blank"
+               rel="noopener">
+                <i class="ti ti-user-plus"></i>
+                Nuovo cliente
+            </a>
+        </div>
+        {{ form.cliente }}
+        <div class="st-cliente-search">
+            <div class="st-cliente-search-input-wrap">
+                <span class="input-icon">
+                    <span class="input-icon-addon">
+                        <i class="ti ti-search"></i>
+                    </span>
+                    <input type="text"
+                           id="clienteSearchInput"
+                           class="form-control"
+                           value="{% if form.selected_cliente %}{{ form.selected_cliente.display_name }}{% endif %}"
+                           placeholder="Cerca cognome, nome, codice fiscale, telefono..."
+                           autocomplete="off"
+                           data-cliente-search-input
+                           {% if form.selected_cliente %}data-selected-label="{{ form.selected_cliente.display_name }}"{% endif %}>
+                </span>
+                <button type="button"
+                        class="btn btn-icon btn-outline-secondary st-cliente-search-clear"
+                        data-cliente-search-clear
+                        title="Rimuovi cliente"
+                        {% if not form.selected_cliente %}hidden{% endif %}>
+                    <i class="ti ti-x"></i>
+                </button>
+            </div>
+            <div class="st-cliente-search-results"
+                 data-cliente-search-results
+                 hidden></div>
+        </div>
+        {% if form.cliente.errors %}
+            <div class="invalid-feedback d-block">{{ form.cliente.errors|join:", " }}</div>
+        {% endif %}
+    </div>
+</div>

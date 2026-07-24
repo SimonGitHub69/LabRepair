@@ -27,21 +27,14 @@ class IndirizzoInline(admin.TabularInline):
 
 @admin.register(Anagrafica)
 class AnagraficaAdmin(admin.ModelAdmin):
-    list_display = ("ragione_sociale", "partita_iva", "codice_fiscale", "email", "telefono", "is_active")
-    search_fields = ("ragione_sociale", "partita_iva", "codice_fiscale", "email", "telefono")
-    list_filter = ("is_active",)
+    list_display = ("denominazione", "tipo", "partita_iva", "email", "telefono", "is_active")
+    search_fields = ("ragione_sociale", "cognome", "nome", "partita_iva", "codice_fiscale", "email", "telefono")
+    list_filter = ("tipo", "is_active")
     inlines = (ContattoInline, IndirizzoInline)
 
-
-@admin.register(Contatto)
-class ContattoAdmin(admin.ModelAdmin):
-    list_display = ("anagrafica", "tipo", "valore", "descrizione", "principale", "is_active")
-    search_fields = ("anagrafica__ragione_sociale", "valore", "descrizione")
-    list_filter = ("tipo", "principale", "is_active")
+    @admin.display(description="Denominazione", ordering="ragione_sociale")
+    def denominazione(self, obj):
+        return obj.display_name
 
 
-@admin.register(Indirizzo)
-class IndirizzoAdmin(admin.ModelAdmin):
-    list_display = ("anagrafica", "tipo", "indirizzo", "comune", "provincia", "principale", "is_active")
-    search_fields = ("anagrafica__ragione_sociale", "indirizzo", "comune", "provincia", "cap")
-    list_filter = ("tipo", "principale", "is_active", "provincia")
+# Contatto e Indirizzo non compaiono come voci separate: solo inline in Anagrafica.

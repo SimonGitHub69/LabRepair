@@ -1,0 +1,234 @@
+/* Layout calibrato su Busta_Riparazione.pdf (A4, 595x841 pt) */
+
+@font-face {
+    font-family: "Libre Barcode 39";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("../fonts/LibreBarcode39-Regular.ttf") format("truetype");
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    background: #dfe3e8;
+    color: #111;
+    font-family: Arial, "Segoe UI", Helvetica, sans-serif;
+    font-size: 10pt;
+    line-height: 1.2;
+    margin: 0;
+    padding: 16px;
+}
+
+.toolbar {
+    margin: 0 auto 16px;
+    max-width: 210mm;
+    text-align: right;
+}
+
+.toolbar button,
+.toolbar a {
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    color: #111;
+    cursor: pointer;
+    display: inline-block;
+    font-size: 14px;
+    margin-left: 6px;
+    padding: 8px 14px;
+    text-decoration: none;
+}
+
+.sheet {
+    background: #fff;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    margin: 0 auto;
+    min-height: 297mm;
+    padding: 5.3mm 0 0 50.8mm;
+    width: 210mm;
+}
+
+.busta-slip + .busta-slip {
+    margin-top: 33.8mm;
+}
+
+.busta-label {
+    color: #111;
+    font-weight: 400;
+}
+
+.busta-value {
+    font-weight: 700;
+}
+
+.busta-header {
+    align-items: flex-start;
+    display: grid;
+    grid-template-columns: 1fr 48mm;
+    min-height: 24mm;
+}
+
+.busta-header-left {
+    display: grid;
+    gap: 2.8mm;
+}
+
+.busta-header-left .busta-line {
+    white-space: nowrap;
+}
+
+.busta-header-left .busta-value {
+    margin-left: 1.5mm;
+}
+
+.busta-header-right {
+    align-items: flex-end;
+    display: flex;
+    flex-direction: column;
+    gap: 3mm;
+    padding-right: 14mm;
+    text-align: right;
+}
+
+.busta-barcode {
+    display: inline-block;
+    font-family: "Libre Barcode 39", cursive;
+    font-size: 48pt;
+    line-height: 0.85;
+    margin-top: 0;
+    transform: scaleX(0.5);
+    transform-origin: top right;
+    white-space: nowrap;
+}
+
+.busta-code {
+    font-family: Arial, "Segoe UI", Helvetica, sans-serif;
+    font-size: 20pt;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.busta-content {
+    margin-top: 29.6mm;
+}
+
+.busta-row {
+    align-items: baseline;
+    display: grid;
+    margin-bottom: 5.6mm;
+}
+
+.busta-row-cliente {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: nowrap;
+}
+
+.busta-row-cliente .busta-label:first-child {
+    flex: 0 0 auto;
+}
+
+.busta-row-cliente .busta-value:first-of-type {
+    flex: 0 0 auto;
+    margin-left: 1.5mm;
+    margin-right: 0;
+}
+
+.busta-row-cliente.has-riparatore {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: nowrap;
+}
+
+.busta-row-cliente.has-riparatore .busta-label,
+.busta-row-cliente.has-riparatore .busta-value {
+    flex: 0 0 auto;
+}
+
+.busta-row-cliente.has-riparatore .busta-value:first-of-type {
+    margin-left: 1.5mm;
+    margin-right: 0;
+}
+
+.busta-riparatore-block {
+    align-items: baseline;
+    display: inline-flex;
+    flex: 0 0 auto;
+    gap: 1.5mm;
+    margin-left: auto;
+    margin-right: 5mm;
+    transform: translateX(-25mm);
+}
+
+.busta-row-oggetto {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: nowrap;
+}
+
+.busta-row-oggetto > .busta-label:first-child,
+.busta-row-oggetto > .busta-value:first-of-type,
+.busta-peso-label,
+.busta-peso-value {
+    flex: 0 0 auto;
+}
+
+.busta-row-oggetto > .busta-value:first-of-type {
+    margin-left: 1.5mm;
+}
+
+.busta-peso-label {
+    margin-left: 28mm;
+    margin-right: 1.5mm;
+}
+
+.busta-peso-value {
+    min-width: 8mm;
+}
+
+.busta-row-descr {
+    align-items: flex-start;
+    grid-template-columns: auto 1fr;
+    margin-bottom: 0;
+}
+
+.busta-row-descr .busta-label {
+    padding-top: 0.1mm;
+}
+
+.busta-descr {
+    font-weight: 700;
+    padding-right: 14mm;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+@media print {
+    body {
+        background: #fff;
+        padding: 0;
+    }
+
+    .toolbar {
+        display: none;
+    }
+
+    .sheet {
+        box-shadow: none;
+        margin: 0;
+        min-height: 297mm;
+        page-break-after: avoid;
+        page-break-inside: avoid;
+        padding-top: 5.3mm;
+    }
+
+    @page {
+        margin: 0;
+        size: A4 portrait;
+    }
+}

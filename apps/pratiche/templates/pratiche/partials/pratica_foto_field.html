@@ -1,0 +1,80 @@
+<div class="st-pratica-foto-field" data-pratica-foto-root>
+    <label class="form-label">Foto oggetto</label>
+    <div class="text-secondary small mb-2">
+        Scatta o carica una o più immagini collegate alla riparazione.
+    </div>
+
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+        <button type="button"
+                class="btn btn-outline-primary btn-sm"
+                data-webcam-trigger
+                data-webcam-mode="multi"
+                data-webcam-file-input="{{ input_id|default:'fotoPraticaInput' }}"
+                data-webcam-keep-open="true">
+            <i class="ti ti-camera"></i>
+            Scatta con webcam{% if webcam_tasto_scatto %} <span class="text-secondary">({{ webcam_tasto_scatto }})</span>{% endif %}
+        </button>
+        <button type="button"
+                class="btn btn-outline-secondary btn-sm"
+                data-pratica-foto-pick>
+            <i class="ti ti-upload"></i>
+            Carica immagini
+        </button>
+        {% if show_submit %}
+            <button type="submit" class="btn btn-primary btn-sm">
+                <i class="ti ti-check"></i>
+                Salva foto
+            </button>
+        {% endif %}
+    </div>
+
+    <input type="file"
+           name="foto_pratica"
+           id="{{ input_id|default:'fotoPraticaInput' }}"
+           class="d-none"
+           multiple
+           accept="image/jpeg,image/png,image/webp"
+           data-pratica-foto-input>
+
+    <div class="st-pratica-foto-gallery{% if not pratica_foto %} is-empty{% endif %}"
+         data-pratica-foto-gallery>
+        {% for foto in pratica_foto %}
+            <div class="st-pratica-foto-item" data-existing-foto="{{ foto.pk }}">
+                <a href="{{ foto.immagine.url }}" target="_blank" rel="noopener" class="st-pratica-foto-link">
+                    <img src="{{ foto.immagine.url }}" alt="{{ foto.file_nome }}" class="st-pratica-foto-thumb">
+                </a>
+                {% if allow_delete %}
+                    {% if delete_url_name %}
+                        <form method="post"
+                              action="{% url delete_url_name pratica_pk=pratica_pk pk=foto.pk %}"
+                              class="st-pratica-foto-delete-form"
+                              onsubmit="return confirm('Eliminare questa foto?');">
+                            {% csrf_token %}
+                            {% if next_url %}
+                                <input type="hidden" name="next" value="{{ next_url }}">
+                            {% endif %}
+                            <button type="submit"
+                                    class="btn btn-icon btn-sm btn-outline-danger st-pratica-foto-remove"
+                                    title="Elimina foto">
+                                <i class="ti ti-trash"></i>
+                            </button>
+                        </form>
+                    {% else %}
+                        <button type="button"
+                                class="btn btn-icon btn-sm btn-outline-danger st-pratica-foto-remove"
+                                data-remove-existing="{{ foto.pk }}"
+                                title="Rimuovi foto">
+                            <i class="ti ti-trash"></i>
+                        </button>
+                    {% endif %}
+                {% endif %}
+            </div>
+        {% empty %}
+            <div class="st-pratica-foto-empty text-secondary small" data-pratica-foto-empty>
+                Nessuna foto collegata.
+            </div>
+        {% endfor %}
+    </div>
+
+    <div data-pratica-foto-deleted hidden></div>
+</div>

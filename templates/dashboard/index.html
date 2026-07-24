@@ -2,178 +2,6 @@
 
 {% block title %}Dashboard{% endblock %}
 
-{% block extra_css %}
-{{ block.super }}
-<style>
-.lr-dashboard {
-    display: grid;
-    gap: 1rem;
-}
-
-.lr-header {
-    align-items: flex-end;
-    display: flex;
-    gap: 1rem;
-    justify-content: space-between;
-}
-
-.lr-header-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    justify-content: flex-end;
-}
-
-.lr-kpi-grid {
-    display: grid;
-    gap: 0.75rem;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-}
-
-.lr-kpi {
-    background: var(--tblr-bg-surface, #fff);
-    border: 1px solid var(--tblr-border-color, #e6e8eb);
-    border-radius: 8px;
-    color: inherit;
-    display: flex;
-    flex-direction: column;
-    min-height: 104px;
-    padding: 0.9rem;
-    text-decoration: none;
-}
-
-.lr-kpi:hover {
-    border-color: var(--tblr-primary, #206bc4);
-    color: inherit;
-    text-decoration: none;
-}
-
-.lr-kpi-top {
-    align-items: center;
-    display: flex;
-    justify-content: space-between;
-}
-
-.lr-kpi-label {
-    color: var(--tblr-secondary, #667085);
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: 0;
-    text-transform: uppercase;
-}
-
-.lr-kpi-value {
-    font-size: 1.8rem;
-    font-weight: 700;
-    line-height: 1.1;
-    margin-top: 0.55rem;
-}
-
-.lr-kpi-note {
-    color: var(--tblr-secondary, #667085);
-    font-size: 0.78rem;
-    margin-top: auto;
-}
-
-.lr-kpi-icon {
-    align-items: center;
-    border-radius: 8px;
-    display: flex;
-    height: 34px;
-    justify-content: center;
-    width: 34px;
-}
-
-.lr-main-grid {
-    display: grid;
-    gap: 1rem;
-    grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
-}
-
-.lr-section-title {
-    align-items: center;
-    display: flex;
-    justify-content: space-between;
-}
-
-.lr-status-list {
-    display: grid;
-    gap: 0.55rem;
-}
-
-.lr-status-row {
-    align-items: center;
-    display: grid;
-    gap: 0.75rem;
-    grid-template-columns: minmax(0, 1fr) auto;
-}
-
-.lr-status-bar {
-    background: var(--tblr-bg-surface-secondary, #f8fafc);
-    border-radius: 999px;
-    height: 8px;
-    overflow: hidden;
-}
-
-.lr-status-fill {
-    background: var(--tblr-primary, #206bc4);
-    height: 100%;
-    min-width: 8px;
-}
-
-.lr-table-title {
-    font-weight: 600;
-    max-width: 260px;
-}
-
-.lr-muted-line {
-    color: var(--tblr-secondary, #667085);
-    font-size: 0.8rem;
-}
-
-.lr-money {
-    font-variant-numeric: tabular-nums;
-}
-
-.lr-empty {
-    color: var(--tblr-secondary, #667085);
-    padding: 1.5rem;
-    text-align: center;
-}
-
-@media (max-width: 1200px) {
-    .lr-kpi-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    .lr-main-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-@media (max-width: 768px) {
-    .lr-header {
-        align-items: stretch;
-        flex-direction: column;
-    }
-
-    .lr-header-actions {
-        justify-content: flex-start;
-    }
-
-    .lr-kpi-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-}
-
-@media (max-width: 520px) {
-    .lr-kpi-grid {
-        grid-template-columns: 1fr;
-    }
-}
-</style>
-{% endblock %}
-
 {% block content %}
 
 <div class="lr-dashboard">
@@ -226,7 +54,7 @@
             <div class="lr-kpi-note">Pronte per il cliente</div>
         </a>
 
-        <a href="{% url 'agenda:calendar' %}" class="lr-kpi">
+        <a href="{% url 'pratiche:pratica_list' %}?attenzione=non_ritirate" class="lr-kpi">
             <div class="lr-kpi-top">
                 <div class="lr-kpi-label">Scadute</div>
                 <div class="lr-kpi-icon bg-red-lt text-red"><i class="ti ti-alert-triangle"></i></div>
@@ -246,57 +74,65 @@
     </div>
 
     <div class="lr-main-grid">
-        <div class="card">
-            <div class="card-header lr-section-title">
-                <h3 class="card-title">Ultime riparazioni</h3>
+        <div class="card lr-recent-card">
+            <div class="card-header lr-section-title lr-recent-header">
+                <div class="lr-recent-heading">
+                    <span class="lr-recent-icon" aria-hidden="true">
+                        <i class="ti ti-tool"></i>
+                    </span>
+                    <div>
+                        <h3 class="card-title mb-0">Ultime riparazioni</h3>
+                        <div class="lr-recent-subtitle">Schede più recenti in lavorazione</div>
+                    </div>
+                </div>
                 <a href="{% url 'pratiche:pratica_list' %}" class="btn btn-outline-secondary btn-sm">
                     <i class="ti ti-list"></i>
                     Elenco
                 </a>
             </div>
-            <div class="table-responsive">
-                <table class="table table-vcenter card-table">
-                    <thead>
-                        <tr>
-                            <th>Numero</th>
-                            <th>Cliente e oggetto</th>
-                            <th>Stato</th>
-                            <th>Consegna</th>
-                            <th class="text-end">Prezzo</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for pratica in ultime_riparazioni %}
-                            <tr>
-                                <td class="text-secondary">{{ pratica.codice }}</td>
-                                <td>
-                                    <a href="{% url 'pratiche:pratica_detail' pratica.pk %}" class="text-reset lr-table-title">
-                                        {{ pratica.cliente }}
-                                    </a>
-                                    <div class="lr-muted-line">
-                                        {{ pratica.tipo_oggetto|default:pratica.titolo|default:"Oggetto non indicato" }}
-                                        {% if pratica.riparatore %} · {{ pratica.riparatore }}{% endif %}
-                                    </div>
-                                </td>
-                                <td><span class="badge bg-blue-lt">{{ pratica.get_stato_display }}</span></td>
-                                <td>
-                                    {% if pratica.data_scadenza %}
-                                        <span class="{% if pratica.is_scaduta %}text-danger fw-bold{% endif %}">
-                                            {{ pratica.data_scadenza|date:"d/m/Y" }}
-                                        </span>
-                                    {% else %}
-                                        <span class="text-secondary">-</span>
-                                    {% endif %}
-                                </td>
-                                <td class="text-end lr-money">{{ pratica.prezzo_al|floatformat:2 }}</td>
-                            </tr>
-                        {% empty %}
-                            <tr>
-                                <td colspan="5" class="lr-empty">Nessuna riparazione presente</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div class="lr-recent-list">
+                {% for pratica in ultime_riparazioni %}
+                    <a href="{% url 'pratiche:pratica_detail' pratica.pk %}"
+                       class="lr-recent-item{% if pratica.is_scaduta %} is-overdue{% endif %}">
+                        <div class="lr-recent-code">{{ pratica.codice }}</div>
+                        <div class="lr-recent-main">
+                            <div class="lr-recent-client">{{ pratica.cliente_label }}</div>
+                            <div class="lr-recent-meta">
+                                <span>
+                                    <i class="ti ti-gem"></i>
+                                    {{ pratica.tipo_oggetto|default:pratica.titolo|default:"Oggetto non indicato" }}
+                                </span>
+                                {% if pratica.riparatore_display %}
+                                    <span>
+                                        <i class="ti ti-user"></i>
+                                        {{ pratica.riparatore_display }}
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="lr-recent-status">
+                            <span class="badge st-stato-badge st-stato-{{ pratica.stato }}">
+                                {{ pratica.get_stato_display }}
+                            </span>
+                        </div>
+                        <div class="lr-recent-date{% if pratica.is_scaduta %} is-overdue{% endif %}">
+                            {% if pratica.data_scadenza %}
+                                <i class="ti ti-calendar-event"></i>
+                                <span>{{ pratica.data_scadenza|date:"d/m/Y" }}</span>
+                            {% else %}
+                                <span class="text-secondary">—</span>
+                            {% endif %}
+                        </div>
+                        <div class="lr-recent-price lr-money">
+                            {{ pratica.prezzo_al|floatformat:2 }}&nbsp;€
+                        </div>
+                        <div class="lr-recent-arrow" aria-hidden="true">
+                            <i class="ti ti-chevron-right"></i>
+                        </div>
+                    </a>
+                {% empty %}
+                    <div class="lr-empty">Nessuna riparazione presente</div>
+                {% endfor %}
             </div>
         </div>
 
@@ -339,7 +175,7 @@
                             <div class="d-flex justify-content-between gap-3">
                                 <div>
                                     <div class="fw-bold">{{ pratica.codice }}</div>
-                                    <div class="lr-muted-line">{{ pratica.cliente }}</div>
+                                    <div class="lr-muted-line">{{ pratica.cliente_label }}</div>
                                 </div>
                                 <div class="text-end">
                                     <div class="{% if pratica.is_scaduta %}text-danger fw-bold{% endif %}">

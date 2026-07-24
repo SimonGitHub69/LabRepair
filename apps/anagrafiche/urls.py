@@ -12,6 +12,8 @@ from .views import (
     IndirizzoCreateView,
     IndirizzoUpdateView,
     IndirizzoDeleteView,
+    ImportClientiCsvView,
+    AnagraficaCieReadView,
 )
 
 app_name = "anagrafiche"
@@ -19,6 +21,8 @@ app_name = "anagrafiche"
 urlpatterns = [
     path("", AnagraficaListView.as_view(), name="anagrafica_list"),
     path("nuova/", AnagraficaCreateView.as_view(), name="anagrafica_create"),
+    path("importa-csv/", ImportClientiCsvView.as_view(), name="import_clienti_csv"),
+    path("cie/leggi/", AnagraficaCieReadView.as_view(), name="cie_leggi"),
     path("<int:pk>/modifica/", AnagraficaUpdateView.as_view(), name="anagrafica_update"),
     path("<int:pk>/elimina/", AnagraficaDeleteView.as_view(), name="anagrafica_delete"),
     path("<int:anagrafica_pk>/contatti/nuovo/", ContattoCreateView.as_view(), name="contatto_create"),

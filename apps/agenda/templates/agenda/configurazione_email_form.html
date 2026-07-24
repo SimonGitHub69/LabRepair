@@ -1,142 +1,143 @@
 {% extends "base/layout.html" %}
 
 {% block page_title %}
-Parametri mail
+Parametri mail e SQL
 {% endblock %}
 
 {% block content %}
 
 <div class="page-header d-print-none mb-3">
-    <div class="row align-items-center">
-        <div class="col">
-            <h2 class="page-title">Parametri mail notifiche</h2>
-            <div class="text-secondary">Configurazione SMTP per notificare le scadenze del calendario lavori</div>
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+        <div>
+            <h2 class="page-title">Parametri mail e SQL</h2>
+            <div class="text-secondary">Configurazione SMTP per le notifiche e collegamento MS-SQL</div>
         </div>
-        <div class="col-auto">
-            <a href="{% url 'dashboard:index' %}" class="btn btn-outline-secondary">
+        <div>
+            <a href="{% url 'dashboard:sistema' %}" class="btn btn-outline-secondary">
                 <i class="ti ti-arrow-left"></i>
-                Dashboard
+                Sistema
             </a>
         </div>
     </div>
 </div>
 
-<div class="card">
+<div class="card mb-3">
+    <div class="card-header">
+        <h3 class="card-title mb-0">
+            <i class="ti ti-mail-cog me-1"></i>
+            Parametri mail
+        </h3>
+    </div>
     <form method="post">
         {% csrf_token %}
+        <input type="hidden" name="action" value="mail">
 
         <div class="card-body">
-            {% if form.non_field_errors %}
-                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+            {% if email_form.non_field_errors %}
+                <div class="alert alert-danger">{{ email_form.non_field_errors }}</div>
             {% endif %}
 
             <div class="row">
                 <div class="col-md-3">
                     <label class="form-check mb-3">
-                        {{ form.attiva }}
-                        <span class="form-check-label">{{ form.attiva.label }}</span>
+                        {{ email_form.attiva }}
+                        <span class="form-check-label">{{ email_form.attiva.label }}</span>
                     </label>
-                    {% if form.attiva.errors %}
-                        <div class="invalid-feedback d-block">{{ form.attiva.errors|join:", " }}</div>
+                    {% if email_form.attiva.errors %}
+                        <div class="invalid-feedback d-block">{{ email_form.attiva.errors|join:", " }}</div>
                     {% endif %}
                 </div>
 
                 <div class="col-md-3">
                     <div class="mb-3">
-                        <label class="form-label" for="{{ form.giorni_preavviso.id_for_label }}">{{ form.giorni_preavviso.label }}</label>
-                        {{ form.giorni_preavviso }}
-                        {% if form.giorni_preavviso.errors %}
-                            <div class="invalid-feedback d-block">{{ form.giorni_preavviso.errors|join:", " }}</div>
+                        <label class="form-label" for="{{ email_form.giorni_preavviso.id_for_label }}">{{ email_form.giorni_preavviso.label }}</label>
+                        {{ email_form.giorni_preavviso }}
+                        {% if email_form.giorni_preavviso.errors %}
+                            <div class="invalid-feedback d-block">{{ email_form.giorni_preavviso.errors|join:", " }}</div>
                         {% endif %}
                     </div>
                 </div>
 
                 <div class="col-md-6">
                     <div class="mb-3">
-                        <label class="form-label" for="{{ form.mittente.id_for_label }}">{{ form.mittente.label }}</label>
-                        {{ form.mittente }}
-                        {% if form.mittente.errors %}
-                            <div class="invalid-feedback d-block">{{ form.mittente.errors|join:", " }}</div>
+                        <label class="form-label" for="{{ email_form.mittente.id_for_label }}">{{ email_form.mittente.label }}</label>
+                        {{ email_form.mittente }}
+                        {% if email_form.mittente.errors %}
+                            <div class="invalid-feedback d-block">{{ email_form.mittente.errors|join:", " }}</div>
                         {% endif %}
                     </div>
                 </div>
 
                 <div class="col-md-6">
                     <div class="mb-3">
-                        <label class="form-label" for="{{ form.host.id_for_label }}">{{ form.host.label }}</label>
-                        {{ form.host }}
-                        {% if form.host.errors %}
-                            <div class="invalid-feedback d-block">{{ form.host.errors|join:", " }}</div>
+                        <label class="form-label" for="{{ email_form.host.id_for_label }}">{{ email_form.host.label }}</label>
+                        {{ email_form.host }}
+                        {% if email_form.host.errors %}
+                            <div class="invalid-feedback d-block">{{ email_form.host.errors|join:", " }}</div>
                         {% endif %}
                     </div>
                 </div>
 
                 <div class="col-md-2">
                     <div class="mb-3">
-                        <label class="form-label" for="{{ form.porta.id_for_label }}">{{ form.porta.label }}</label>
-                        {{ form.porta }}
-                        {% if form.porta.errors %}
-                            <div class="invalid-feedback d-block">{{ form.porta.errors|join:", " }}</div>
+                        <label class="form-label" for="{{ email_form.porta.id_for_label }}">{{ email_form.porta.label }}</label>
+                        {{ email_form.porta }}
+                        {% if email_form.porta.errors %}
+                            <div class="invalid-feedback d-block">{{ email_form.porta.errors|join:", " }}</div>
                         {% endif %}
                     </div>
-                </div>
-
-                <div class="col-md-2">
-                    <label class="form-check mt-4">
-                        {{ form.usa_tls }}
-                        <span class="form-check-label">{{ form.usa_tls.label }}</span>
-                    </label>
-                    {% if form.usa_tls.errors %}
-                        <div class="invalid-feedback d-block">{{ form.usa_tls.errors|join:", " }}</div>
-                    {% endif %}
                 </div>
 
                 <div class="col-md-2">
                     <label class="form-check mt-4">
-                        {{ form.usa_ssl }}
-                        <span class="form-check-label">{{ form.usa_ssl.label }}</span>
+                        {{ email_form.usa_tls }}
+                        <span class="form-check-label">{{ email_form.usa_tls.label }}</span>
                     </label>
-                    {% if form.usa_ssl.errors %}
-                        <div class="invalid-feedback d-block">{{ form.usa_ssl.errors|join:", " }}</div>
-                    {% endif %}
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-check mt-4">
+                        {{ email_form.usa_ssl }}
+                        <span class="form-check-label">{{ email_form.usa_ssl.label }}</span>
+                    </label>
                 </div>
 
                 <div class="col-md-6">
                     <div class="mb-3">
-                        <label class="form-label" for="{{ form.username.id_for_label }}">{{ form.username.label }}</label>
-                        {{ form.username }}
-                        {% if form.username.errors %}
-                            <div class="invalid-feedback d-block">{{ form.username.errors|join:", " }}</div>
+                        <label class="form-label" for="{{ email_form.username.id_for_label }}">{{ email_form.username.label }}</label>
+                        {{ email_form.username }}
+                        {% if email_form.username.errors %}
+                            <div class="invalid-feedback d-block">{{ email_form.username.errors|join:", " }}</div>
                         {% endif %}
                     </div>
                 </div>
 
                 <div class="col-md-6">
                     <div class="mb-3">
-                        <label class="form-label" for="{{ form.password.id_for_label }}">{{ form.password.label }}</label>
-                        {{ form.password }}
-                        {% if form.password.errors %}
-                            <div class="invalid-feedback d-block">{{ form.password.errors|join:", " }}</div>
+                        <label class="form-label" for="{{ email_form.password.id_for_label }}">{{ email_form.password.label }}</label>
+                        {{ email_form.password }}
+                        {% if email_form.password.errors %}
+                            <div class="invalid-feedback d-block">{{ email_form.password.errors|join:", " }}</div>
                         {% endif %}
                     </div>
                 </div>
 
                 <div class="col-12">
                     <div class="mb-3">
-                        <label class="form-label" for="{{ form.destinatari_default.id_for_label }}">{{ form.destinatari_default.label }}</label>
-                        {{ form.destinatari_default }}
-                        {% if form.destinatari_default.errors %}
-                            <div class="invalid-feedback d-block">{{ form.destinatari_default.errors|join:", " }}</div>
+                        <label class="form-label" for="{{ email_form.destinatari_default.id_for_label }}">{{ email_form.destinatari_default.label }}</label>
+                        {{ email_form.destinatari_default }}
+                        {% if email_form.destinatari_default.errors %}
+                            <div class="invalid-feedback d-block">{{ email_form.destinatari_default.errors|join:", " }}</div>
                         {% endif %}
                     </div>
                 </div>
 
                 <div class="col-12">
                     <div class="mb-0">
-                        <label class="form-label" for="{{ form.note.id_for_label }}">{{ form.note.label }}</label>
-                        {{ form.note }}
-                        {% if form.note.errors %}
-                            <div class="invalid-feedback d-block">{{ form.note.errors|join:", " }}</div>
+                        <label class="form-label" for="{{ email_form.note.id_for_label }}">{{ email_form.note.label }}</label>
+                        {{ email_form.note }}
+                        {% if email_form.note.errors %}
+                            <div class="invalid-feedback d-block">{{ email_form.note.errors|join:", " }}</div>
                         {% endif %}
                     </div>
                 </div>
@@ -146,10 +147,138 @@ Parametri mail
         <div class="card-footer text-end">
             <button type="submit" class="btn btn-primary">
                 <i class="ti ti-device-floppy"></i>
-                Salva parametri
+                Salva parametri mail
             </button>
         </div>
     </form>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title mb-0">
+            <i class="ti ti-database-cog me-1"></i>
+            Collegamento MS-SQL
+        </h3>
+    </div>
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="card-body">
+            {% if mssql_form.non_field_errors %}
+                <div class="alert alert-danger">{{ mssql_form.non_field_errors }}</div>
+            {% endif %}
+
+            <div class="row">
+                <div class="col-md-3">
+                    <label class="form-check mb-3">
+                        {{ mssql_form.attiva }}
+                        <span class="form-check-label">{{ mssql_form.attiva.label }}</span>
+                    </label>
+                    {% if mssql_form.attiva.errors %}
+                        <div class="invalid-feedback d-block">{{ mssql_form.attiva.errors|join:", " }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-9">
+                    <label class="form-check mb-3">
+                        {{ mssql_form.autenticazione_windows }}
+                        <span class="form-check-label">{{ mssql_form.autenticazione_windows.label }}</span>
+                    </label>
+                    <div class="form-hint">
+                        Usa l'account Windows del servizio Django. Per login SQL (<code>sa</code>) lascia disattivato
+                        e abilita l'autenticazione mista su SQL Server.
+                    </div>
+                    {% if mssql_form.autenticazione_windows.errors %}
+                        <div class="invalid-feedback d-block">{{ mssql_form.autenticazione_windows.errors|join:", " }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ mssql_form.server.id_for_label }}">{{ mssql_form.server.label }}</label>
+                        {{ mssql_form.server }}
+                        <div class="form-hint">Esempi: <code>SERVER\\SQLEXPRESS</code>, <code>192.168.1.50</code></div>
+                        {% if mssql_form.server.errors %}
+                            <div class="invalid-feedback d-block">{{ mssql_form.server.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ mssql_form.porta.id_for_label }}">{{ mssql_form.porta.label }}</label>
+                        {{ mssql_form.porta }}
+                        {% if mssql_form.porta.errors %}
+                            <div class="invalid-feedback d-block">{{ mssql_form.porta.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ mssql_form.nome_database.id_for_label }}">{{ mssql_form.nome_database.label }}</label>
+                        {{ mssql_form.nome_database }}
+                        {% if mssql_form.nome_database.errors %}
+                            <div class="invalid-feedback d-block">{{ mssql_form.nome_database.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ mssql_form.utente.id_for_label }}">{{ mssql_form.utente.label }}</label>
+                        {{ mssql_form.utente }}
+                        {% if mssql_form.utente.errors %}
+                            <div class="invalid-feedback d-block">{{ mssql_form.utente.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ mssql_form.password.id_for_label }}">{{ mssql_form.password.label }}</label>
+                        {{ mssql_form.password }}
+                        <div class="form-hint">La password non viene mostrata dopo il salvataggio per sicurezza.</div>
+                        {% if mssql_form.password.errors %}
+                            <div class="invalid-feedback d-block">{{ mssql_form.password.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="col-12">
+                    <div class="mb-0">
+                        <label class="form-label" for="{{ mssql_form.note.id_for_label }}">{{ mssql_form.note.label }}</label>
+                        {{ mssql_form.note }}
+                        {% if mssql_form.note.errors %}
+                            <div class="invalid-feedback d-block">{{ mssql_form.note.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-footer d-flex flex-wrap justify-content-between gap-2">
+            <button type="submit" name="action" value="test_mssql" class="btn btn-outline-primary">
+                <i class="ti ti-plug-connected"></i>
+                Test connessione
+            </button>
+            <button type="submit" name="action" value="mssql" class="btn btn-primary">
+                <i class="ti ti-device-floppy"></i>
+                Salva parametri SQL
+            </button>
+        </div>
+    </form>
+</div>
+
+<div class="alert alert-info mt-3 mb-0">
+    <i class="ti ti-info-circle me-1"></i>
+    Il test usa i valori inseriti nel form, anche prima del salvataggio. Per istanze nominate usa
+    <code>HOST\\SQLEXPRESS</code> senza porta. Serve un driver ODBC SQL Server 17 o 18.
+    <hr class="my-2">
+    <strong>Autenticazione mista (login SQL):</strong> in SSMS → tasto destro sul server → Proprietà →
+    Sicurezza → <em>Modalità di autenticazione SQL Server e Windows</em> → riavvia SQL Server →
+    abilita e reimposta la password di <code>sa</code>.
 </div>
 
 {% endblock %}

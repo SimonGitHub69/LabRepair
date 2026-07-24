@@ -1,510 +1,785 @@
 {% extends "base/layout.html" %}
+{% load static %}
 
 {% block page_title %}
-{% if object %}Modifica anagrafica{% else %}Nuova anagrafica{% endif %}
+{% if object %}
+    {% if object.tipo == "cliente" %}Modifica cliente{% else %}Modifica anagrafica{% endif %}
+{% else %}
+    {% if request.GET.tipo == "cliente" or cliente_prezioso %}Nuovo cliente{% else %}Nuova anagrafica{% endif %}
+{% endif %}
 {% endblock %}
 
 {% block content %}
 
 <div class="container-xl">
 
-    <div class="page-header d-print-none mb-3">
-        <div class="row align-items-center">
-            <div class="col">
+    <form method="post" enctype="multipart/form-data" id="anagraficaForm" class="st-form-stack{% if layout_stile == 'compatta' %} st-form-layout-compact{% endif %}" autocomplete="off" data-block-suggestions="1" data-lpignore="true">
+        {% csrf_token %}
+        {% if cliente_prezioso %}
+            <input type="hidden" name="prezioso_mode" value="1">
+        {% endif %}
+        {% if documento_scaduto_required %}
+            <input type="hidden" name="documento_scaduto" value="1">
+        {% endif %}
+        {% if next_url %}
+            <input type="hidden" name="next" value="{{ next_url }}">
+        {% endif %}
+
+    <div class="st-form-page-header d-print-none">
+        <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+            <div>
                 <h2 class="page-title">
-                    {% if object %}Modifica anagrafica{% else %}Nuova anagrafica{% endif %}
+                    {% if object %}
+                        {% if object.tipo == "cliente" %}Modifica cliente{% else %}Modifica anagrafica{% endif %}
+                    {% else %}
+                        {% if request.GET.tipo == "cliente" or cliente_prezioso %}Nuovo cliente{% else %}Nuova anagrafica{% endif %}
+                    {% endif %}
                 </h2>
                 <div class="text-secondary">
-                    Dati cliente, contatti e indirizzi
+                    {% if cliente_prezioso %}
+                        Scheda completa per oggetti preziosi
+                    {% elif request.GET.tipo == "cliente" or object.tipo == "cliente" %}
+                        Dati personali, residenza, documento e recapiti
+                    {% else %}
+                        Dati anagrafici, contatti e indirizzi
+                    {% endif %}
+                </div>
+            </div>
+            <div class="d-flex flex-wrap align-items-end gap-2">
+                <button type="button"
+                        class="btn btn-outline-primary"
+                        data-cie-read-open
+                        id="cieReadOpenBtn"
+                        hidden>
+                    <i class="ti ti-id"></i>
+                    Leggi CIE
+                </button>
+                <div class="st-anagrafica-tipo-select">
+                    <label class="form-label" for="{{ form.tipo.id_for_label }}">{{ form.tipo.label }}</label>
+                    {{ form.tipo }}
+                    {% if form.tipo.errors %}
+                        <div class="invalid-feedback d-block">{{ form.tipo.errors|join:", " }}</div>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
 
-    <form method="post" enctype="multipart/form-data">
-        {% csrf_token %}
+    {% if cliente_prezioso %}
+    <div class="alert alert-warning mb-3">
+        <i class="ti ti-diamond me-1"></i>
+        Compila tutti i campi obbligatori per la gestione di oggetti <strong>preziosi</strong>.
+    </div>
+    {% endif %}
 
-        <div class="card mb-3">
-            <div class="card-header">
-                <h3 class="card-title">Dati anagrafici</h3>
-            </div>
+    {% if documento_scaduto_required %}
+    <div class="alert alert-danger mb-3">
+        <i class="ti ti-id-off me-1"></i>
+        Il documento di identità risulta scaduto. Aggiorna tipo, numero, data di rilascio e
+        <strong>data di scadenza</strong> con un documento in corso di validità per poter
+        continuare la riparazione preziosa.
+    </div>
+    {% endif %}
 
-            <div class="card-body">
-                {% if form.non_field_errors %}
-                    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
-                {% endif %}
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+        {% endif %}
 
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="form-label" for="{{ form.ragione_sociale.id_for_label }}">
-                                {{ form.ragione_sociale.label }}
-                            </label>
-                            {{ form.ragione_sociale }}
-                            {% if form.ragione_sociale.errors %}
-                                <div class="invalid-feedback d-block">{{ form.ragione_sociale.errors|join:", " }}</div>
-                            {% endif %}
-                        </div>
+        <div id="clienteSections" hidden>
+            <div class="card st-form-section">
+                <div class="card-header">
+                    <div class="st-form-section-icon">
+                        <i class="ti ti-user"></i>
                     </div>
-
-                    <div class="col-md-3">
-                        <div class="mb-3">
-                            <label class="form-label" for="{{ form.partita_iva.id_for_label }}">
-                                {{ form.partita_iva.label }}
-                            </label>
-                            {{ form.partita_iva }}
-                            {% if form.partita_iva.errors %}
-                                <div class="invalid-feedback d-block">{{ form.partita_iva.errors|join:", " }}</div>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    <div class="col-md-3">
-                        <div class="mb-3">
-                            <label class="form-label" for="{{ form.codice_fiscale.id_for_label }}">
-                                {{ form.codice_fiscale.label }}
-                            </label>
-                            {{ form.codice_fiscale }}
-                            {% if form.codice_fiscale.errors %}
-                                <div class="invalid-feedback d-block">{{ form.codice_fiscale.errors|join:", " }}</div>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="form-label" for="{{ form.email.id_for_label }}">
-                                {{ form.email.label }}
-                            </label>
-                            {{ form.email }}
-                            {% if form.email.errors %}
-                                <div class="invalid-feedback d-block">{{ form.email.errors|join:", " }}</div>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="form-label" for="{{ form.telefono.id_for_label }}">
-                                {{ form.telefono.label }}
-                            </label>
-                            {{ form.telefono }}
-                            {% if form.telefono.errors %}
-                                <div class="invalid-feedback d-block">{{ form.telefono.errors|join:", " }}</div>
-                            {% endif %}
-                        </div>
-                    </div>
+                    <h3 class="card-title mb-0">Dati anagrafici</h3>
                 </div>
-            </div>
-        </div>
+                <div class="card-body">
+                    <div class="st-form-subsection">
+                        <div class="st-form-subsection-title">Identità</div>
+                        <div class="row">
+                            {% if layout_stile == 'compatta' %}
+                            <div class="col-5">
+                                <div class="mb-3">
+                                    <label class="form-label" for="{{ form.cognome.id_for_label }}">{{ form.cognome.label }}</label>
+                                    {{ form.cognome }}
+                                    {% if form.cognome.errors %}<div class="invalid-feedback d-block">{{ form.cognome.errors|join:", " }}</div>{% endif %}
+                                </div>
+                            </div>
+                            <div class="col-5">
+                                <div class="mb-3">
+                                    <label class="form-label" for="{{ form.nome.id_for_label }}">{{ form.nome.label }}</label>
+                                    {{ form.nome }}
+                                    {% if form.nome.errors %}<div class="invalid-feedback d-block">{{ form.nome.errors|join:", " }}</div>{% endif %}
+                                </div>
+                            </div>
+                            <div class="col-2">
+                                <div class="mb-3">
+                                    <label class="form-label" for="{{ form.sesso.id_for_label }}">{{ form.sesso.label }}</label>
+                                    {{ form.sesso }}
+                                    {% if form.sesso.errors %}<div class="invalid-feedback d-block">{{ form.sesso.errors|join:", " }}</div>{% endif %}
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="col-md-5 col-lg-4">
+                                <div class="mb-3">
+                                    <label class="form-label" for="{{ form.cognome.id_for_label }}">{{ form.cognome.label }}</label>
+                                    {{ form.cognome }}
+                                    {% if form.cognome.errors %}<div class="invalid-feedback d-block">{{ form.cognome.errors|join:", " }}</div>{% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-5 col-lg-4">
+                                <div class="mb-3">
+                                    <label class="form-label" for="{{ form.nome.id_for_label }}">{{ form.nome.label }}</label>
+                                    {{ form.nome }}
+                                    {% if form.nome.errors %}<div class="invalid-feedback d-block">{{ form.nome.errors|join:", " }}</div>{% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-2 col-lg-2">
+                                <div class="mb-3">
+                                    <label class="form-label" for="{{ form.sesso.id_for_label }}">{{ form.sesso.label }}</label>
+                                    {{ form.sesso }}
+                                    {% if form.sesso.errors %}<div class="invalid-feedback d-block">{{ form.sesso.errors|join:", " }}</div>{% endif %}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
 
-        <div class="card mb-3">
-            <div class="card-header">
-                <h3 class="card-title">Contatti</h3>
-                <div class="card-actions">
-                    <button type="button" class="btn btn-outline-primary btn-sm" data-formset-add="contatti">
-                        <i class="ti ti-plus"></i>
-                        Aggiungi contatto
-                    </button>
-                </div>
-            </div>
-
-            <div class="card-body">
-                {{ contatto_formset.management_form }}
-
-                {% if contatto_formset.non_form_errors %}
-                    <div class="alert alert-danger">{{ contatto_formset.non_form_errors }}</div>
-                {% endif %}
-
-                <div id="contattiRows">
-                    {% for contatto_form in contatto_formset %}
-                    <div class="border rounded p-3 mb-3 js-formset-row">
-                        {% for hidden in contatto_form.hidden_fields %}
-                            {{ hidden }}
-                        {% endfor %}
-
-                        {% if contatto_form.non_field_errors %}
-                            <div class="alert alert-danger">{{ contatto_form.non_field_errors }}</div>
+                    <div class="st-form-subsection">
+                        <div class="st-form-subsection-title">Nascita</div>
+                        {% if layout_stile == 'compatta' %}
+                        <div class="row">
+                            <div class="col-3">
+                                <div class="mb-3">
+                                    <label class="form-label" for="{{ form.data_nascita.id_for_label }}">{{ form.data_nascita.label }}</label>
+                                    {{ form.data_nascita }}
+                                    {% if form.data_nascita.errors %}<div class="invalid-feedback d-block">{{ form.data_nascita.errors|join:", " }}</div>{% endif %}
+                                </div>
+                            </div>
+                            <div class="col-7">
+                                <div class="mb-3">
+                                    <label class="form-label" for="{{ form.luogo_nascita.id_for_label }}">{{ form.luogo_nascita.label }}</label>
+                                    {{ form.luogo_nascita }}
+                                    {% if form.luogo_nascita.errors %}<div class="invalid-feedback d-block">{{ form.luogo_nascita.errors|join:", " }}</div>{% endif %}
+                                </div>
+                            </div>
+                            <div class="col-2">
+                                <div class="mb-3">
+                                    <label class="form-label" for="{{ form.provincia_nascita.id_for_label }}">{{ form.provincia_nascita.label }}</label>
+                                    {{ form.provincia_nascita }}
+                                    {% if form.provincia_nascita.errors %}<div class="invalid-feedback d-block">{{ form.provincia_nascita.errors|join:", " }}</div>{% endif %}
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="mb-3">
+                                    <label class="form-label" for="{{ form.codice_fiscale.id_for_label }}">{{ form.codice_fiscale.label }}</label>
+                                    {{ form.codice_fiscale }}
+                                    {% if form.codice_fiscale.errors %}<div class="invalid-feedback d-block">{{ form.codice_fiscale.errors|join:", " }}</div>{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="row">
+                            <div class="col-md-3 col-lg-2">
+                                <div class="mb-3">
+                                    <label class="form-label" for="{{ form.data_nascita.id_for_label }}">{{ form.data_nascita.label }}</label>
+                                    {{ form.data_nascita }}
+                                    {% if form.data_nascita.errors %}<div class="invalid-feedback d-block">{{ form.data_nascita.errors|join:", " }}</div>{% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-lg-5">
+                                <div class="mb-3">
+                                    <label class="form-label" for="{{ form.luogo_nascita.id_for_label }}">{{ form.luogo_nascita.label }}</label>
+                                    {{ form.luogo_nascita }}
+                                    {% if form.luogo_nascita.errors %}<div class="invalid-feedback d-block">{{ form.luogo_nascita.errors|join:", " }}</div>{% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-3 col-lg-2">
+                                <div class="mb-3">
+                                    <label class="form-label" for="{{ form.provincia_nascita.id_for_label }}">{{ form.provincia_nascita.label }}</label>
+                                    {{ form.provincia_nascita }}
+                                    {% if form.provincia_nascita.errors %}<div class="invalid-feedback d-block">{{ form.provincia_nascita.errors|join:", " }}</div>{% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-12 col-lg-3">
+                                <div class="mb-3">
+                                    <label class="form-label" for="{{ form.codice_fiscale.id_for_label }}">{{ form.codice_fiscale.label }}</label>
+                                    {{ form.codice_fiscale }}
+                                    {% if form.codice_fiscale.errors %}<div class="invalid-feedback d-block">{{ form.codice_fiscale.errors|join:", " }}</div>{% endif %}
+                                </div>
+                            </div>
+                        </div>
                         {% endif %}
-
-                        <div class="row align-items-end">
-                            <div class="col-md-3">
-                                <div class="mb-3">
-                                    <label class="form-label" for="{{ contatto_form.tipo.id_for_label }}">
-                                        {{ contatto_form.tipo.label }}
-                                    </label>
-                                    {{ contatto_form.tipo }}
-                                    {% if contatto_form.tipo.errors %}
-                                        <div class="invalid-feedback d-block">{{ contatto_form.tipo.errors|join:", " }}</div>
-                                    {% endif %}
-                                </div>
-                            </div>
-
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label class="form-label" for="{{ contatto_form.valore.id_for_label }}">
-                                        {{ contatto_form.valore.label }}
-                                    </label>
-                                    {{ contatto_form.valore }}
-                                    {% if contatto_form.valore.errors %}
-                                        <div class="invalid-feedback d-block">{{ contatto_form.valore.errors|join:", " }}</div>
-                                    {% endif %}
-                                </div>
-                            </div>
-
-                            <div class="col-md-3">
-                                <div class="mb-3">
-                                    <label class="form-label" for="{{ contatto_form.descrizione.id_for_label }}">
-                                        {{ contatto_form.descrizione.label }}
-                                    </label>
-                                    {{ contatto_form.descrizione }}
-                                    {% if contatto_form.descrizione.errors %}
-                                        <div class="invalid-feedback d-block">{{ contatto_form.descrizione.errors|join:", " }}</div>
-                                    {% endif %}
-                                </div>
-                            </div>
-
-                            <div class="col-md-2">
-                                <label class="form-check mb-3">
-                                    {{ contatto_form.principale }}
-                                    <span class="form-check-label">{{ contatto_form.principale.label }}</span>
-                                </label>
-                            </div>
-
-                            <div class="col-12">
-                                <div class="mb-0">
-                                    <label class="form-label" for="{{ contatto_form.note.id_for_label }}">
-                                        {{ contatto_form.note.label }}
-                                    </label>
-                                    {{ contatto_form.note }}
-                                    {% if contatto_form.note.errors %}
-                                        <div class="invalid-feedback d-block">{{ contatto_form.note.errors|join:", " }}</div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
                     </div>
-                    {% endfor %}
                 </div>
-
-                <template id="contattiEmptyForm">
-                    <div class="border rounded p-3 mb-3 js-formset-row">
-                        {% for hidden in contatto_formset.empty_form.hidden_fields %}
-                            {{ hidden }}
-                        {% endfor %}
-
-                        <div class="row align-items-end">
-                            <div class="col-md-3">
-                                <div class="mb-3">
-                                    <label class="form-label" for="{{ contatto_formset.empty_form.tipo.id_for_label }}">
-                                        {{ contatto_formset.empty_form.tipo.label }}
-                                    </label>
-                                    {{ contatto_formset.empty_form.tipo }}
-                                </div>
-                            </div>
-
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label class="form-label" for="{{ contatto_formset.empty_form.valore.id_for_label }}">
-                                        {{ contatto_formset.empty_form.valore.label }}
-                                    </label>
-                                    {{ contatto_formset.empty_form.valore }}
-                                </div>
-                            </div>
-
-                            <div class="col-md-3">
-                                <div class="mb-3">
-                                    <label class="form-label" for="{{ contatto_formset.empty_form.descrizione.id_for_label }}">
-                                        {{ contatto_formset.empty_form.descrizione.label }}
-                                    </label>
-                                    {{ contatto_formset.empty_form.descrizione }}
-                                </div>
-                            </div>
-
-                            <div class="col-md-2">
-                                <label class="form-check mb-3">
-                                    {{ contatto_formset.empty_form.principale }}
-                                    <span class="form-check-label">{{ contatto_formset.empty_form.principale.label }}</span>
-                                </label>
-                            </div>
-
-                            <div class="col-12">
-                                <div class="mb-0">
-                                    <label class="form-label" for="{{ contatto_formset.empty_form.note.id_for_label }}">
-                                        {{ contatto_formset.empty_form.note.label }}
-                                    </label>
-                                    {{ contatto_formset.empty_form.note }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </template>
             </div>
         </div>
 
-        <div class="card mb-3">
+        <div id="businessSections" hidden>
+            <div class="card st-form-section">
+                <div class="card-header">
+                    <div class="st-form-section-icon">
+                        <i class="ti ti-building"></i>
+                    </div>
+                    <h3 class="card-title mb-0">Dati anagrafici</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="mb-3">
+                                <label class="form-label" for="{{ form.ragione_sociale.id_for_label }}">{{ form.ragione_sociale.label }}</label>
+                                {{ form.ragione_sociale }}
+                                {% if form.ragione_sociale.errors %}<div class="invalid-feedback d-block">{{ form.ragione_sociale.errors|join:", " }}</div>{% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label" for="{{ form.partita_iva.id_for_label }}">{{ form.partita_iva.label }}</label>
+                                {{ form.partita_iva }}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-0">
+                                <label class="form-label" for="{{ form.codice_fiscale.id_for_label }}">{{ form.codice_fiscale.label }}</label>
+                                {{ form.codice_fiscale }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card st-form-section" id="residenzaRecapitiCard">
             <div class="card-header">
-                <h3 class="card-title">Indirizzi</h3>
-                <div class="card-actions">
+                <div class="st-form-section-icon icon-green">
+                    <i class="ti ti-map-pin"></i>
+                </div>
+                <h3 class="card-title mb-0" id="residenzaRecapitiTitle">Residenza e recapiti</h3>
+                <div class="card-actions" id="indirizziExtraActions" hidden>
                     <button type="button" class="btn btn-outline-primary btn-sm" data-formset-add="indirizzi">
-                        <i class="ti ti-plus"></i>
-                        Aggiungi indirizzo
+                        <i class="ti ti-plus"></i> Aggiungi indirizzo
                     </button>
                 </div>
             </div>
-
             <div class="card-body">
                 {{ indirizzo_formset.management_form }}
-
                 {% if indirizzo_formset.non_form_errors %}
                     <div class="alert alert-danger">{{ indirizzo_formset.non_form_errors }}</div>
                 {% endif %}
 
+                <div class="st-form-subsection-title js-indirizzo-subtitle" hidden>Indirizzo di residenza</div>
+
                 <div id="indirizziRows">
                     {% for indirizzo_form in indirizzo_formset %}
-                    <div class="border rounded p-3 mb-3 js-formset-row">
-                        {% for hidden in indirizzo_form.hidden_fields %}
-                            {{ hidden }}
-                        {% endfor %}
-
-                        {% if indirizzo_form.non_field_errors %}
-                            <div class="alert alert-danger">{{ indirizzo_form.non_field_errors }}</div>
-                        {% endif %}
-
+                    <div class="js-formset-row js-indirizzo-row mb-3">
+                        {% for hidden in indirizzo_form.hidden_fields %}{{ hidden }}{% endfor %}
+                        {% if layout_stile == 'compatta' %}
                         <div class="row align-items-end">
-                            <div class="col-md-3">
+                            <div class="col-8 col-md-9">
                                 <div class="mb-3">
-                                    <label class="form-label" for="{{ indirizzo_form.tipo.id_for_label }}">
-                                        {{ indirizzo_form.tipo.label }}
-                                    </label>
-                                    {{ indirizzo_form.tipo }}
-                                    {% if indirizzo_form.tipo.errors %}
-                                        <div class="invalid-feedback d-block">{{ indirizzo_form.tipo.errors|join:", " }}</div>
-                                    {% endif %}
-                                </div>
-                            </div>
-
-                            <div class="col-md-5">
-                                <div class="mb-3">
-                                    <label class="form-label" for="{{ indirizzo_form.indirizzo.id_for_label }}">
-                                        {{ indirizzo_form.indirizzo.label }}
-                                    </label>
+                                    <label class="form-label" for="{{ indirizzo_form.indirizzo.id_for_label }}">Indirizzo</label>
                                     {{ indirizzo_form.indirizzo }}
-                                    {% if indirizzo_form.indirizzo.errors %}
-                                        <div class="invalid-feedback d-block">{{ indirizzo_form.indirizzo.errors|join:", " }}</div>
-                                    {% endif %}
+                                    {% if indirizzo_form.indirizzo.errors %}<div class="invalid-feedback d-block">{{ indirizzo_form.indirizzo.errors|join:", " }}</div>{% endif %}
                                 </div>
                             </div>
-
-                            <div class="col-md-2">
+                            <div class="col-4 col-md-3 js-indirizzo-civico-col">
                                 <div class="mb-3">
-                                    <label class="form-label" for="{{ indirizzo_form.civico.id_for_label }}">
-                                        {{ indirizzo_form.civico.label }}
-                                    </label>
+                                    <label class="form-label" for="{{ indirizzo_form.civico.id_for_label }}">{{ indirizzo_form.civico.label }}</label>
                                     {{ indirizzo_form.civico }}
-                                    {% if indirizzo_form.civico.errors %}
-                                        <div class="invalid-feedback d-block">{{ indirizzo_form.civico.errors|join:", " }}</div>
-                                    {% endif %}
                                 </div>
                             </div>
-
-                            <div class="col-md-2">
+                        </div>
+                        <div class="row align-items-end">
+                            <div class="col-4">
                                 <div class="mb-3">
-                                    <label class="form-label" for="{{ indirizzo_form.cap.id_for_label }}">
-                                        {{ indirizzo_form.cap.label }}
-                                    </label>
-                                    {{ indirizzo_form.cap }}
-                                    {% if indirizzo_form.cap.errors %}
-                                        <div class="invalid-feedback d-block">{{ indirizzo_form.cap.errors|join:", " }}</div>
-                                    {% endif %}
-                                </div>
-                            </div>
-
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label class="form-label" for="{{ indirizzo_form.comune.id_for_label }}">
-                                        {{ indirizzo_form.comune.label }}
-                                    </label>
+                                    <label class="form-label" for="{{ indirizzo_form.comune.id_for_label }}">Comune</label>
                                     {{ indirizzo_form.comune }}
-                                    {% if indirizzo_form.comune.errors %}
-                                        <div class="invalid-feedback d-block">{{ indirizzo_form.comune.errors|join:", " }}</div>
-                                    {% endif %}
+                                    {% if indirizzo_form.comune.errors %}<div class="invalid-feedback d-block">{{ indirizzo_form.comune.errors|join:", " }}</div>{% endif %}
                                 </div>
                             </div>
-
-                            <div class="col-md-2">
+                            <div class="col-4">
                                 <div class="mb-3">
-                                    <label class="form-label" for="{{ indirizzo_form.provincia.id_for_label }}">
-                                        {{ indirizzo_form.provincia.label }}
-                                    </label>
+                                    <label class="form-label" for="{{ indirizzo_form.provincia.id_for_label }}">Provincia</label>
                                     {{ indirizzo_form.provincia }}
-                                    {% if indirizzo_form.provincia.errors %}
-                                        <div class="invalid-feedback d-block">{{ indirizzo_form.provincia.errors|join:", " }}</div>
-                                    {% endif %}
+                                    {% if indirizzo_form.provincia.errors %}<div class="invalid-feedback d-block">{{ indirizzo_form.provincia.errors|join:", " }}</div>{% endif %}
                                 </div>
                             </div>
-
-                            <div class="col-md-4">
+                            <div class="col-4">
                                 <div class="mb-3">
-                                    <label class="form-label" for="{{ indirizzo_form.nazione.id_for_label }}">
-                                        {{ indirizzo_form.nazione.label }}
-                                    </label>
-                                    {{ indirizzo_form.nazione }}
-                                    {% if indirizzo_form.nazione.errors %}
-                                        <div class="invalid-feedback d-block">{{ indirizzo_form.nazione.errors|join:", " }}</div>
-                                    {% endif %}
+                                    <label class="form-label" for="{{ indirizzo_form.cap.id_for_label }}">{{ indirizzo_form.cap.label }}</label>
+                                    {{ indirizzo_form.cap }}
+                                    {% if indirizzo_form.cap.errors %}<div class="invalid-feedback d-block">{{ indirizzo_form.cap.errors|join:", " }}</div>{% endif %}
                                 </div>
                             </div>
-
-                            <div class="col-md-2">
+                            <div class="col-md-2 js-indirizzo-tipo-col">
+                                <div class="mb-3">
+                                    <label class="form-label">{{ indirizzo_form.tipo.label }}</label>
+                                    {{ indirizzo_form.tipo }}
+                                </div>
+                            </div>
+                            <div class="col-md-3 js-indirizzo-nazione-col">
+                                <div class="mb-3">
+                                    <label class="form-label">{{ indirizzo_form.nazione.label }}</label>
+                                    {{ indirizzo_form.nazione }}
+                                </div>
+                            </div>
+                            <div class="col-md-2 js-indirizzo-principale-col">
                                 <label class="form-check mb-3">
                                     {{ indirizzo_form.principale }}
                                     <span class="form-check-label">{{ indirizzo_form.principale.label }}</span>
                                 </label>
                             </div>
-
-                            <div class="col-12">
-                                <div class="mb-0">
-                                    <label class="form-label" for="{{ indirizzo_form.note.id_for_label }}">
-                                        {{ indirizzo_form.note.label }}
-                                    </label>
-                                    {{ indirizzo_form.note }}
-                                    {% if indirizzo_form.note.errors %}
-                                        <div class="invalid-feedback d-block">{{ indirizzo_form.note.errors|join:", " }}</div>
-                                    {% endif %}
+                        </div>
+                        {% else %}
+                        <div class="row align-items-end">
+                            <div class="col-md-10">
+                                <div class="mb-3">
+                                    <label class="form-label" for="{{ indirizzo_form.indirizzo.id_for_label }}">Indirizzo</label>
+                                    {{ indirizzo_form.indirizzo }}
+                                    {% if indirizzo_form.indirizzo.errors %}<div class="invalid-feedback d-block">{{ indirizzo_form.indirizzo.errors|join:", " }}</div>{% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-2 js-indirizzo-civico-col">
+                                <div class="mb-3">
+                                    <label class="form-label" for="{{ indirizzo_form.civico.id_for_label }}">{{ indirizzo_form.civico.label }}</label>
+                                    {{ indirizzo_form.civico }}
                                 </div>
                             </div>
                         </div>
+                        <div class="row align-items-end">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label" for="{{ indirizzo_form.comune.id_for_label }}">Comune</label>
+                                    {{ indirizzo_form.comune }}
+                                    {% if indirizzo_form.comune.errors %}<div class="invalid-feedback d-block">{{ indirizzo_form.comune.errors|join:", " }}</div>{% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="mb-3">
+                                    <label class="form-label" for="{{ indirizzo_form.provincia.id_for_label }}">Provincia</label>
+                                    {{ indirizzo_form.provincia }}
+                                    {% if indirizzo_form.provincia.errors %}<div class="invalid-feedback d-block">{{ indirizzo_form.provincia.errors|join:", " }}</div>{% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="mb-3">
+                                    <label class="form-label" for="{{ indirizzo_form.cap.id_for_label }}">{{ indirizzo_form.cap.label }}</label>
+                                    {{ indirizzo_form.cap }}
+                                    {% if indirizzo_form.cap.errors %}<div class="invalid-feedback d-block">{{ indirizzo_form.cap.errors|join:", " }}</div>{% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-2 js-indirizzo-tipo-col">
+                                <div class="mb-3">
+                                    <label class="form-label">{{ indirizzo_form.tipo.label }}</label>
+                                    {{ indirizzo_form.tipo }}
+                                </div>
+                            </div>
+                            <div class="col-md-3 js-indirizzo-nazione-col">
+                                <div class="mb-3">
+                                    <label class="form-label">{{ indirizzo_form.nazione.label }}</label>
+                                    {{ indirizzo_form.nazione }}
+                                </div>
+                            </div>
+                            <div class="col-md-2 js-indirizzo-principale-col">
+                                <label class="form-check mb-3">
+                                    {{ indirizzo_form.principale }}
+                                    <span class="form-check-label">{{ indirizzo_form.principale.label }}</span>
+                                </label>
+                            </div>
+                        </div>
+                        {% endif %}
                     </div>
                     {% endfor %}
                 </div>
 
                 <template id="indirizziEmptyForm">
-                    <div class="border rounded p-3 mb-3 js-formset-row">
-                        {% for hidden in indirizzo_formset.empty_form.hidden_fields %}
-                            {{ hidden }}
-                        {% endfor %}
-
+                    <div class="js-formset-row js-indirizzo-row border rounded p-3 mb-3">
+                        {% for hidden in indirizzo_formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
                         <div class="row align-items-end">
-                            <div class="col-md-3">
-                                <div class="mb-3">
-                                    <label class="form-label" for="{{ indirizzo_formset.empty_form.tipo.id_for_label }}">
-                                        {{ indirizzo_formset.empty_form.tipo.label }}
-                                    </label>
-                                    {{ indirizzo_formset.empty_form.tipo }}
+                            <div class="col-md-10"><div class="mb-3"><label class="form-label">Indirizzo</label>{{ indirizzo_formset.empty_form.indirizzo }}</div></div>
+                            <div class="col-md-2 js-indirizzo-civico-col"><div class="mb-3"><label class="form-label">{{ indirizzo_formset.empty_form.civico.label }}</label>{{ indirizzo_formset.empty_form.civico }}</div></div>
+                        </div>
+                        <div class="row align-items-end">
+                            <div class="col-md-6"><div class="mb-3"><label class="form-label">Comune</label>{{ indirizzo_formset.empty_form.comune }}</div></div>
+                            <div class="col-md-2"><div class="mb-3"><label class="form-label">Provincia</label>{{ indirizzo_formset.empty_form.provincia }}</div></div>
+                            <div class="col-md-2"><div class="mb-3"><label class="form-label">{{ indirizzo_formset.empty_form.cap.label }}</label>{{ indirizzo_formset.empty_form.cap }}</div></div>
+                            <div class="col-md-2 js-indirizzo-tipo-col"><div class="mb-3"><label class="form-label">{{ indirizzo_formset.empty_form.tipo.label }}</label>{{ indirizzo_formset.empty_form.tipo }}</div></div>
+                            <div class="col-md-3 js-indirizzo-nazione-col"><div class="mb-3"><label class="form-label">{{ indirizzo_formset.empty_form.nazione.label }}</label>{{ indirizzo_formset.empty_form.nazione }}</div></div>
+                            <div class="col-md-2 js-indirizzo-principale-col"><label class="form-check mb-3">{{ indirizzo_formset.empty_form.principale }}<span class="form-check-label">{{ indirizzo_formset.empty_form.principale.label }}</span></label></div>
+                        </div>
+                    </div>
+                </template>
+
+                <div id="clienteRecapitiHost">
+                    <div class="card st-form-section st-recapiti-embedded" id="recapitiCard">
+                        <div class="card-header">
+                            <div class="st-form-section-icon icon-green">
+                                <i class="ti ti-phone"></i>
+                            </div>
+                            <h3 class="card-title mb-0">Recapiti</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="st-form-subsection-title js-recapiti-subtitle">Recapiti</div>
+                            <div class="row js-recapiti-row">
+                                <div class="col-md-4">
+                                    <div class="mb-0">
+                                        <label class="form-label" for="{{ form.cellulare.id_for_label }}">{{ form.cellulare.label }}</label>
+                                        {{ form.cellulare }}
+                                        {% if form.cellulare.errors %}<div class="invalid-feedback d-block">{{ form.cellulare.errors|join:", " }}</div>{% endif %}
+                                    </div>
                                 </div>
-                            </div>
-
-                            <div class="col-md-5">
-                                <div class="mb-3">
-                                    <label class="form-label" for="{{ indirizzo_formset.empty_form.indirizzo.id_for_label }}">
-                                        {{ indirizzo_formset.empty_form.indirizzo.label }}
-                                    </label>
-                                    {{ indirizzo_formset.empty_form.indirizzo }}
+                                <div class="col-md-4">
+                                    <div class="mb-0">
+                                        <label class="form-label" for="{{ form.telefono.id_for_label }}">{{ form.telefono.label }}</label>
+                                        {{ form.telefono }}
+                                        {% if form.telefono.errors %}<div class="invalid-feedback d-block">{{ form.telefono.errors|join:", " }}</div>{% endif %}
+                                    </div>
                                 </div>
-                            </div>
-
-                            <div class="col-md-2">
-                                <div class="mb-3">
-                                    <label class="form-label" for="{{ indirizzo_formset.empty_form.civico.id_for_label }}">
-                                        {{ indirizzo_formset.empty_form.civico.label }}
-                                    </label>
-                                    {{ indirizzo_formset.empty_form.civico }}
-                                </div>
-                            </div>
-
-                            <div class="col-md-2">
-                                <div class="mb-3">
-                                    <label class="form-label" for="{{ indirizzo_formset.empty_form.cap.id_for_label }}">
-                                        {{ indirizzo_formset.empty_form.cap.label }}
-                                    </label>
-                                    {{ indirizzo_formset.empty_form.cap }}
-                                </div>
-                            </div>
-
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label class="form-label" for="{{ indirizzo_formset.empty_form.comune.id_for_label }}">
-                                        {{ indirizzo_formset.empty_form.comune.label }}
-                                    </label>
-                                    {{ indirizzo_formset.empty_form.comune }}
-                                </div>
-                            </div>
-
-                            <div class="col-md-2">
-                                <div class="mb-3">
-                                    <label class="form-label" for="{{ indirizzo_formset.empty_form.provincia.id_for_label }}">
-                                        {{ indirizzo_formset.empty_form.provincia.label }}
-                                    </label>
-                                    {{ indirizzo_formset.empty_form.provincia }}
-                                </div>
-                            </div>
-
-                            <div class="col-md-4">
-                                <div class="mb-3">
-                                    <label class="form-label" for="{{ indirizzo_formset.empty_form.nazione.id_for_label }}">
-                                        {{ indirizzo_formset.empty_form.nazione.label }}
-                                    </label>
-                                    {{ indirizzo_formset.empty_form.nazione }}
-                                </div>
-                            </div>
-
-                            <div class="col-md-2">
-                                <label class="form-check mb-3">
-                                    {{ indirizzo_formset.empty_form.principale }}
-                                    <span class="form-check-label">{{ indirizzo_formset.empty_form.principale.label }}</span>
-                                </label>
-                            </div>
-
-                            <div class="col-12">
-                                <div class="mb-0">
-                                    <label class="form-label" for="{{ indirizzo_formset.empty_form.note.id_for_label }}">
-                                        {{ indirizzo_formset.empty_form.note.label }}
-                                    </label>
-                                    {{ indirizzo_formset.empty_form.note }}
+                                <div class="col-md-4">
+                                    <div class="mb-0">
+                                        <label class="form-label" for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+                                        {{ form.email }}
+                                        {% if form.email.errors %}<div class="invalid-feedback d-block">{{ form.email.errors|join:", " }}</div>{% endif %}
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </template>
+                </div>
             </div>
         </div>
 
-        <div class="d-flex justify-content-end gap-2 mb-4">
-            <a href="{% if object %}{% url 'anagrafiche:anagrafica_detail' object.pk %}{% else %}{% url 'anagrafiche:anagrafica_list' %}{% endif %}"
-               class="btn btn-outline-secondary">
-                Annulla
-            </a>
+        <div id="clienteExtraSections" hidden>
+            <div class="card st-form-section">
+                <div class="card-header">
+                    <div class="st-form-section-icon icon-orange">
+                        <i class="ti ti-id"></i>
+                    </div>
+                    <h3 class="card-title mb-0">Documento di identità</h3>
+                    <div class="card-actions">
+                        <button type="button" class="btn btn-outline-primary btn-sm" data-cie-read-open>
+                            <i class="ti ti-nfc"></i>
+                            Leggi CIE
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% if layout_stile == 'compatta' %}
+                        <div class="col-4">
+                            <div class="mb-3">
+                                <label class="form-label" for="{{ form.documento_tipo.id_for_label }}">{{ form.documento_tipo.label }}</label>
+                                {{ form.documento_tipo }}
+                                {% if form.documento_tipo.errors %}<div class="invalid-feedback d-block">{{ form.documento_tipo.errors|join:", " }}</div>{% endif %}
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="mb-3">
+                                <label class="form-label" for="{{ form.documento_numero.id_for_label }}">{{ form.documento_numero.label }}</label>
+                                {{ form.documento_numero }}
+                                {% if form.documento_numero.errors %}<div class="invalid-feedback d-block">{{ form.documento_numero.errors|join:", " }}</div>{% endif %}
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="mb-3">
+                                <label class="form-label" for="{{ form.documento_rilasciato_da.id_for_label }}">{{ form.documento_rilasciato_da.label }}</label>
+                                {{ form.documento_rilasciato_da }}
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="mb-3">
+                                <label class="form-label" for="{{ form.documento_data_rilascio.id_for_label }}">{{ form.documento_data_rilascio.label }}</label>
+                                {{ form.documento_data_rilascio }}
+                                {% if form.documento_data_rilascio.errors %}<div class="invalid-feedback d-block">{{ form.documento_data_rilascio.errors|join:", " }}</div>{% endif %}
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="mb-3">
+                                <label class="form-label" for="{{ form.documento_data_scadenza.id_for_label }}">{{ form.documento_data_scadenza.label }}</label>
+                                {{ form.documento_data_scadenza }}
+                                {% if form.documento_data_scadenza.errors %}<div class="invalid-feedback d-block">{{ form.documento_data_scadenza.errors|join:", " }}</div>{% endif %}
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="mb-3">
+                                <label class="form-label d-block">Stampa privacy</label>
+                                <div class="d-flex gap-3 align-items-center">
+                                    {% for radio in form.stampa_privacy %}
+                                        <label class="form-check mb-0">
+                                            {{ radio.tag }}
+                                            <span class="form-check-label">{{ radio.choice_label }}</span>
+                                        </label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label" for="{{ form.documento_tipo.id_for_label }}">{{ form.documento_tipo.label }}</label>
+                                {{ form.documento_tipo }}
+                                {% if form.documento_tipo.errors %}<div class="invalid-feedback d-block">{{ form.documento_tipo.errors|join:", " }}</div>{% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label" for="{{ form.documento_numero.id_for_label }}">{{ form.documento_numero.label }}</label>
+                                {{ form.documento_numero }}
+                                {% if form.documento_numero.errors %}<div class="invalid-feedback d-block">{{ form.documento_numero.errors|join:", " }}</div>{% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label" for="{{ form.documento_rilasciato_da.id_for_label }}">{{ form.documento_rilasciato_da.label }}</label>
+                                {{ form.documento_rilasciato_da }}
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="mb-3">
+                                <label class="form-label" for="{{ form.documento_data_rilascio.id_for_label }}">{{ form.documento_data_rilascio.label }}</label>
+                                {{ form.documento_data_rilascio }}
+                                {% if form.documento_data_rilascio.errors %}<div class="invalid-feedback d-block">{{ form.documento_data_rilascio.errors|join:", " }}</div>{% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label" for="{{ form.documento_data_scadenza.id_for_label }}">{{ form.documento_data_scadenza.label }}</label>
+                                {{ form.documento_data_scadenza }}
+                                {% if form.documento_data_scadenza.errors %}<div class="invalid-feedback d-block">{{ form.documento_data_scadenza.errors|join:", " }}</div>{% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label d-block">Stampa privacy</label>
+                                <div class="d-flex gap-3">
+                                    {% for radio in form.stampa_privacy %}
+                                        <label class="form-check">
+                                            {{ radio.tag }}
+                                            <span class="form-check-label">{{ radio.choice_label }}</span>
+                                        </label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
 
+            <div class="card st-form-section">
+                <div class="card-header">
+                    <div class="st-form-section-icon">
+                        <i class="ti ti-notes"></i>
+                    </div>
+                    <h3 class="card-title mb-0">Note</h3>
+                </div>
+                <div class="card-body">
+                    {{ form.note }}
+                    {% if form.note.errors %}<div class="invalid-feedback d-block">{{ form.note.errors|join:", " }}</div>{% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div id="businessContattiSection" hidden>
+            <div class="card st-form-section" id="contattiSection">
+                <div class="card-header">
+                    <div class="st-form-section-icon">
+                        <i class="ti ti-address-book"></i>
+                    </div>
+                    <h3 class="card-title mb-0">Contatti</h3>
+                    <div class="card-actions">
+                        <button type="button" class="btn btn-outline-primary btn-sm" data-formset-add="contatti">
+                            <i class="ti ti-plus"></i> Aggiungi contatto
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {{ contatto_formset.management_form }}
+                    <div id="contattiRows">
+                        {% for contatto_form in contatto_formset %}
+                        <div class="border rounded p-3 mb-3 js-formset-row">
+                            {% for hidden in contatto_form.hidden_fields %}{{ hidden }}{% endfor %}
+                            <div class="row align-items-end">
+                                <div class="col-md-3"><div class="mb-3"><label class="form-label">{{ contatto_form.tipo.label }}</label>{{ contatto_form.tipo }}</div></div>
+                                <div class="col-md-4"><div class="mb-3"><label class="form-label">{{ contatto_form.valore.label }}</label>{{ contatto_form.valore }}</div></div>
+                                <div class="col-md-3"><div class="mb-3"><label class="form-label">{{ contatto_form.descrizione.label }}</label>{{ contatto_form.descrizione }}</div></div>
+                                <div class="col-md-2"><label class="form-check mb-3">{{ contatto_form.principale }}<span class="form-check-label">{{ contatto_form.principale.label }}</span></label></div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <template id="contattiEmptyForm">
+                        <div class="border rounded p-3 mb-3 js-formset-row">
+                            {% for hidden in contatto_formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
+                            <div class="row align-items-end">
+                                <div class="col-md-3"><div class="mb-3"><label class="form-label">{{ contatto_formset.empty_form.tipo.label }}</label>{{ contatto_formset.empty_form.tipo }}</div></div>
+                                <div class="col-md-4"><div class="mb-3"><label class="form-label">{{ contatto_formset.empty_form.valore.label }}</label>{{ contatto_formset.empty_form.valore }}</div></div>
+                                <div class="col-md-3"><div class="mb-3"><label class="form-label">{{ contatto_formset.empty_form.descrizione.label }}</label>{{ contatto_formset.empty_form.descrizione }}</div></div>
+                                <div class="col-md-2"><label class="form-check mb-3">{{ contatto_formset.empty_form.principale }}<span class="form-check-label">{{ contatto_formset.empty_form.principale.label }}</span></label></div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <div class="st-form-actions">
+            <a href="{% if object %}{% url 'anagrafiche:anagrafica_detail' object.pk %}{% else %}{% url 'anagrafiche:anagrafica_list' %}{% endif %}"
+               class="btn btn-outline-secondary">Annulla</a>
             <button type="submit" class="btn btn-primary">
-                <i class="ti ti-device-floppy"></i>
-                Salva
+                <i class="ti ti-device-floppy"></i> Conferma
             </button>
         </div>
     </form>
+</div>
 
+<div class="st-confirm" id="cieReadModal" hidden
+     data-cie-url="{% url 'anagrafiche:cie_leggi' %}"
+     data-cie-local-url="http://127.0.0.1:17345"
+     data-cie-prefer-server="{% if cie_reader_on_server %}1{% else %}0{% endif %}">
+    <div class="st-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="cieReadTitle">
+        <div class="st-confirm-body">
+            <div class="st-confirm-icon is-info">
+                <i class="ti ti-id"></i>
+            </div>
+            <div class="w-100">
+                <div class="st-confirm-title" id="cieReadTitle">Leggi Carta d'Identità Elettronica</div>
+                <div class="st-confirm-text mb-3" id="cieReadStatus">
+                    {% if cie_reader_on_server %}
+                    Poggia la CIE sul lettore Bit4id collegato al server, poi inserisci il CAN (6 cifre).
+                    {% else %}
+                    Poggia la CIE sul lettore Bit4id di questo PC, poi inserisci il CAN (6 cifre).
+                    {% endif %}
+                </div>
+                <label class="form-label" for="cieCanInput">CAN</label>
+                <input type="text"
+                       class="form-control"
+                       id="cieCanInput"
+                       inputmode="numeric"
+                       maxlength="6"
+                       pattern="\d{6}"
+                       autocomplete="off"
+                       placeholder="123456">
+                <div class="form-hint mt-1">Il CAN è stampato sul fronte della CIE.</div>
+            </div>
+        </div>
+        <div class="st-confirm-footer">
+            <button type="button" class="btn btn-outline-secondary" data-cie-read-cancel>
+                Annulla
+            </button>
+            <button type="button" class="btn btn-primary" data-cie-read-submit>
+                <i class="ti ti-nfc"></i>
+                Leggi
+            </button>
+        </div>
+    </div>
 </div>
 
 {% endblock %}
 
 {% block extra_js %}
 {{ block.super }}
+<script src="{% static 'securtek/js/name_case.js' %}"></script>
+<script src="{% static 'securtek/js/cie_read.js' %}"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function () {
+    const tipoField = document.getElementById("id_tipo");
+    const cieHeaderBtn = document.getElementById("cieReadOpenBtn");
+    const clienteSections = document.getElementById("clienteSections");
+    const businessSections = document.getElementById("businessSections");
+    const clienteExtraSections = document.getElementById("clienteExtraSections");
+    const residenzaRecapitiCard = document.getElementById("residenzaRecapitiCard");
+    const residenzaRecapitiTitle = document.getElementById("residenzaRecapitiTitle");
+    const indirizziExtraActions = document.getElementById("indirizziExtraActions");
+    const indirizzoSubtitle = document.querySelector(".js-indirizzo-subtitle");
+    const recapitiCard = document.getElementById("recapitiCard");
+    const clienteRecapitiHost = document.getElementById("clienteRecapitiHost");
+    const businessContattiSection = document.getElementById("businessContattiSection");
+    const cognomeInput = document.getElementById("id_cognome");
+    const nomeInput = document.getElementById("id_nome");
+    const ragioneSocialeInput = document.getElementById("id_ragione_sociale");
+
+    if (window.LabRepairNameCase) {
+        window.LabRepairNameCase.bind(cognomeInput, nomeInput);
+    }
+
+    function toggleAnagraficaSections() {
+        const isCliente = tipoField && tipoField.value === "cliente";
+
+        if (clienteSections) {
+            clienteSections.hidden = !isCliente;
+        }
+        if (clienteExtraSections) {
+            clienteExtraSections.hidden = !isCliente;
+        }
+        if (businessSections) {
+            businessSections.hidden = isCliente;
+        }
+        if (businessContattiSection) {
+            businessContattiSection.hidden = isCliente;
+        }
+        if (cieHeaderBtn) {
+            cieHeaderBtn.hidden = !isCliente;
+        }
+        if (residenzaRecapitiTitle) {
+            residenzaRecapitiTitle.textContent = isCliente ? "Residenza e recapiti" : "Indirizzi";
+        }
+        if (indirizziExtraActions) {
+            indirizziExtraActions.hidden = isCliente;
+        }
+        if (indirizzoSubtitle) {
+            indirizzoSubtitle.hidden = !isCliente;
+        }
+        if (recapitiCard) {
+            recapitiCard.hidden = false;
+            recapitiCard.classList.toggle("st-recapiti-embedded", isCliente);
+            recapitiCard.classList.toggle("st-form-section", !isCliente);
+
+            if (isCliente) {
+                if (clienteRecapitiHost && recapitiCard.parentElement !== clienteRecapitiHost) {
+                    clienteRecapitiHost.appendChild(recapitiCard);
+                }
+            } else if (residenzaRecapitiCard && recapitiCard.parentElement !== residenzaRecapitiCard.parentElement) {
+                residenzaRecapitiCard.parentElement.insertBefore(recapitiCard, residenzaRecapitiCard);
+            }
+        }
+        document.querySelectorAll(".js-indirizzo-tipo-col, .js-indirizzo-nazione-col, .js-indirizzo-principale-col, .js-indirizzo-civico-col").forEach(function (col) {
+            col.hidden = isCliente;
+        });
+        document.querySelectorAll(".js-indirizzo-row").forEach(function (row) {
+            row.classList.toggle("is-cliente-residenza", isCliente);
+            row.classList.toggle("border", !isCliente);
+            row.classList.toggle("rounded", !isCliente);
+            row.classList.toggle("p-3", !isCliente);
+            row.classList.toggle("mb-3", !isCliente);
+        });
+        if (cognomeInput) {
+            cognomeInput.required = isCliente;
+        }
+        if (nomeInput) {
+            nomeInput.required = isCliente;
+        }
+        if (ragioneSocialeInput) {
+            ragioneSocialeInput.required = !isCliente;
+        }
+    }
+
+    if (tipoField) {
+        tipoField.addEventListener("change", toggleAnagraficaSections);
+        toggleAnagraficaSections();
+    }
+
     function addFormsetRow(prefix) {
         const totalForms = document.getElementById("id_" + prefix + "-TOTAL_FORMS");
         const rows = document.getElementById(prefix + "Rows");
         const template = document.getElementById(prefix + "EmptyForm");
-
         if (!totalForms || !rows || !template) {
             return;
         }
-
         const index = Number.parseInt(totalForms.value, 10);
-        const html = template.innerHTML.replaceAll("__prefix__", index);
-
-        rows.insertAdjacentHTML("beforeend", html);
+        rows.insertAdjacentHTML("beforeend", template.innerHTML.replaceAll("__prefix__", index));
         totalForms.value = index + 1;
+        toggleAnagraficaSections();
     }
 
     document.querySelectorAll("[data-formset-add]").forEach(function (button) {

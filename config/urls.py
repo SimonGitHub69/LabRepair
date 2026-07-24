@@ -17,16 +17,30 @@ Including another URLconf
 from django.contrib import admin
 from django.conf import settings
 from django.conf.urls.static import static
+from django.templatetags.static import static as static_url
 from django.urls import include, path
+from django.views.generic import RedirectView
+
+from config.labrepair_admin import apply_labrepair_admin
+
+apply_labrepair_admin()
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path(
+        "favicon.ico",
+        RedirectView.as_view(
+            url=static_url("securtek/img/favicon.svg"),
+            permanent=True,
+        ),
+    ),
+    path("", include("apps.accounts.urls")),
     path("anagrafiche/", include("apps.anagrafiche.urls")),
     path("agenda/", include("apps.agenda.urls")),
     path("pratiche/", include("apps.pratiche.urls")),
     path("", include("apps.dashboard.urls")),
 ]
 
-if settings.DEBUG:
+if settings.DEBUG or getattr(settings, "SERVE_MEDIA", False):
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

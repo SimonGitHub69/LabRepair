@@ -1,0 +1,51 @@
+{% load static %}
+<!doctype html>
+<html lang="it">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Busta riparazione · {{ pratica.codice }}</title>
+    <link rel="stylesheet" href="{% static 'securtek/css/busta_print.css' %}?v=20260721-1">
+</head>
+<body>
+    <div class="toolbar">
+        <button type="button" id="bustaPrintBtn">Stampa</button>
+        <a href="{% url 'pratiche:pratica_detail' pratica.pk %}">Chiudi</a>
+    </div>
+
+    <div class="sheet">
+        {% include "pratiche/partials/busta_slip.html" with slip=busta show_riparatore=False %}
+
+        {% include "pratiche/partials/busta_slip.html" with slip=busta show_riparatore=True %}
+    </div>
+
+    <script>
+    (function () {
+        var btn = document.getElementById("bustaPrintBtn");
+        function doPrint() {
+            window.print();
+        }
+        if (btn) {
+            btn.addEventListener("click", doPrint);
+        }
+        // Stampa automatica solo dopo che i font locali sono pronti (niente attesa Google).
+        function readyPrint() {
+            if (document.fonts && document.fonts.ready) {
+                document.fonts.ready.then(function () {
+                    setTimeout(doPrint, 150);
+                }).catch(function () {
+                    setTimeout(doPrint, 300);
+                });
+            } else {
+                setTimeout(doPrint, 300);
+            }
+        }
+        if (document.readyState === "complete") {
+            readyPrint();
+        } else {
+            window.addEventListener("load", readyPrint);
+        }
+    })();
+    </script>
+</body>
+</html>

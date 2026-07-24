@@ -1,0 +1,91 @@
+<div class="busta-slip">
+    <div class="busta-header">
+        <div class="busta-header-left">
+            <div class="busta-line">
+                <span class="busta-label">Compilatore:</span>
+                <span class="busta-value">{{ slip.compilatore }}</span>
+            </div>
+            <div class="busta-header-dates">
+                <div class="busta-line">
+                    <span class="busta-label">Data:</span>
+                    <span class="busta-value">{{ slip.arrivato_il }}</span>
+                </div>
+                <div class="busta-line">
+                    <span class="busta-label">Consegna prevista:</span>
+                    <span class="busta-value">{{ slip.consegna_prevista }}</span>
+                </div>
+            </div>
+        </div>
+        <div class="busta-header-right">
+            <div class="busta-code">{{ slip.codice }}</div>
+            <div class="busta-barcode">{{ slip.barcode_value }}</div>
+        </div>
+    </div>
+
+    <div class="busta-content">
+        {% if show_riparatore and slip.centro_assistenza %}
+        {# ASSISTENZA: Cliente|Ripar · Oggetto|Centro · descr|Peso #}
+        <div class="busta-row busta-row-cliente has-riparatore has-centro">
+            <span class="busta-row-main">
+                <span class="busta-label">Cliente:</span>
+                <span class="busta-value">{{ slip.cliente }}</span>
+            </span>
+            <span class="busta-riparatore-block">
+                <span class="busta-label">Ripar.:</span>
+                <span class="busta-value">{{ slip.riparatore }}</span>
+            </span>
+        </div>
+
+        <div class="busta-row busta-row-oggetto has-centro">
+            <span class="busta-row-main">
+                <span class="busta-label">Oggetto:</span>
+                <span class="busta-value">{{ slip.oggetto }}</span>
+            </span>
+            <span class="busta-centro-block">
+                <span class="busta-label">Centro Assist.</span>
+                <span class="busta-value">{{ slip.centro_assistenza }}</span>
+            </span>
+        </div>
+
+        <div class="busta-row busta-row-descr has-centro{% if slip.peso %} has-peso{% endif %}">
+            <span class="busta-value busta-descr">{{ slip.descrizione }}</span>
+            {% if slip.peso %}
+            <span class="busta-peso-block">
+                <span class="busta-label">Peso (gr)</span>
+                <span class="busta-value">{{ slip.peso }}</span>
+            </span>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="busta-row busta-row-cliente{% if show_riparatore %} has-riparatore{% endif %}">
+            <span class="busta-row-main">
+                <span class="busta-label">Cliente:</span>
+                <span class="busta-value">{{ slip.cliente }}</span>
+            </span>
+            {% if show_riparatore %}
+            <span class="busta-riparatore-block">
+                <span class="busta-label">Ripar.:</span>
+                <span class="busta-value">{{ slip.riparatore }}</span>
+            </span>
+            {% endif %}
+        </div>
+
+        <div class="busta-row busta-row-oggetto{% if slip.peso %} has-peso{% endif %}">
+            <span class="busta-row-main">
+                <span class="busta-label">Oggetto:</span>
+                <span class="busta-value">{{ slip.oggetto }}</span>
+            </span>
+            {% if slip.peso %}
+            <span class="busta-peso-block">
+                <span class="busta-label">Peso (gr)</span>
+                <span class="busta-value">{{ slip.peso }}</span>
+            </span>
+            {% endif %}
+        </div>
+
+        <div class="busta-row busta-row-descr">
+            <span class="busta-value busta-descr">{{ slip.descrizione }}</span>
+        </div>
+        {% endif %}
+    </div>
+</div>

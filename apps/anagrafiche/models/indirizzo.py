@@ -5,6 +5,7 @@ from apps.core.models import BaseModel
 
 class Indirizzo(BaseModel):
     class TipoIndirizzo(models.TextChoices):
+        RESIDENZA = "residenza", "Residenza"
         SEDE_LEGALE = "sede_legale", "Sede legale"
         SEDE_OPERATIVA = "sede_operativa", "Sede operativa"
         FATTURAZIONE = "fatturazione", "Fatturazione"

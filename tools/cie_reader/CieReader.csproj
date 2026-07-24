@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <RootNamespace>CieReader</RootNamespace>
+    <AssemblyName>cie_reader</AssemblyName>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="vendor\**\*" />
+    <None Include="vendor\**\*" />
+    <ProjectReference Include="vendor\CIE.MRTD.SDK\CIE.MRTD.SDK.csproj" />
+  </ItemGroup>
+</Project>

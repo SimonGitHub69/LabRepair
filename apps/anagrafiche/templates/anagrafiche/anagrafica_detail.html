@@ -1,23 +1,23 @@
 {% extends "base/layout.html" %}
 
 {% block page_title %}
-{{ anagrafica.ragione_sociale }}
+{{ anagrafica.display_name }}
 {% endblock %}
 
 {% block content %}
 
-<div class="container-xl">
+<div class="container-xl{% if layout_stile == 'compatta' %} st-anagrafica-detail-compact{% endif %}">
 
-    <div class="page-header d-print-none mb-3">
+    <div class="page-header d-print-none mb-3 st-anagrafica-detail-header">
         <div class="row align-items-center">
 
             <div class="col">
                 <h2 class="page-title">
-                    {{ anagrafica.ragione_sociale }}
+                    {{ anagrafica.display_name }}
                 </h2>
 
                 <div class="text-secondary">
-                    Scheda Anagrafica
+                    {{ anagrafica.get_tipo_display }} · Scheda anagrafica
                 </div>
             </div>
 
@@ -45,11 +45,11 @@
     </div>
 
 
-    <div class="row">
+    <div class="row g-3 st-anagrafica-detail-top">
 
         <div class="col-lg-6">
 
-            <div class="card">
+            <div class="card st-anagrafica-detail-card h-100">
 
                 <div class="card-header">
                     <h3 class="card-title">
@@ -59,31 +59,71 @@
 
                 <div class="card-body">
 
-                    <table class="table table-borderless">
+                    <table class="table table-borderless table-sm st-detail-kv mb-0">
 
                         <tr>
-                            <th width="180">Ragione Sociale</th>
-                            <td>{{ anagrafica.ragione_sociale }}</td>
+                            <th>Tipo</th>
+                            <td>{{ anagrafica.get_tipo_display }}</td>
+                        </tr>
+
+                        {% if anagrafica.is_cliente %}
+                        <tr>
+                            <th>Cognome</th>
+                            <td>{{ anagrafica.cognome|default:"-" }}</td>
                         </tr>
 
                         <tr>
+                            <th>Nome</th>
+                            <td>{{ anagrafica.nome|default:"-" }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <th>Ragione sociale</th>
+                            <td>{{ anagrafica.ragione_sociale }}</td>
+                        </tr>
+                        {% endif %}
+
+                        <tr>
                             <th>Partita IVA</th>
-                            <td>{{ anagrafica.partita_iva }}</td>
+                            <td>{{ anagrafica.partita_iva|default:"-" }}</td>
                         </tr>
 
                         <tr>
                             <th>Codice Fiscale</th>
-                            <td>{{ anagrafica.codice_fiscale }}</td>
+                            <td>{{ anagrafica.codice_fiscale|default:"-" }}</td>
                         </tr>
+
+                        {% if anagrafica.sesso or anagrafica.data_nascita or anagrafica.luogo_nascita %}
+                        <tr>
+                            <th>Sesso</th>
+                            <td>{{ anagrafica.get_sesso_display|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Data nascita</th>
+                            <td>{{ anagrafica.data_nascita|date:"d/m/Y"|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Luogo nascita</th>
+                            <td>
+                                {{ anagrafica.luogo_nascita|default:"-" }}
+                                {% if anagrafica.provincia_nascita %} ({{ anagrafica.provincia_nascita }}){% endif %}
+                            </td>
+                        </tr>
+                        {% endif %}
 
                         <tr>
                             <th>Email</th>
-                            <td>{{ anagrafica.email }}</td>
+                            <td>{{ anagrafica.email|default:"-" }}</td>
                         </tr>
 
                         <tr>
                             <th>Telefono</th>
-                            <td>{{ anagrafica.telefono }}</td>
+                            <td>{{ anagrafica.telefono|default:"-" }}</td>
+                        </tr>
+
+                        <tr>
+                            <th>Cellulare</th>
+                            <td>{{ anagrafica.cellulare|default:"-" }}</td>
                         </tr>
 
                     </table>
@@ -93,6 +133,50 @@
             </div>
 
         </div>
+
+        {% if anagrafica.is_cliente %}
+        <div class="col-lg-6 d-flex flex-column gap-3">
+            <div class="card st-anagrafica-detail-card">
+                <div class="card-header">
+                    <h3 class="card-title">Documento di identità</h3>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless table-sm st-detail-kv mb-0">
+                        <tr>
+                            <th>Tipo</th>
+                            <td>{{ anagrafica.documento_tipo_label|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Numero</th>
+                            <td>{{ anagrafica.documento_numero|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Rilasciato da</th>
+                            <td>{{ anagrafica.documento_rilasciato_da|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Data rilascio</th>
+                            <td>{{ anagrafica.documento_data_rilascio|date:"d/m/Y"|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Data scadenza</th>
+                            <td>{{ anagrafica.documento_data_scadenza|date:"d/m/Y"|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Stampa privacy</th>
+                            <td>{% if anagrafica.stampa_privacy %}Sì{% else %}No{% endif %}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            {% if anagrafica.note %}
+            <div class="card st-anagrafica-detail-card">
+                <div class="card-header"><h3 class="card-title">Note</h3></div>
+                <div class="card-body py-2">{{ anagrafica.note|linebreaksbr }}</div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
 
     </div>
 
@@ -104,13 +188,13 @@
 
                 <div class="card-header">
                     <h3 class="card-title">
-                        Pratiche in essere
+                        Riparazioni in essere
                     </h3>
                     <div class="card-actions">
                         {% url 'anagrafiche:anagrafica_detail' anagrafica.pk as anagrafica_return_url %}
                         <a href="{% url 'pratiche:pratica_create' %}?cliente={{ anagrafica.pk }}&next={{ anagrafica_return_url|urlencode }}" class="btn btn-primary btn-sm">
                             <i class="ti ti-plus"></i>
-                            Nuova pratica
+                            Nuova riparazione
                         </a>
                     </div>
                 </div>
@@ -169,7 +253,7 @@
                                             <td class="text-end">
                                                 <a href="{% url 'pratiche:pratica_detail' pratica.pk %}?next={{ anagrafica_return_url|urlencode }}"
                                                    class="btn btn-icon btn-outline-primary"
-                                                   title="Apri pratica">
+                                                   title="Apri riparazione">
                                                     <i class="ti ti-edit"></i>
                                                 </a>
                                             </td>
@@ -185,7 +269,7 @@
                             <div class="empty-icon">
                                 <i class="ti ti-folder"></i>
                             </div>
-                            <p class="empty-title">Nessuna pratica in essere</p>
+                            <p class="empty-title">Nessuna riparazione in essere</p>
                         </div>
 
                     {% endif %}

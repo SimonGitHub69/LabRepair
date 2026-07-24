@@ -21,7 +21,7 @@ class EventoAgenda(BaseModel):
         Pratica,
         on_delete=models.CASCADE,
         related_name="eventi_agenda",
-        verbose_name="Pratica",
+        verbose_name="Riparazione",
     )
     titolo = models.CharField("Titolo", max_length=200)
     tipo = models.CharField("Tipo", max_length=20, choices=Tipo.choices, default=Tipo.LAVORO)
@@ -70,6 +70,9 @@ class ConfigurazioneNotificaEmail(BaseModel):
     class Meta:
         verbose_name = "Configurazione notifiche email"
         verbose_name_plural = "Configurazioni notifiche email"
+        permissions = [
+            ("access_parametri_mail_sql", "Può gestire Parametri mail e SQL"),
+        ]
 
     def __str__(self):
         return "Parametri mail notifiche"

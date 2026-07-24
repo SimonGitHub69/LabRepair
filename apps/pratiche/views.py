@@ -3,7 +3,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.files import File
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Prefetch, Q
-from django.http import FileResponse, Http404, JsonResponse
+from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
@@ -17,6 +17,35 @@ from pathlib import Path
 import subprocess
 from urllib.parse import quote, unquote, urlparse
 from urllib.parse import urlencode
+
+from apps.core.list_pagination import ConfigurablePaginationMixin
+from apps.core.negozi import (
+    NEGOZI,
+    NEGOZIO_FILTER_ALL,
+    apply_negozio_queryset_filter,
+    negozio_label,
+    normalize_negozio_code,
+    resolve_negozio_filter,
+)
+from apps.core.programma import (
+    build_mailto_href,
+    format_mailto_corpo,
+    format_mailto_oggetto,
+    get_comunicazioni_formato_data,
+    get_mailto_corpo_template,
+    get_mailto_oggetto_template,
+    layout_compatto,
+    operatore_primo_nuova_riparazione,
+)
+from apps.pratiche.cliente_documento import documento_scaduto_message
+from apps.pratiche.cliente_referente import (
+    cliente_referente_url_template,
+    get_referente_from_cliente,
+    get_referente_from_cliente_id,
+)
+from apps.pratiche.foto import delete_pratica_foto_ids, save_pratica_foto_uploads
+from apps.pratiche.gs_articoli import sync_pratica_to_gs_articoli
+from apps.pratiche.codice import get_next_pratica_codice, reserve_pratica_codice
 
 
 def decode_email_header(message, header_name):
@@ -72,7 +101,6 @@ def extract_eml_preview(file_obj):
 from apps.pratiche.forms import (
     CategoriaPraticaForm,
     ComunicazionePraticaForm,
-    IncaricoTecnicoForm,
     MacroCategoriaPraticaForm,
     OperatoreForm,
     PraticaForm,
@@ -82,25 +110,23 @@ from apps.pratiche.forms import (
     PraticaCategoriaFormSet,
     PraticaMacroCategoriaApplyForm,
     StudioTecnicoForm,
-    TecnicoForm,
-    TecnicoFormSet,
-    TemplatePraticaForm,
+    TipoOggettoForm,
 )
 from apps.agenda.models import EventoAgenda
+from apps.anagrafiche.models import Anagrafica
 from apps.pratiche.models import (
     CategoriaPratica,
     ComunicazionePratica,
-    IncaricoTecnico,
     MacroCategoriaPratica,
     Operatore,
     Pratica,
     PraticaCategoriaAllegato,
     PraticaCategoria,
     PraticaCategoriaFile,
+    PraticaFoto,
     PraticaMacroCategoria,
     StudioTecnico,
-    Tecnico,
-    TemplatePratica,
+    TipoOggetto,
 )
 
 
@@ -497,93 +523,253 @@ def with_next(url, next_url):
     return f"{url}?{urlencode({'next': next_url})}"
 
 
-def apply_template_to_pratica(pratica, user=None):
-    template = (
-        TemplatePratica.objects.filter(tipologia=pratica.tipologia, is_active=True)
-        .prefetch_related("macro_categorie__categorie", "categorie")
-        .first()
+def redirect_documento_scaduto(request, cliente, return_url=""):
+    messages.warning(request, documento_scaduto_message(cliente))
+    update_url = reverse("anagrafiche:anagrafica_update", kwargs={"pk": cliente.pk})
+    params = {"prezioso": "1", "documento_scaduto": "1"}
+    if return_url:
+        params["next"] = return_url
+    return redirect(f"{update_url}?{urlencode(params)}")
+
+
+def wants_json_response(request):
+    accept = request.headers.get("Accept", "")
+    return (
+        request.headers.get("X-Requested-With") == "XMLHttpRequest"
+        or "application/json" in accept
     )
 
-    if not template:
-        return 0
 
-    created_count = 0
-
-    for macro_categoria in template.macro_categorie.filter(is_active=True):
-        PraticaMacroCategoria.objects.get_or_create(
-            pratica=pratica,
-            macro_categoria=macro_categoria,
-            is_active=True,
-            defaults={"created_by": user, "updated_by": user},
-        )
-
-        for categoria in macro_categoria.categorie.filter(is_active=True):
-            _, created = PraticaCategoria.objects.get_or_create(
-                pratica=pratica,
-                macro_categoria=macro_categoria,
-                categoria=categoria,
-                versione="",
-                is_active=True,
-                defaults={"created_by": user, "updated_by": user, "origine_template": True},
-            )
-            if created:
-                created_count += 1
-
-    for categoria in template.categorie.filter(is_active=True):
-        _, created = PraticaCategoria.objects.get_or_create(
-            pratica=pratica,
-            macro_categoria=None,
-            categoria=categoria,
-            versione="",
-            is_active=True,
-            defaults={"created_by": user, "updated_by": user, "origine_template": True},
-        )
-        if created:
-            created_count += 1
-
-    return created_count
+def form_first_error_message(form):
+    if form.non_field_errors():
+        return str(form.non_field_errors()[0])
+    for field_name, errors in form.errors.items():
+        if not errors:
+            continue
+        if field_name == "__all__":
+            return str(errors[0])
+        field = form.fields.get(field_name)
+        label = field.label if field is not None else field_name
+        return f"{label}: {errors[0]}"
+    return "Controlla i campi del form."
 
 
-class PraticaListView(LoginRequiredMixin, ListView):
+def documento_scaduto_json_response(request, cliente, return_url=""):
+    update_url = reverse("anagrafiche:anagrafica_update", kwargs={"pk": cliente.pk})
+    params = {"prezioso": "1", "documento_scaduto": "1"}
+    if return_url:
+        params["next"] = return_url
+    return JsonResponse(
+        {
+            "ok": False,
+            "message": documento_scaduto_message(cliente),
+            "redirect_url": f"{update_url}?{urlencode(params)}",
+        },
+        status=400,
+    )
+
+
+def notify_gs_articolo_sync(request, pratica):
+    """Sincronizza GS in background così Salva non resta bloccato sul redirect."""
+    from threading import Thread
+
+    pratica_id = pratica.pk
+    user_id = getattr(request.user, "pk", None)
+
+    def _run():
+        from django.contrib.auth import get_user_model
+        from django.db import close_old_connections
+
+        close_old_connections()
+        try:
+            pratica_obj = Pratica.objects.filter(pk=pratica_id, is_active=True).first()
+            if not pratica_obj:
+                return
+            user = None
+            if user_id:
+                user = get_user_model().objects.filter(pk=user_id).first()
+            sync_pratica_to_gs_articoli(pratica_obj, user)
+        except Exception:
+            pass
+        finally:
+            close_old_connections()
+
+    Thread(target=_run, daemon=True, name=f"gs-sync-{pratica_id}").start()
+    return None
+
+
+class PraticaListView(LoginRequiredMixin, ConfigurablePaginationMixin, ListView):
     model = Pratica
     template_name = "pratiche/pratica_list.html"
     context_object_name = "pratiche"
     paginate_by = 20
 
+    ATTENZIONE_NON_RITIRATE = "non_ritirate"
+    ATTENZIONE_RITARDO_LAVORAZIONE = "ritardo_lavorazione"
+    ATTENZIONE_CHOICES = {
+        ATTENZIONE_NON_RITIRATE: "Non ritirate",
+        ATTENZIONE_RITARDO_LAVORAZIONE: "Ritardo lavorazione",
+    }
+
+    def get_cliente_id(self):
+        cliente_pk = self.kwargs.get("cliente_pk")
+        if cliente_pk:
+            return str(cliente_pk)
+        return (self.request.GET.get("cliente") or "").strip()
+
+    def get_attenzione(self):
+        value = (self.request.GET.get("attenzione") or "").strip()
+        if value in self.ATTENZIONE_CHOICES:
+            return value
+        return ""
+
+    def get_negozio_filter(self):
+        return resolve_negozio_filter(
+            self.request.GET.get("negozio"),
+            self.request.session.get("negozio"),
+        )
+
+    def filter_by_negozio(self, queryset):
+        return apply_negozio_queryset_filter(queryset, self.get_negozio_filter())
+
+    @staticmethod
+    def base_attenzione_queryset():
+        return Pratica.objects.filter(is_active=True, data_scadenza__isnull=False)
+
+    def queryset_non_ritirate(self, today=None):
+        today = today or timezone.localdate()
+        queryset = Pratica.objects.filter(is_active=True).filter(
+            Q(stato=Pratica.Stato.NON_RITIRATA)
+            | Q(
+                stato=Pratica.Stato.IN_CONSEGNA,
+                data_scadenza__isnull=False,
+                data_scadenza__lt=today,
+            )
+        )
+        return self.filter_by_negozio(queryset)
+
+    def queryset_ritardo_lavorazione(self, today=None):
+        today = today or timezone.localdate()
+        queryset = self.base_attenzione_queryset().filter(
+            data_scadenza__lt=today,
+        ).exclude(
+            stato=Pratica.Stato.IN_CONSEGNA,
+        ).exclude(
+            stato__in={
+                Pratica.Stato.COMPLETATA,
+                Pratica.Stato.EVASA,
+                Pratica.Stato.ANNULLATA,
+                Pratica.Stato.ARCHIVIATA,
+                Pratica.Stato.NON_RITIRATA,
+            }
+        )
+        return self.filter_by_negozio(queryset)
+
     def get_queryset(self):
         queryset = (
             Pratica.objects.filter(is_active=True)
-            .select_related("cliente", "responsabile", "operatore")
-            .prefetch_related(
-                Prefetch(
-                    "categoria_collegamenti",
-                    queryset=PraticaCategoria.objects.filter(is_active=True).select_related("categoria", "macro_categoria"),
-                    to_attr="categorie_attive",
-                ),
-                Prefetch(
-                    "macro_categoria_collegamenti",
-                    queryset=PraticaMacroCategoria.objects.filter(is_active=True).select_related("macro_categoria"),
-                    to_attr="macro_categorie_attive",
-                )
+            .select_related(
+                "cliente",
+                "operatore",
+                "riparatore",
+                "centro_assistenza",
+                "tipo_oggetto",
+            )
+            .only(
+                "id",
+                "codice",
+                "negozio",
+                "priorita",
+                "stato",
+                "tipologia",
+                "titolo",
+                "descrizione",
+                "data_apertura",
+                "data_scadenza",
+                "prezzo_al",
+                "referente_cognome",
+                "referente_nome",
+                "referente_telefono",
+                "referente_cellulare",
+                "referente_email",
+                "cliente_id",
+                "operatore_id",
+                "riparatore_id",
+                "centro_assistenza_id",
+                "tipo_oggetto_id",
+                "cliente__id",
+                "cliente__cognome",
+                "cliente__nome",
+                "cliente__ragione_sociale",
+                "operatore__id",
+                "operatore__nominativo",
+                "riparatore__id",
+                "riparatore__denominazione",
+                "centro_assistenza__id",
+                "centro_assistenza__ragione_sociale",
+                "tipo_oggetto__id",
+                "tipo_oggetto__denominazione",
             )
         )
+        queryset = self.filter_by_negozio(queryset)
 
         q = (self.request.GET.get("q") or "").strip()
         stato = self.request.GET.get("stato") or ""
         priorita = self.request.GET.get("priorita") or ""
-        categoria = self.request.GET.get("categoria") or ""
+        tipologia = self.request.GET.get("tipologia") or ""
+        tipo_oggetto = self.request.GET.get("tipo_oggetto") or ""
+        cliente_id = self.get_cliente_id()
+        attenzione = self.get_attenzione()
+        needs_distinct = False
+        today = timezone.localdate()
+
+        if attenzione == self.ATTENZIONE_NON_RITIRATE:
+            queryset = queryset.filter(
+                Q(stato=Pratica.Stato.NON_RITIRATA)
+                | Q(
+                    stato=Pratica.Stato.IN_CONSEGNA,
+                    data_scadenza__isnull=False,
+                    data_scadenza__lt=today,
+                )
+            )
+            stato = ""
+        elif attenzione == self.ATTENZIONE_RITARDO_LAVORAZIONE:
+            queryset = queryset.filter(
+                data_scadenza__isnull=False,
+                data_scadenza__lt=today,
+            ).exclude(
+                stato=Pratica.Stato.IN_CONSEGNA,
+            ).exclude(
+                stato__in={
+                    Pratica.Stato.COMPLETATA,
+                    Pratica.Stato.EVASA,
+                    Pratica.Stato.ANNULLATA,
+                    Pratica.Stato.ARCHIVIATA,
+                    Pratica.Stato.NON_RITIRATA,
+                }
+            )
+            stato = ""
 
         if q:
-            queryset = queryset.filter(
+            search_filter = (
                 Q(codice__icontains=q)
                 | Q(titolo__icontains=q)
-                | Q(tipo_oggetto__icontains=q)
-                | Q(riparatore__icontains=q)
+                | Q(tipo_oggetto__denominazione__icontains=q)
+                | Q(riparatore__denominazione__icontains=q)
                 | Q(operatore__nominativo__icontains=q)
                 | Q(cliente__ragione_sociale__icontains=q)
-                | Q(categoria_collegamenti__categoria__denominazione__icontains=q)
-                | Q(macro_categoria_collegamenti__macro_categoria__denominazione__icontains=q)
+                | Q(cliente__cognome__icontains=q)
+                | Q(cliente__nome__icontains=q)
+                | Q(referente_cognome__icontains=q)
+                | Q(referente_nome__icontains=q)
             )
+            if len(q) >= 3:
+                search_filter |= Q(categoria_collegamenti__categoria__denominazione__icontains=q)
+                search_filter |= Q(
+                    macro_categoria_collegamenti__macro_categoria__denominazione__icontains=q
+                )
+                needs_distinct = True
+            queryset = queryset.filter(search_filter)
 
         if stato:
             queryset = queryset.filter(stato=stato)
@@ -591,62 +777,367 @@ class PraticaListView(LoginRequiredMixin, ListView):
         if priorita:
             queryset = queryset.filter(priorita=priorita)
 
-        if categoria:
-            queryset = queryset.filter(categoria_collegamenti__categoria_id=categoria)
+        if tipologia in {choice.value for choice in Pratica.Tipologia}:
+            queryset = queryset.filter(tipologia=tipologia)
 
-        return queryset.distinct()
+        if tipo_oggetto:
+            try:
+                queryset = queryset.filter(tipo_oggetto_id=int(tipo_oggetto))
+            except (TypeError, ValueError):
+                pass
+
+        if cliente_id:
+            try:
+                queryset = queryset.filter(cliente_id=int(cliente_id))
+            except (TypeError, ValueError):
+                pass
+
+        if attenzione:
+            queryset = queryset.order_by("data_scadenza", "id")
+        else:
+            queryset = queryset.order_by("-data_apertura", "-id")
+        if needs_distinct:
+            queryset = queryset.distinct()
+        return queryset
+
+    def get_tipi_oggetto_filtro(self):
+        return TipoOggetto.objects.filter(is_active=True).order_by("denominazione")
+
+    def build_active_filters(self, cliente_filtro):
+        active_filters = []
+        negozio_filter = self.get_negozio_filter()
+        if negozio_filter == NEGOZIO_FILTER_ALL:
+            active_filters.append(("Negozio", "Tutti i negozi"))
+        else:
+            active_filters.append(("Negozio", negozio_label(negozio_filter) or negozio_filter))
+
+        attenzione = self.get_attenzione()
+        if attenzione:
+            active_filters.append(
+                ("Attenzione", self.ATTENZIONE_CHOICES.get(attenzione, attenzione))
+            )
+
+        q = (self.request.GET.get("q") or "").strip()
+        if q:
+            active_filters.append(("Ricerca", q))
+
+        if cliente_filtro:
+            active_filters.append(("Cliente", cliente_filtro.display_name))
+
+        tipo_oggetto_id = self.request.GET.get("tipo_oggetto") or ""
+        if tipo_oggetto_id:
+            tipo = TipoOggetto.objects.filter(pk=tipo_oggetto_id).values_list("denominazione", flat=True).first()
+            if tipo:
+                active_filters.append(("Tipo oggetto", tipo))
+
+        tipologia = self.request.GET.get("tipologia") or ""
+        if tipologia:
+            active_filters.append(
+                ("Tipologia", dict(Pratica.Tipologia.choices).get(tipologia, tipologia))
+            )
+
+        if not attenzione:
+            stato = self.request.GET.get("stato") or ""
+            if stato:
+                active_filters.append(("Stato", dict(Pratica.Stato.choices).get(stato, stato)))
+
+        priorita = self.request.GET.get("priorita") or ""
+        if priorita:
+            active_filters.append(("Priorita", dict(Pratica.Priorita.choices).get(priorita, priorita)))
+
+        return active_filters
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["stati"] = Pratica.Stato.choices
+        context["stati"] = [
+            (stato.value, stato.label) for stato in Pratica.STATI_SELEZIONABILI
+        ]
         context["priorita"] = Pratica.Priorita.choices
-        context["categorie"] = CategoriaPratica.objects.filter(is_active=True).order_by("denominazione")
+        context["tipologie"] = Pratica.Tipologia.choices
+        context["tipi_oggetto"] = self.get_tipi_oggetto_filtro()
+        context["negozi"] = NEGOZI
+        negozio_filter = self.get_negozio_filter()
+        context["negozio_filter"] = negozio_filter
+        context["negozio_filter_all"] = negozio_filter == NEGOZIO_FILTER_ALL
+        context["negozio_filter_label"] = negozio_label(negozio_filter)
+        cliente_id = self.get_cliente_id()
+        context["selected_cliente"] = cliente_id
+        context["cliente_filtro"] = None
+        if cliente_id:
+            context["cliente_filtro"] = Anagrafica.objects.filter(
+                pk=cliente_id,
+                is_active=True,
+                tipo=Anagrafica.Tipo.CLIENTE,
+            ).only("id", "cognome", "nome", "ragione_sociale").first()
+        attenzione = self.get_attenzione()
+        context["attenzione"] = attenzione
+        context["count_non_ritirate"] = self.queryset_non_ritirate().count()
+        context["count_ritardo_lavorazione"] = self.queryset_ritardo_lavorazione().count()
+        if attenzione:
+            mailto_oggetto = get_mailto_oggetto_template()
+            mailto_corpo = get_mailto_corpo_template()
+            for pratica in context["pratiche"]:
+                pratica.mailto_href = build_mailto_href(
+                    pratica.referente_email,
+                    pratica,
+                    oggetto_template=mailto_oggetto,
+                    corpo_template=mailto_corpo,
+                )
+                pratica.mailto_register_url = reverse(
+                    "pratiche:comunicazione_mailto_register",
+                    kwargs={"pratica_pk": pratica.pk},
+                )
+        context["active_filters"] = self.build_active_filters(context["cliente_filtro"])
+        query_dict = self.request.GET.copy()
+        query_dict.pop("page", None)
+        if "negozio" not in query_dict:
+            query_dict["negozio"] = negozio_filter
+        context["filters_query"] = query_dict.urlencode()
         return context
-
 
 class PraticaDetailView(LoginRequiredMixin, DetailView):
     model = Pratica
     template_name = "pratiche/pratica_detail.html"
     context_object_name = "pratica"
-    queryset = Pratica.objects.select_related("cliente", "responsabile", "operatore").prefetch_related(
+    queryset = Pratica.objects.select_related(
+        "cliente",
+        "responsabile",
+        "operatore",
+        "tipo_oggetto",
+        "riparatore",
+        "centro_assistenza",
+    ).prefetch_related(
         Prefetch(
-            "categoria_collegamenti",
-            queryset=PraticaCategoria.objects.filter(is_active=True).select_related("categoria", "macro_categoria"),
-            to_attr="categorie_attive",
+            "foto",
+            queryset=PraticaFoto.objects.filter(is_active=True).order_by("created_at", "id"),
         )
     )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["tecnici"] = self.object.tecnici.filter(is_active=True)
         context["eventi_agenda"] = self.object.eventi_agenda.filter(is_active=True).order_by(
             "data_inizio",
             "ora_inizio",
         )[:8]
         context["comunicazioni"] = self.object.comunicazioni.filter(is_active=True).order_by("-data_ora", "-id")
-        context["comunicazione_form"] = ComunicazionePraticaForm()
-        macro_categorie_pratica = list(
-            self.object.macro_categoria_collegamenti.filter(
-                is_active=True
-            ).select_related("macro_categoria").prefetch_related("macro_categoria__categorie")
+        context["comunicazione_form"] = ComunicazionePraticaForm(
+            formato_data=get_comunicazioni_formato_data()
         )
-        context["macro_categorie_pratica"] = macro_categorie_pratica
-        context["macro_categoria_apply_form"] = PraticaMacroCategoriaApplyForm()
-        categorie_pratica = list(
-            self.object.categoria_collegamenti.filter(is_active=True).select_related("categoria", "macro_categoria")
-        )
-        for pratica_categoria in categorie_pratica:
-            build_folder_file_entries(pratica_categoria)
-            pratica_categoria.allegato_entries = [
-                build_uploaded_file_entry(allegato)
-                for allegato in pratica_categoria.allegati_singoli.filter(is_active=True)
-            ]
-
-        context["categorie_pratica"] = categorie_pratica
         context["return_url"] = get_safe_next_url(self.request) or reverse("pratiche:pratica_list")
         context["return_label"] = "Anagrafica" if get_safe_next_url(self.request) else "Elenco"
         context["next_url"] = get_safe_next_url(self.request)
         return context
+
+
+class PraticaBustaPrintView(LoginRequiredMixin, DetailView):
+    model = Pratica
+    template_name = "pratiche/pratica_busta_print.html"
+    context_object_name = "pratica"
+
+    def get_queryset(self):
+        return Pratica.objects.filter(is_active=True).select_related(
+            "cliente",
+            "operatore",
+            "tipo_oggetto",
+            "riparatore",
+            "centro_assistenza",
+        )
+
+    def get(self, request, *args, **kwargs):
+        from django.template.loader import render_to_string
+        from django.templatetags.static import static
+
+        pratica = self.get_object()
+        missing_scadenza_msg = (
+            "Impossibile stampare la busta: inserisci la Data prevista consegna "
+            "nella scheda riparazione."
+        )
+        fmt = (request.GET.get("format") or "").lower()
+
+        if not pratica.data_scadenza:
+            if fmt == "json":
+                return JsonResponse(
+                    {
+                        "ok": False,
+                        "message": missing_scadenza_msg,
+                        "redirect_url": reverse("pratiche:pratica_update", args=[pratica.pk]),
+                    },
+                    status=400,
+                )
+            messages.error(request, missing_scadenza_msg)
+            return redirect("pratiche:pratica_update", pk=pratica.pk)
+
+        if fmt == "json":
+            self.object = pratica
+            context = self.get_context_data()
+            sheet_html = render_to_string(
+                "pratiche/partials/busta_sheet.html",
+                context,
+                request=request,
+            )
+            return JsonResponse(
+                {
+                    "ok": True,
+                    "title": f"Busta riparazione · {pratica.codice}",
+                    "sheet_html": sheet_html,
+                    "css_url": request.build_absolute_uri(
+                        static("securtek/css/busta_print.css")
+                    )
+                    + "?v=20260721-40",
+                }
+            )
+
+        return super().get(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        from apps.core.models import Azienda
+        from apps.pratiche.busta import build_busta_context
+
+        context = super().get_context_data(**kwargs)
+        context["busta"] = build_busta_context(self.object)
+        context["azienda"] = (
+            Azienda.objects.filter(is_active=True).order_by("ragione_sociale").first()
+        )
+        return context
+
+
+class PraticaPrivacyPrintView(LoginRequiredMixin, View):
+    def get(self, request, pk):
+        pratica = get_object_or_404(
+            Pratica.objects.select_related("cliente", "tipo_oggetto").prefetch_related(
+                "foto",
+                "cliente__indirizzi",
+            ),
+            pk=pk,
+            is_active=True,
+        )
+
+        from apps.pratiche.privacy import (
+            build_privacy_pdf_bytes,
+            privacy_pdf_filename,
+            privacy_pdf_pages_as_png_data_uris,
+        )
+
+        try:
+            pdf_bytes = build_privacy_pdf_bytes(pratica)
+        except FileNotFoundError:
+            messages.error(
+                request,
+                "Modello scheda privacy non trovato. Contatta l'amministratore.",
+            )
+            return redirect("pratiche:pratica_detail", pk=pk)
+        except ValueError as exc:
+            messages.error(request, str(exc))
+            return redirect("pratiche:pratica_detail", pk=pk)
+
+        filename = privacy_pdf_filename(pratica)
+        pdf_url = (
+            reverse("pratiche:pratica_privacy_print", args=[pratica.pk]) + "?format=pdf"
+        )
+        fmt = (request.GET.get("format") or "").lower()
+
+        # PDF grezzo (iframe / download)
+        if fmt == "pdf":
+            response = HttpResponse(pdf_bytes, content_type="application/pdf")
+            response["Content-Disposition"] = f'inline; filename="{filename}"'
+            response["X-Frame-Options"] = "SAMEORIGIN"
+            return response
+
+        page_images = privacy_pdf_pages_as_png_data_uris(pdf_bytes)
+        document_title = filename.replace(".pdf", "").replace("_", " ")
+
+        # Dati per modale (stampa senza aprire una scheda con URL visibile)
+        if fmt == "json":
+            return JsonResponse(
+                {
+                    "ok": True,
+                    "filename": filename,
+                    "title": document_title,
+                    "pdf_url": pdf_url,
+                    "page_images": page_images,
+                }
+            )
+
+        # Pagina dedicata (fallback diretto)
+        return render(
+            request,
+            "pratiche/pratica_privacy_print.html",
+            {
+                "pratica": pratica,
+                "filename": filename,
+                "document_title": document_title,
+                "pdf_url": pdf_url,
+                "page_images": page_images,
+            },
+        )
+
+
+class ClienteReferenteJsonView(LoginRequiredMixin, View):
+    def get(self, request, pk):
+        referente = get_referente_from_cliente_id(pk)
+        if referente is None:
+            return JsonResponse({"error": "Cliente non trovato."}, status=404)
+        return JsonResponse(referente)
+
+
+def serialize_cliente_search_result(anagrafica):
+    details = []
+    if anagrafica.codice_fiscale:
+        details.append(anagrafica.codice_fiscale)
+    if anagrafica.telefono:
+        details.append(anagrafica.telefono)
+    elif anagrafica.cellulare:
+        details.append(anagrafica.cellulare)
+
+    return {
+        "id": anagrafica.pk,
+        "label": anagrafica.display_name,
+        "subtitle": " · ".join(details),
+    }
+
+
+class ClienteSearchView(LoginRequiredMixin, View):
+    def get(self, request):
+        selected_id = (request.GET.get("selected") or "").strip()
+        query = (request.GET.get("q") or "").strip()
+        results = []
+        seen_ids = set()
+
+        if selected_id:
+            selected = (
+                Anagrafica.objects.filter(
+                    pk=selected_id,
+                    is_active=True,
+                    tipo=Anagrafica.Tipo.CLIENTE,
+                )
+                .first()
+            )
+            if selected:
+                results.append(serialize_cliente_search_result(selected))
+                seen_ids.add(selected.pk)
+
+        if len(query) >= 2:
+            from apps.anagrafiche.search import (
+                annotate_anagrafica_name_search,
+                build_anagrafica_name_search_q,
+            )
+
+            queryset = (
+                annotate_anagrafica_name_search(
+                    Anagrafica.objects.filter(
+                        is_active=True,
+                        tipo=Anagrafica.Tipo.CLIENTE,
+                    )
+                )
+                .filter(build_anagrafica_name_search_q(query, include_contacts=True))
+                .order_by("cognome", "nome", "ragione_sociale")[:20]
+            )
+            for anagrafica in queryset:
+                if anagrafica.pk in seen_ids:
+                    continue
+                results.append(serialize_cliente_search_result(anagrafica))
+
+        return JsonResponse({"results": results})
 
 
 class PraticaCreateView(LoginRequiredMixin, CreateView):
@@ -660,98 +1151,77 @@ class PraticaCreateView(LoginRequiredMixin, CreateView):
 
         if cliente_id:
             initial["cliente"] = cliente_id
+            referente = get_referente_from_cliente_id(cliente_id)
+            if referente:
+                initial.update(
+                    {
+                        "referente_nome": referente["nome"],
+                        "referente_cognome": referente["cognome"],
+                        "referente_telefono": referente["telefono"],
+                        "referente_cellulare": referente["cellulare"],
+                        "referente_email": referente["email"],
+                    }
+                )
 
         return initial
 
-    def get_inline_formsets(self, data=None):
-        pratica = self.object or Pratica()
-        return {
-            "categorie_formset": PraticaCategoriaFormSet(
-                data=data,
-                instance=pratica,
-                prefix="categorie",
-                queryset=PraticaCategoria.objects.none(),
-            ),
-            "tecnici_formset": TecnicoFormSet(
-                data=data,
-                instance=pratica,
-                prefix="tecnici",
-                queryset=Tecnico.objects.none(),
-            ),
-        }
-
-    def post(self, request, *args, **kwargs):
-        self.object = None
-        form = self.get_form()
-        formsets = self.get_inline_formsets(data=request.POST)
-
-        if form.is_valid() and all(formset.is_valid() for formset in formsets.values()):
-            return self.forms_valid(form, formsets)
-
-        return self.forms_invalid(form, formsets)
-
-    def forms_valid(self, form, formsets):
-        with transaction.atomic():
-            form.instance.created_by = self.request.user
-            form.instance.updated_by = self.request.user
-            if not form.instance.responsabile:
-                form.instance.responsabile = self.request.user
-            self.object = form.save()
-            self.save_inline_formsets(formsets)
-            if not self.object.categoria_collegamenti.filter(is_active=True).exists():
-                categorie_create = apply_template_to_pratica(self.object, self.request.user)
-                if categorie_create:
-                    messages.info(
-                        self.request,
-                        f"Template pratica applicato: categorie aggiunte {categorie_create}.",
-                    )
-
-        messages.success(self.request, "Riparazione creata correttamente.")
-        return redirect(self.get_success_url())
-
-    def forms_invalid(self, form, formsets):
-        return self.render_to_response(self.get_context_data(form=form, **formsets))
-
-    def save_inline_formsets(self, formsets):
-        for formset in formsets.values():
-            formset.instance = self.object
-            instances = formset.save(commit=False)
-
-            for deleted_object in formset.deleted_objects:
-                if deleted_object.pk:
-                    deleted_object.soft_delete(user=self.request.user)
-
-            for instance in instances:
-                instance.pratica = self.object
-                if not instance.pk:
-                    instance.created_by = self.request.user
-                instance.updated_by = self.request.user
-                instance.save()
-
-            formset.save_m2m()
-            if getattr(formset, "prefix", "") == "categorie":
-                save_category_formset_attachments(self.request, formset)
+    def form_invalid(self, form):
+        cliente = getattr(form, "documento_scaduto_cliente", None)
+        if cliente:
+            return_url = self.request.get_full_path()
+            return redirect_documento_scaduto(self.request, cliente, return_url)
+        return super().form_invalid(form)
 
     def form_valid(self, form):
+        negozio = normalize_negozio_code(self.request.session.get("negozio"))
+        if not negozio:
+            messages.error(
+                self.request,
+                "Negozio non selezionato. Effettua nuovamente l'accesso.",
+            )
+            return redirect("accounts:login")
+
         form.instance.created_by = self.request.user
         form.instance.updated_by = self.request.user
+        form.instance.negozio = negozio
+        form.instance.codice = reserve_pratica_codice(
+            negozio,
+            self.request.POST.get("codice_riservato", ""),
+        )
         if not form.instance.responsabile:
             form.instance.responsabile = self.request.user
+        self.object = form.save()
+        notify_gs_articolo_sync(self.request, self.object)
+        saved_count = len(save_pratica_foto_uploads(self.request, self.object))
         messages.success(self.request, "Riparazione creata correttamente.")
-        return super().form_valid(form)
+        if saved_count:
+            messages.success(
+                self.request,
+                f"{saved_count} foto collegata/e alla riparazione.",
+            )
+        return redirect(self.get_success_url())
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["operatore_primo"] = operatore_primo_nuova_riparazione()
+        kwargs["layout_compatto"] = layout_compatto(self.request)
+        return kwargs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context["operatore_primo"] = operatore_primo_nuova_riparazione()
         next_url = get_safe_next_url(self.request)
         context["next_url"] = next_url
         context["cancel_url"] = next_url or reverse("pratiche:pratica_list")
-        if "categorie_formset" not in context or "tecnici_formset" not in context:
-            context.update(self.get_inline_formsets())
+        negozio = normalize_negozio_code(self.request.session.get("negozio"))
+        context["current_negozio_code"] = negozio
+        context["preview_codice"] = get_next_pratica_codice(negozio) if negozio else ""
+        context["cliente_referente_url_template"] = cliente_referente_url_template()
+        context["pratica_foto"] = []
         return context
 
     def get_success_url(self):
-        update_url = reverse("pratiche:pratica_update", kwargs={"pk": self.object.pk})
-        return with_next(update_url, get_safe_next_url(self.request))
+        return reverse("pratiche:pratica_list")
 
 
 class PraticaUpdateView(LoginRequiredMixin, UpdateView):
@@ -760,83 +1230,76 @@ class PraticaUpdateView(LoginRequiredMixin, UpdateView):
     template_name = "pratiche/pratica_form.html"
 
     def get_queryset(self):
-        return Pratica.objects.filter(is_active=True)
+        return Pratica.objects.filter(is_active=True).prefetch_related(
+            Prefetch(
+                "foto",
+                queryset=PraticaFoto.objects.filter(is_active=True).order_by("created_at", "id"),
+            )
+        )
 
-    def get_inline_formsets(self, data=None):
-        return {
-            "categorie_formset": PraticaCategoriaFormSet(
-                data=data,
-                instance=self.object,
-                prefix="categorie",
-                queryset=PraticaCategoria.objects.filter(is_active=True),
-            ),
-            "tecnici_formset": TecnicoFormSet(
-                data=data,
-                instance=self.object,
-                prefix="tecnici",
-                queryset=Tecnico.objects.filter(is_active=True),
-            ),
-        }
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["layout_compatto"] = layout_compatto(self.request)
+        return kwargs
 
-    def post(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        form = self.get_form()
-        formsets = self.get_inline_formsets(data=request.POST)
-
-        if form.is_valid() and all(formset.is_valid() for formset in formsets.values()):
-            return self.forms_valid(form, formsets)
-
-        return self.forms_invalid(form, formsets)
-
-    def forms_valid(self, form, formsets):
-        with transaction.atomic():
-            form.instance.updated_by = self.request.user
-            self.object = form.save()
-            self.save_inline_formsets(formsets)
-
-        messages.success(self.request, "Riparazione aggiornata correttamente.")
-        return redirect(self.get_success_url())
-
-    def forms_invalid(self, form, formsets):
-        return self.render_to_response(self.get_context_data(form=form, **formsets))
-
-    def save_inline_formsets(self, formsets):
-        for formset in formsets.values():
-            instances = formset.save(commit=False)
-
-            for deleted_object in formset.deleted_objects:
-                if deleted_object.pk:
-                    deleted_object.soft_delete(user=self.request.user)
-
-            for instance in instances:
-                instance.pratica = self.object
-                if not instance.pk:
-                    instance.created_by = self.request.user
-                instance.updated_by = self.request.user
-                instance.save()
-
-            formset.save_m2m()
-            if getattr(formset, "prefix", "") == "categorie":
-                save_category_formset_attachments(self.request, formset)
+    def form_invalid(self, form):
+        cliente = getattr(form, "documento_scaduto_cliente", None)
+        if cliente:
+            return_url = self.request.get_full_path()
+            if wants_json_response(self.request):
+                return documento_scaduto_json_response(self.request, cliente, return_url)
+            return redirect_documento_scaduto(self.request, cliente, return_url)
+        if wants_json_response(self.request):
+            return JsonResponse(
+                {
+                    "ok": False,
+                    "message": form_first_error_message(form),
+                    "errors": form.errors.get_json_data(),
+                },
+                status=400,
+            )
+        return super().form_invalid(form)
 
     def form_valid(self, form):
         form.instance.updated_by = self.request.user
+        self.object = form.save()
+        delete_pratica_foto_ids(self.request, self.object)
+        saved_count = len(save_pratica_foto_uploads(self.request, self.object))
+        notify_gs_articolo_sync(self.request, self.object)
+        if wants_json_response(self.request):
+            return JsonResponse(
+                {
+                    "ok": True,
+                    "message": "Scheda salvata.",
+                    "saved_fotos": saved_count,
+                }
+            )
         messages.success(self.request, "Riparazione aggiornata correttamente.")
-        return super().form_valid(form)
+        if saved_count:
+            messages.success(
+                self.request,
+                f"{saved_count} foto aggiunta/e alla riparazione.",
+            )
+        return redirect(self.get_success_url())
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        detail_url = reverse("pratiche:pratica_detail", kwargs={"pk": self.object.pk})
         next_url = get_safe_next_url(self.request)
         context["next_url"] = next_url
-        context["cancel_url"] = with_next(detail_url, next_url)
-        if "categorie_formset" not in context or "tecnici_formset" not in context:
-            context.update(self.get_inline_formsets())
+        context["cancel_url"] = next_url or reverse("pratiche:pratica_list")
+        context["cliente_referente_url_template"] = cliente_referente_url_template()
+        context["pratica_foto"] = list(self.object.foto.all())
+        context["comunicazioni"] = self.object.comunicazioni.filter(is_active=True).order_by(
+            "-data_ora",
+            "-id",
+        )
+        context["comunicazione_form"] = ComunicazionePraticaForm(
+            formato_data=get_comunicazioni_formato_data()
+        )
         return context
 
     def get_success_url(self):
-        detail_url = reverse("pratiche:pratica_detail", kwargs={"pk": self.object.pk})
-        return with_next(detail_url, get_safe_next_url(self.request))
+        return reverse("pratiche:pratica_list")
 
 
 class PraticaDeleteView(LoginRequiredMixin, View):
@@ -847,10 +1310,48 @@ class PraticaDeleteView(LoginRequiredMixin, View):
         return redirect("pratiche:pratica_list")
 
 
+class PraticaFotoUploadView(LoginRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        pratica = get_object_or_404(Pratica, pk=kwargs["pratica_pk"], is_active=True)
+        saved = save_pratica_foto_uploads(request, pratica)
+
+        if saved:
+            messages.success(request, f"{len(saved)} foto aggiunta/e alla riparazione.")
+        else:
+            messages.warning(request, "Seleziona almeno una foto da aggiungere.")
+
+        next_url = get_safe_next_url(request)
+        if next_url:
+            return redirect(next_url)
+        return redirect("pratiche:pratica_detail", pk=pratica.pk)
+
+
+class PraticaFotoDeleteView(LoginRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        pratica = get_object_or_404(Pratica, pk=kwargs["pratica_pk"], is_active=True)
+        foto = get_object_or_404(
+            PraticaFoto,
+            pk=kwargs["pk"],
+            pratica=pratica,
+            is_active=True,
+        )
+        foto.soft_delete(user=request.user)
+        messages.success(request, "Foto eliminata dalla riparazione.")
+
+        next_url = get_safe_next_url(request)
+        if next_url:
+            return redirect(next_url)
+        return redirect("pratiche:pratica_detail", pk=pratica.pk)
+
+
 class ComunicazionePraticaCreateView(LoginRequiredMixin, View):
     def post(self, request, *args, **kwargs):
         pratica = get_object_or_404(Pratica, pk=kwargs["pratica_pk"], is_active=True)
-        form = ComunicazionePraticaForm(request.POST, request.FILES)
+        form = ComunicazionePraticaForm(
+            request.POST,
+            request.FILES,
+            formato_data=get_comunicazioni_formato_data(),
+        )
 
         if form.is_valid():
             comunicazione = form.save(commit=False)
@@ -862,7 +1363,121 @@ class ComunicazionePraticaCreateView(LoginRequiredMixin, View):
         else:
             messages.error(request, "Controlla i dati della comunicazione.")
 
+        next_url = get_safe_next_url(request)
+        if next_url:
+            return redirect(next_url)
         return redirect("pratiche:pratica_detail", pk=pratica.pk)
+
+
+class ComunicazionePraticaDeleteView(LoginRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        pratica = get_object_or_404(Pratica, pk=kwargs["pratica_pk"], is_active=True)
+        comunicazione = get_object_or_404(
+            ComunicazionePratica,
+            pk=kwargs["pk"],
+            pratica=pratica,
+            is_active=True,
+        )
+        comunicazione.soft_delete(user=request.user)
+        messages.success(request, "Comunicazione eliminata correttamente.")
+
+        next_url = get_safe_next_url(request)
+        if next_url:
+            return redirect(next_url)
+        return redirect("pratiche:pratica_detail", pk=pratica.pk)
+
+
+class ComunicazionePraticaUpdateView(LoginRequiredMixin, UpdateView):
+    model = ComunicazionePratica
+    form_class = ComunicazionePraticaForm
+    template_name = "pratiche/comunicazione_form.html"
+    context_object_name = "comunicazione"
+    pk_url_kwarg = "pk"
+
+    def get_queryset(self):
+        return ComunicazionePratica.objects.filter(
+            is_active=True,
+            pratica_id=self.kwargs["pratica_pk"],
+            pratica__is_active=True,
+        ).select_related("pratica", "pratica__cliente")
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["formato_data"] = get_comunicazioni_formato_data()
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        pratica = self.object.pratica
+        context["pratica"] = pratica
+        next_url = get_safe_next_url(self.request)
+        context["next_url"] = next_url
+        context["cancel_url"] = next_url or (
+            reverse("pratiche:pratica_update", kwargs={"pk": pratica.pk}) + "#comunicazioni"
+        )
+        return context
+
+    def form_valid(self, form):
+        form.instance.updated_by = self.request.user
+        messages.success(self.request, "Comunicazione aggiornata correttamente.")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        next_url = get_safe_next_url(self.request)
+        if next_url:
+            return next_url
+        return reverse("pratiche:pratica_update", kwargs={"pk": self.object.pratica_id}) + "#comunicazioni"
+
+
+class ComunicazioneMailtoRegisterView(LoginRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        pratica = get_object_or_404(
+            Pratica.objects.only(
+                "id",
+                "codice",
+                "referente_nome",
+                "referente_cognome",
+                "referente_email",
+                "referente_telefono",
+                "referente_cellulare",
+                "cliente_id",
+            ).select_related("cliente"),
+            pk=kwargs["pratica_pk"],
+            is_active=True,
+        )
+        email = (pratica.referente_email or "").strip()
+        if not email:
+            return JsonResponse(
+                {"ok": False, "message": "Nessuna email disponibile per questa riparazione."},
+                status=400,
+            )
+
+        oggetto = format_mailto_oggetto(pratica)
+        corpo = format_mailto_corpo(pratica)
+        lines = [
+            f"Mail inviata a {email}.",
+            f"Oggetto: {oggetto}" if oggetto else "",
+        ]
+        if corpo:
+            lines.extend(["", corpo])
+        descrizione = "\n".join(line for line in lines if line is not None).strip()
+
+        comunicazione = ComunicazionePratica(
+            pratica=pratica,
+            data_ora=timezone.now(),
+            descrizione=descrizione,
+            created_by=request.user,
+            updated_by=request.user,
+        )
+        comunicazione.save()
+
+        return JsonResponse(
+            {
+                "ok": True,
+                "message": "Invio mail registrato nelle comunicazioni.",
+                "comunicazione_id": comunicazione.pk,
+            }
+        )
 
 
 class ComunicazionePraticaFileView(LoginRequiredMixin, View):
@@ -915,7 +1530,7 @@ class ComunicazionePraticaPreviewView(LoginRequiredMixin, DetailView):
         return context
 
 
-class CategoriaPraticaListView(LoginRequiredMixin, ListView):
+class CategoriaPraticaListView(LoginRequiredMixin, ConfigurablePaginationMixin, ListView):
     model = CategoriaPratica
     template_name = "pratiche/categoria_pratica_list.html"
     context_object_name = "categorie"
@@ -980,7 +1595,7 @@ class CategoriaPraticaDeleteView(LoginRequiredMixin, View):
         return redirect("pratiche:categoria_pratica_list")
 
 
-class MacroCategoriaPraticaListView(LoginRequiredMixin, ListView):
+class MacroCategoriaPraticaListView(LoginRequiredMixin, ConfigurablePaginationMixin, ListView):
     model = MacroCategoriaPratica
     template_name = "pratiche/macro_categoria_pratica_list.html"
     context_object_name = "macro_categorie"
@@ -1096,100 +1711,9 @@ class PraticaMacroCategoriaApplyView(LoginRequiredMixin, View):
                 f"Macro-categoria collegata. Categorie aggiunte: {categorie_aggiunte}.",
             )
         else:
-            messages.info(request, "Macro-categoria collegata. Le categorie erano gia' presenti nella pratica.")
+            messages.info(request, "Macro-categoria collegata. Le categorie erano gia' presenti nella riparazione.")
 
         return redirect("pratiche:pratica_detail", pk=pratica.pk)
-
-
-class TemplatePraticaListView(LoginRequiredMixin, ListView):
-    model = TemplatePratica
-    template_name = "pratiche/template_pratica_list.html"
-    context_object_name = "template_pratiche"
-
-    def get_queryset(self):
-        return (
-            TemplatePratica.objects.filter(is_active=True)
-            .prefetch_related("macro_categorie", "categorie")
-            .order_by("tipologia")
-        )
-
-
-class TemplatePraticaCreateView(LoginRequiredMixin, CreateView):
-    model = TemplatePratica
-    form_class = TemplatePraticaForm
-    template_name = "pratiche/template_pratica_form.html"
-
-    def form_valid(self, form):
-        form.instance.created_by = self.request.user
-        form.instance.updated_by = self.request.user
-        messages.success(self.request, "Template pratica creato correttamente.")
-        return super().form_valid(form)
-
-    def get_success_url(self):
-        return reverse("pratiche:template_pratica_list")
-
-
-class TemplatePraticaUpdateView(LoginRequiredMixin, UpdateView):
-    model = TemplatePratica
-    form_class = TemplatePraticaForm
-    template_name = "pratiche/template_pratica_form.html"
-
-    def get_queryset(self):
-        return TemplatePratica.objects.filter(is_active=True)
-
-    def form_valid(self, form):
-        form.instance.updated_by = self.request.user
-        messages.success(self.request, "Template pratica aggiornato correttamente.")
-        return super().form_valid(form)
-
-    def get_success_url(self):
-        return reverse("pratiche:template_pratica_list")
-
-
-class TemplatePraticaDeleteView(LoginRequiredMixin, View):
-    def post(self, request, *args, **kwargs):
-        template = get_object_or_404(TemplatePratica, pk=kwargs["pk"], is_active=True)
-        template.soft_delete(user=request.user)
-        messages.success(request, "Template pratica eliminato correttamente.")
-        return redirect("pratiche:template_pratica_list")
-
-
-class TemplatePraticaRowsView(LoginRequiredMixin, View):
-    def get(self, request, *args, **kwargs):
-        tipologia = (request.GET.get("tipologia") or "").strip()
-        template = (
-            TemplatePratica.objects.filter(tipologia=tipologia, is_active=True)
-            .prefetch_related("macro_categorie__categorie", "categorie")
-            .first()
-        )
-
-        if not template:
-            return JsonResponse({"rows": []})
-
-        rows = []
-
-        for macro_categoria in template.macro_categorie.filter(is_active=True):
-            for categoria in macro_categoria.categorie.filter(is_active=True):
-                rows.append(
-                    {
-                        "macro_categoria": macro_categoria.pk,
-                        "macro_categoria_label": macro_categoria.denominazione,
-                        "categoria": categoria.pk,
-                        "categoria_label": categoria.denominazione,
-                    }
-                )
-
-        for categoria in template.categorie.filter(is_active=True):
-            rows.append(
-                {
-                    "macro_categoria": "",
-                    "macro_categoria_label": "",
-                    "categoria": categoria.pk,
-                    "categoria_label": categoria.denominazione,
-                }
-            )
-
-        return JsonResponse({"rows": rows})
 
 
 class PraticaCategoriaCreateView(LoginRequiredMixin, CreateView):
@@ -1216,7 +1740,7 @@ class PraticaCategoriaCreateView(LoginRequiredMixin, CreateView):
         except IntegrityError:
             form.add_error(
                 "versione",
-                "Questa categoria e questa versione sono gia' collegate alla pratica.",
+                "Questa categoria e questa versione sono gia' collegate alla riparazione.",
             )
             return self.form_invalid(form)
 
@@ -1251,14 +1775,14 @@ class PraticaCategoriaUpdateView(LoginRequiredMixin, UpdateView):
         except IntegrityError:
             form.add_error(
                 "versione",
-                "Questa categoria e questa versione sono gia' collegate alla pratica.",
+                "Questa categoria e questa versione sono gia' collegate alla riparazione.",
             )
             return self.form_invalid(form)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["pratica"] = self.object.pratica
-        context["page_title"] = "Modifica categoria pratica"
+        context["page_title"] = "Modifica categoria riparazione"
         return context
 
     def get_success_url(self):
@@ -1275,7 +1799,7 @@ class PraticaCategoriaDeleteView(LoginRequiredMixin, View):
         )
         pratica_pk = pratica_categoria.pratica_id
         pratica_categoria.soft_delete(user=request.user)
-        messages.success(request, "Categoria rimossa dalla pratica.")
+        messages.success(request, "Categoria rimossa dalla riparazione.")
         return redirect("pratiche:pratica_detail", pk=pratica_pk)
 
 
@@ -1435,7 +1959,7 @@ class PraticaCategoriaFileUnlinkView(LoginRequiredMixin, View):
             metadata.created_by = request.user
             metadata.save(update_fields=["created_by", "updated_at"])
 
-        messages.success(request, "File scollegato dalla pratica.")
+        messages.success(request, "File scollegato dalla riparazione.")
         return redirect("pratiche:pratica_detail", pk=kwargs["pratica_pk"])
 
 
@@ -1592,7 +2116,7 @@ class FolderPickerView(LoginRequiredMixin, View):
             root = tk.Tk()
             root.withdraw()
             root.attributes("-topmost", True)
-            selected_path = filedialog.askdirectory(title="Seleziona cartella pratica")
+            selected_path = filedialog.askdirectory(title="Seleziona cartella riparazione")
             root.destroy()
         except Exception as exc:
             return JsonResponse({"error": f"Impossibile aprire il selettore cartella: {exc}"}, status=500)
@@ -1654,7 +2178,7 @@ class FolderPreviewFileDeleteView(LoginRequiredMixin, View):
         return JsonResponse({"deleted": True, "message": f"File eliminato: {file_path.name}"})
 
 
-class StudioTecnicoListView(LoginRequiredMixin, ListView):
+class StudioTecnicoListView(LoginRequiredMixin, ConfigurablePaginationMixin, ListView):
     model = StudioTecnico
     template_name = "pratiche/studio_tecnico_list.html"
     context_object_name = "studi_tecnici"
@@ -1666,7 +2190,12 @@ class StudioTecnicoListView(LoginRequiredMixin, ListView):
                 "tecnici",
                 filter=Q(tecnici__is_active=True),
                 distinct=True,
-            )
+            ),
+            pratiche_attive=Count(
+                "pratiche_riparazione",
+                filter=Q(pratiche_riparazione__is_active=True),
+                distinct=True,
+            ),
         )
         q = (self.request.GET.get("q") or "").strip()
 
@@ -1688,7 +2217,7 @@ class StudioTecnicoCreateView(LoginRequiredMixin, CreateView):
     def form_valid(self, form):
         form.instance.created_by = self.request.user
         form.instance.updated_by = self.request.user
-        messages.success(self.request, "Studio tecnico creato correttamente.")
+        messages.success(self.request, "Riparatore creato correttamente.")
         return super().form_valid(form)
 
     def get_success_url(self):
@@ -1705,7 +2234,7 @@ class StudioTecnicoUpdateView(LoginRequiredMixin, UpdateView):
 
     def form_valid(self, form):
         form.instance.updated_by = self.request.user
-        messages.success(self.request, "Studio tecnico aggiornato correttamente.")
+        messages.success(self.request, "Riparatore aggiornato correttamente.")
         return super().form_valid(form)
 
     def get_success_url(self):
@@ -1716,76 +2245,11 @@ class StudioTecnicoDeleteView(LoginRequiredMixin, View):
     def post(self, request, *args, **kwargs):
         studio = get_object_or_404(StudioTecnico, pk=kwargs["pk"], is_active=True)
         studio.soft_delete(user=request.user)
-        messages.success(request, "Studio tecnico eliminato correttamente.")
+        messages.success(request, "Riparatore eliminato correttamente.")
         return redirect("pratiche:studio_tecnico_list")
 
 
-class IncaricoTecnicoListView(LoginRequiredMixin, ListView):
-    model = IncaricoTecnico
-    template_name = "pratiche/incarico_tecnico_list.html"
-    context_object_name = "incarichi"
-    paginate_by = 20
-
-    def get_queryset(self):
-        queryset = IncaricoTecnico.objects.filter(is_active=True).annotate(
-            tecnici_attivi=Count(
-                "tecnici",
-                filter=Q(tecnici__is_active=True),
-                distinct=True,
-            )
-        )
-        q = (self.request.GET.get("q") or "").strip()
-
-        if q:
-            queryset = queryset.filter(
-                Q(denominazione__icontains=q)
-                | Q(descrizione__icontains=q)
-            )
-
-        return queryset.order_by("denominazione")
-
-
-class IncaricoTecnicoCreateView(LoginRequiredMixin, CreateView):
-    model = IncaricoTecnico
-    form_class = IncaricoTecnicoForm
-    template_name = "pratiche/incarico_tecnico_form.html"
-
-    def form_valid(self, form):
-        form.instance.created_by = self.request.user
-        form.instance.updated_by = self.request.user
-        messages.success(self.request, "Incarico creato correttamente.")
-        return super().form_valid(form)
-
-    def get_success_url(self):
-        return reverse("pratiche:incarico_tecnico_list")
-
-
-class IncaricoTecnicoUpdateView(LoginRequiredMixin, UpdateView):
-    model = IncaricoTecnico
-    form_class = IncaricoTecnicoForm
-    template_name = "pratiche/incarico_tecnico_form.html"
-
-    def get_queryset(self):
-        return IncaricoTecnico.objects.filter(is_active=True)
-
-    def form_valid(self, form):
-        form.instance.updated_by = self.request.user
-        messages.success(self.request, "Incarico aggiornato correttamente.")
-        return super().form_valid(form)
-
-    def get_success_url(self):
-        return reverse("pratiche:incarico_tecnico_list")
-
-
-class IncaricoTecnicoDeleteView(LoginRequiredMixin, View):
-    def post(self, request, *args, **kwargs):
-        incarico = get_object_or_404(IncaricoTecnico, pk=kwargs["pk"], is_active=True)
-        incarico.soft_delete(user=request.user)
-        messages.success(request, "Incarico eliminato correttamente.")
-        return redirect("pratiche:incarico_tecnico_list")
-
-
-class OperatoreListView(LoginRequiredMixin, ListView):
+class OperatoreListView(LoginRequiredMixin, ConfigurablePaginationMixin, ListView):
     model = Operatore
     template_name = "pratiche/operatore_list.html"
     context_object_name = "operatori"
@@ -1847,64 +2311,67 @@ class OperatoreDeleteView(LoginRequiredMixin, View):
         return redirect("pratiche:operatore_list")
 
 
-class TecnicoCreateView(LoginRequiredMixin, CreateView):
-    model = Tecnico
-    form_class = TecnicoForm
-    template_name = "pratiche/tecnico_form.html"
-
-    def dispatch(self, request, *args, **kwargs):
-        self.pratica = get_object_or_404(Pratica, pk=kwargs["pratica_pk"], is_active=True)
-        return super().dispatch(request, *args, **kwargs)
-
-    def form_valid(self, form):
-        form.instance.pratica = self.pratica
-        form.instance.created_by = self.request.user
-        form.instance.updated_by = self.request.user
-        messages.success(self.request, "Tecnico aggiunto correttamente.")
-        return super().form_valid(form)
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["pratica"] = self.pratica
-        context["page_title"] = "Nuovo tecnico"
-        return context
-
-    def get_success_url(self):
-        return reverse_lazy("pratiche:pratica_detail", kwargs={"pk": self.pratica.pk})
-
-
-class TecnicoUpdateView(LoginRequiredMixin, UpdateView):
-    model = Tecnico
-    form_class = TecnicoForm
-    template_name = "pratiche/tecnico_form.html"
+class TipoOggettoListView(LoginRequiredMixin, ConfigurablePaginationMixin, ListView):
+    model = TipoOggetto
+    template_name = "pratiche/tipo_oggetto_list.html"
+    context_object_name = "tipi_oggetto"
+    paginate_by = 20
 
     def get_queryset(self):
-        return Tecnico.objects.filter(pratica_id=self.kwargs["pratica_pk"], is_active=True)
+        queryset = TipoOggetto.objects.filter(is_active=True).annotate(
+            pratiche_attive=Count(
+                "pratiche",
+                filter=Q(pratiche__is_active=True),
+                distinct=True,
+            )
+        )
+        q = (self.request.GET.get("q") or "").strip()
+
+        if q:
+            queryset = queryset.filter(
+                Q(denominazione__icontains=q)
+                | Q(descrizione__icontains=q)
+            )
+
+        return queryset.order_by("denominazione")
+
+
+class TipoOggettoCreateView(LoginRequiredMixin, CreateView):
+    model = TipoOggetto
+    form_class = TipoOggettoForm
+    template_name = "pratiche/tipo_oggetto_form.html"
+
+    def form_valid(self, form):
+        form.instance.created_by = self.request.user
+        form.instance.updated_by = self.request.user
+        messages.success(self.request, "Tipo oggetto creato correttamente.")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse("pratiche:tipo_oggetto_list")
+
+
+class TipoOggettoUpdateView(LoginRequiredMixin, UpdateView):
+    model = TipoOggetto
+    form_class = TipoOggettoForm
+    template_name = "pratiche/tipo_oggetto_form.html"
+
+    def get_queryset(self):
+        return TipoOggetto.objects.filter(is_active=True)
 
     def form_valid(self, form):
         form.instance.updated_by = self.request.user
-        messages.success(self.request, "Tecnico aggiornato correttamente.")
+        messages.success(self.request, "Tipo oggetto aggiornato correttamente.")
         return super().form_valid(form)
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["pratica"] = self.object.pratica
-        context["page_title"] = "Modifica tecnico"
-        return context
-
     def get_success_url(self):
-        return reverse_lazy("pratiche:pratica_detail", kwargs={"pk": self.object.pratica_id})
+        return reverse("pratiche:tipo_oggetto_list")
 
 
-class TecnicoDeleteView(LoginRequiredMixin, View):
+class TipoOggettoDeleteView(LoginRequiredMixin, View):
     def post(self, request, *args, **kwargs):
-        tecnico = get_object_or_404(
-            Tecnico,
-            pk=kwargs["pk"],
-            pratica_id=kwargs["pratica_pk"],
-            is_active=True,
-        )
-        pratica_pk = tecnico.pratica_id
-        tecnico.soft_delete(user=request.user)
-        messages.success(request, "Tecnico eliminato correttamente.")
-        return redirect("pratiche:pratica_detail", pk=pratica_pk)
+        tipo_oggetto = get_object_or_404(TipoOggetto, pk=kwargs["pk"], is_active=True)
+        tipo_oggetto.soft_delete(user=request.user)
+        messages.success(request, "Tipo oggetto eliminato correttamente.")
+        return redirect("pratiche:tipo_oggetto_list")
+

@@ -1,0 +1,91 @@
+<div class="col-12" id="clienteAnagraficaCompleta" {% if form.tipologia.value != "prezioso" %}hidden{% endif %}>
+    {% if form.selected_cliente_anagrafica %}
+        {{ form.selected_cliente_anagrafica|json_script:"cliente-anagrafica-initial" }}
+    {% endif %}
+    <div class="card st-cliente-anagrafica-card mb-3" data-cliente-anagrafica-panel>
+        <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <h4 class="card-title mb-0">
+                <i class="ti ti-id me-1"></i>
+                Anagrafica completa cliente
+            </h4>
+            <a href="#"
+               class="btn btn-sm btn-outline-primary"
+               id="clienteAnagraficaEditLink"
+               target="_blank"
+               rel="noopener"
+               {% if not form.selected_cliente %}hidden{% endif %}>
+                <i class="ti ti-edit"></i>
+                Modifica anagrafica
+            </a>
+        </div>
+        <div class="card-body">
+            <div id="clienteAnagraficaEmpty" class="text-secondary" {% if form.selected_cliente %}hidden{% endif %}>
+                Seleziona un cliente per visualizzare i dati anagrafici completi.
+            </div>
+            <div id="clienteAnagraficaContent" {% if not form.selected_cliente %}hidden{% endif %}>
+                <div class="row g-3">
+                    <div class="col-md-6 col-lg-4">
+                        <div class="text-secondary small">Cognome Nome</div>
+                        <div class="fw-semibold" data-anagrafica-field="display_name">-</div>
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <div class="text-secondary small">Codice fiscale</div>
+                        <div class="fw-semibold" data-anagrafica-field="codice_fiscale">-</div>
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <div class="text-secondary small">Sesso</div>
+                        <div class="fw-semibold" data-anagrafica-field="sesso">-</div>
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <div class="text-secondary small">Data nascita</div>
+                        <div class="fw-semibold" data-anagrafica-field="data_nascita">-</div>
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <div class="text-secondary small">Luogo nascita</div>
+                        <div class="fw-semibold" data-anagrafica-field="luogo_nascita">-</div>
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <div class="text-secondary small">Prov. nascita</div>
+                        <div class="fw-semibold" data-anagrafica-field="provincia_nascita">-</div>
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <div class="text-secondary small">Telefono</div>
+                        <div class="fw-semibold" data-anagrafica-field="telefono">-</div>
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <div class="text-secondary small">Cellulare</div>
+                        <div class="fw-semibold" data-anagrafica-field="cellulare">-</div>
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <div class="text-secondary small">Email</div>
+                        <div class="fw-semibold" data-anagrafica-field="email">-</div>
+                    </div>
+                    <div class="col-12">
+                        <div class="text-secondary small">Residenza</div>
+                        <div class="fw-semibold" data-anagrafica-field="residenza">-</div>
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <div class="text-secondary small">Documento</div>
+                        <div class="fw-semibold" data-anagrafica-field="documento_tipo">-</div>
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <div class="text-secondary small">Numero</div>
+                        <div class="fw-semibold" data-anagrafica-field="documento_numero">-</div>
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <div class="text-secondary small">Rilasciato da</div>
+                        <div class="fw-semibold" data-anagrafica-field="documento_rilasciato_da">-</div>
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <div class="text-secondary small">Data rilascio</div>
+                        <div class="fw-semibold" data-anagrafica-field="documento_data_rilascio">-</div>
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <div class="text-secondary small">Data scadenza</div>
+                        <div class="fw-semibold" data-anagrafica-field="documento_data_scadenza">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

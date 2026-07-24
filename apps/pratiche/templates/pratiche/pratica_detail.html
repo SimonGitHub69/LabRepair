@@ -4,139 +4,6 @@
 {{ pratica.codice }}
 {% endblock %}
 
-{% block extra_css %}
-{{ block.super }}
-<style>
-.st-confirm {
-    background: rgba(15, 23, 42, 0.45);
-    bottom: 0;
-    display: flex;
-    left: 0;
-    padding: 1rem;
-    position: fixed;
-    right: 0;
-    top: 0;
-    z-index: 1080;
-}
-
-.st-confirm[hidden] {
-    display: none;
-}
-
-.st-confirm-dialog {
-    background: var(--tblr-bg-surface, #fff);
-    border-radius: 8px;
-    box-shadow: 0 1rem 3rem rgba(15, 23, 42, 0.2);
-    margin: auto;
-    max-width: 420px;
-    overflow: hidden;
-    width: 100%;
-}
-
-.st-confirm-body {
-    display: flex;
-    gap: 1rem;
-    padding: 1.25rem 1.25rem 1rem;
-}
-
-.st-confirm-icon {
-    align-items: center;
-    background: rgba(214, 57, 57, 0.12);
-    border-radius: 8px;
-    color: var(--tblr-danger, #d63939);
-    display: flex;
-    flex: 0 0 44px;
-    height: 44px;
-    justify-content: center;
-    width: 44px;
-}
-
-.st-confirm-icon .ti {
-    font-size: 1.35rem;
-}
-
-.st-confirm-title {
-    color: var(--tblr-body-color, #1f2937);
-    font-size: 1rem;
-    font-weight: 600;
-    line-height: 1.35;
-    margin-bottom: 0.35rem;
-}
-
-.st-confirm-text {
-    color: var(--tblr-secondary, #667085);
-    font-size: 0.875rem;
-    line-height: 1.45;
-}
-
-.st-confirm-name {
-    color: var(--tblr-body-color, #1f2937);
-    font-weight: 600;
-}
-
-.st-confirm-footer {
-    align-items: center;
-    background: var(--tblr-bg-surface-secondary, #f8fafc);
-    border-top: 1px solid var(--tblr-border-color, #e6e8eb);
-    display: flex;
-    gap: 0.5rem;
-    justify-content: flex-end;
-    padding: 0.75rem 1.25rem;
-}
-
-.st-file-description-form {
-    min-width: 260px;
-}
-
-.st-file-actions {
-    white-space: nowrap;
-}
-
-.st-category-detail[hidden] {
-    display: none;
-}
-
-.st-category-toggle .ti {
-    transition: transform 0.15s ease;
-}
-
-.st-category-toggle.is-open .ti {
-    transform: rotate(90deg);
-}
-
-.st-collapse-toggle .ti {
-    transition: transform 0.15s ease;
-}
-
-.st-collapse-toggle.is-collapsed .ti {
-    transform: rotate(-90deg);
-}
-
-.st-collapsible-section[hidden] {
-    display: none;
-}
-
-.st-category-note {
-    max-width: 380px;
-}
-
-.st-folder-path {
-    word-break: break-word;
-}
-
-.st-drop-zone {
-    background: var(--tblr-bg-surface-secondary, #f8fafc);
-    border: 1px dashed var(--tblr-border-color, #d0d5dd);
-    border-radius: 8px;
-    padding: 1rem;
-}
-
-.st-drop-zone.is-dragover {
-    background: rgba(32, 107, 196, 0.08);
-    border-color: var(--tblr-primary, #206bc4);
-}
-</style>
-{% endblock %}
 
 {% block content %}
 
@@ -144,9 +11,30 @@
     <div class="row align-items-center">
         <div class="col">
             <h2 class="page-title">{{ pratica.codice }}</h2>
-            <div class="text-secondary">{{ pratica.codice }} · {{ pratica.cliente }}</div>
+            <div class="text-secondary">
+                {{ pratica.codice }} ·
+                {% if pratica.cliente_id %}
+                    <a href="{% url 'pratiche:pratica_list_by_cliente' pratica.cliente.pk %}">
+                        {{ pratica.cliente_label }}
+                    </a>
+                {% else %}
+                    {{ pratica.cliente_label }}
+                {% endif %}
+            </div>
         </div>
         <div class="col-auto">
+            <a href="{% url 'pratiche:pratica_busta_print' pratica.pk %}"
+               class="btn btn-outline-secondary"
+               data-busta-open>
+                <i class="ti ti-printer"></i>
+                Stampa busta
+            </a>
+            <a href="{% url 'pratiche:pratica_privacy_print' pratica.pk %}"
+               class="btn btn-outline-secondary"
+               data-privacy-open>
+                <i class="ti ti-file-type-pdf"></i>
+                Stampa Privacy
+            </a>
             <a href="{% url 'pratiche:pratica_update' pratica.pk %}{% if next_url %}?next={{ next_url|urlencode }}{% endif %}" class="btn btn-primary">
                 <i class="ti ti-edit"></i>
                 Modifica
@@ -169,13 +57,40 @@
                 <dl class="row">
                     <dt class="col-sm-4">Cliente</dt>
                     <dd class="col-sm-8">
-                        <a href="{% url 'anagrafiche:anagrafica_detail' pratica.cliente.pk %}">
-                            {{ pratica.cliente }}
-                        </a>
+                        {% if pratica.cliente_id %}
+                            <a href="{% url 'pratiche:pratica_list_by_cliente' pratica.cliente.pk %}">
+                                {{ pratica.cliente_label }}
+                            </a>
+                        {% else %}
+                            {{ pratica.cliente_label }}
+                        {% endif %}
                     </dd>
 
+                    <dt class="col-sm-4">Referente</dt>
+                    <dd class="col-sm-8">
+                        {% if pratica.referente_cognome or pratica.referente_nome %}
+                            {{ pratica.referente_cognome }} {{ pratica.referente_nome }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </dd>
+
+                    <dt class="col-sm-4">Telefono</dt>
+                    <dd class="col-sm-8">{{ pratica.referente_telefono|default:"-" }}</dd>
+
+                    <dt class="col-sm-4">Cellulare</dt>
+                    <dd class="col-sm-8">{{ pratica.referente_cellulare|default:"-" }}</dd>
+
+                    <dt class="col-sm-4">Email</dt>
+                    <dd class="col-sm-8">{{ pratica.referente_email|default:"-" }}</dd>
+
                     <dt class="col-sm-4">Negozio</dt>
-                    <dd class="col-sm-8">{{ pratica.negozio|default:"-" }}</dd>
+                    <dd class="col-sm-8">{{ pratica.get_negozio_display|default:"-" }}</dd>
+
+                    {% if pratica.gs_barcode %}
+                    <dt class="col-sm-4">Barcode GS</dt>
+                    <dd class="col-sm-8"><code>{{ pratica.gs_barcode }}</code></dd>
+                    {% endif %}
 
                     <dt class="col-sm-4">Operatore</dt>
                     <dd class="col-sm-8">{{ pratica.operatore|default:"-" }}</dd>
@@ -189,12 +104,32 @@
                     <dt class="col-sm-4">Peso</dt>
                     <dd class="col-sm-8">{{ pratica.peso_grammi|floatformat:3 }} gr</dd>
 
+                    <dt class="col-sm-4">Tipo di metallo</dt>
+                    <dd class="col-sm-8">{{ pratica.get_tipo_metallo_display|default:"-" }}</dd>
+
                     <dt class="col-sm-4">Descrizione</dt>
                     <dd class="col-sm-8">{{ pratica.descrizione|linebreaksbr|default:"-" }}</dd>
 
                     <dt class="col-sm-4">Note</dt>
                     <dd class="col-sm-8">{{ pratica.note|linebreaksbr|default:"-" }}</dd>
                 </dl>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h3 class="card-title">Foto oggetto</h3>
+            </div>
+            <div class="card-body">
+                <form method="post"
+                      enctype="multipart/form-data"
+                      action="{% url 'pratiche:pratica_foto_upload' pratica.pk %}">
+                    {% csrf_token %}
+                    {% if next_url %}
+                        <input type="hidden" name="next" value="{{ next_url }}">
+                    {% endif %}
+                    {% include "pratiche/partials/pratica_foto_field.html" with pratica_foto=pratica.foto.all allow_delete=True delete_url_name="pratiche:pratica_foto_delete" pratica_pk=pratica.pk next_url=next_url show_submit=True input_id="fotoPraticaDetailInput" %}
+                </form>
             </div>
         </div>
     </div>
@@ -213,7 +148,7 @@
                     <dt class="col-sm-5">Accettazione</dt>
                     <dd class="col-sm-7">{{ pratica.data_apertura|date:"d/m/Y" }}</dd>
 
-                    <dt class="col-sm-5">Prev. consegna</dt>
+                    <dt class="col-sm-5">Data prevista consegna</dt>
                     <dd class="col-sm-7">
                         {% if pratica.data_scadenza %}
                             <span class="{% if pratica.is_scaduta %}text-danger fw-bold{% endif %}">
@@ -228,7 +163,7 @@
                     <dd class="col-sm-7">{{ pratica.data_chiusura|date:"d/m/Y"|default:"-" }}</dd>
 
                     <dt class="col-sm-5">Riparatore</dt>
-                    <dd class="col-sm-7">{{ pratica.riparatore|default:"-" }}</dd>
+                    <dd class="col-sm-7">{{ pratica.riparatore_display|default:"-" }}</dd>
 
                     <dt class="col-sm-5">Data riparatore</dt>
                     <dd class="col-sm-7">{{ pratica.data_riparatore|date:"d/m/Y"|default:"-" }}</dd>
@@ -236,7 +171,7 @@
                     <dt class="col-sm-5">Data rientro</dt>
                     <dd class="col-sm-7">{{ pratica.data_rientro|date:"d/m/Y"|default:"-" }}</dd>
 
-                    <dt class="col-sm-5">Data vendita</dt>
+                    <dt class="col-sm-5">Data vendita/evasione</dt>
                     <dd class="col-sm-7">{{ pratica.data_vendita|date:"d/m/Y"|default:"-" }}</dd>
                 </dl>
             </div>
@@ -261,14 +196,28 @@
                         <div class="fw-bold">{{ pratica.costo_materiale|floatformat:2 }}</div>
                     </div>
                     <div class="col-md-2">
-                        <div class="text-secondary small">Oro aggiunto</div>
-                        <div class="fw-bold">{{ pratica.oro_aggiunto|floatformat:2 }} gr</div>
+                        <div class="text-secondary small">{{ pratica.peso_aggiunto_label }}</div>
+                        <div class="fw-bold">{{ pratica.oro_aggiunto|floatformat:2 }}</div>
                     </div>
-                    <div class="col-md-3">
-                        <div class="text-secondary small">Prezzo al</div>
-                        <div class="fw-bold">{{ pratica.prezzo_al|floatformat:2 }}</div>
+                    <div class="col-md-2">
+                        <div class="text-secondary small">{{ pratica.prezzo_unita_label }}</div>
+                        <div class="fw-bold">{{ pratica.prezzo_unita|floatformat:2 }}</div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
+                        <div class="text-secondary small">Costo totale</div>
+                        <div class="fw-bold st-costo-totale-value">
+                            {% if pratica.senza_spesa and pratica.costo_totale == 0 %}
+                                Senza spesa
+                            {% else %}
+                                {{ pratica.costo_totale|floatformat:2 }} €
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="text-secondary small">Prezzo al Pubblico</div>
+                        <div class="fw-bold st-costo-totale-value">{{ pratica.prezzo_al|floatformat:2 }} €</div>
+                    </div>
+                    <div class="col-md-2">
                         <div class="text-secondary small">Prezzo pagato</div>
                         <div class="fw-bold">{{ pratica.prezzo_pagato|floatformat:2 }}</div>
                     </div>
@@ -302,29 +251,47 @@
                       class="mb-4">
                     {% csrf_token %}
                     <div class="row g-3 align-items-start">
+                        {% if comunicazioni_formato_data != "nascosto" %}
                         <div class="col-md-3">
                             <label class="form-label" for="{{ comunicazione_form.data_ora.id_for_label }}">
                                 {{ comunicazione_form.data_ora.label }}
                             </label>
                             {{ comunicazione_form.data_ora }}
                         </div>
-                        <div class="col-md-5">
+                        {% endif %}
+                        <div class="col-md-{% if comunicazioni_formato_data != 'nascosto' and comunicazioni_mostra_allegato %}5{% elif comunicazioni_formato_data != 'nascosto' or comunicazioni_mostra_allegato %}9{% else %}12{% endif %}">
                             <label class="form-label" for="{{ comunicazione_form.descrizione.id_for_label }}">
                                 {{ comunicazione_form.descrizione.label }}
                             </label>
                             {{ comunicazione_form.descrizione }}
                         </div>
+                        {% if comunicazioni_mostra_allegato %}
                         <div class="col-md-4">
                             <label class="form-label" for="{{ comunicazione_form.allegato.id_for_label }}">
                                 Mail o allegato
                             </label>
                             <div class="st-drop-zone" id="communicationDropZone">
                                 {{ comunicazione_form.allegato }}
+                                <div class="d-flex flex-wrap gap-2 mt-2">
+                                    <button type="button"
+                                            class="btn btn-outline-primary btn-sm"
+                                            data-webcam-trigger
+                                            data-webcam-file-input="{{ comunicazione_form.allegato.auto_id }}"
+                                            data-webcam-preview="communicationWebcamPreview">
+                                        <i class="ti ti-camera"></i>
+                                        Scatta foto
+                                    </button>
+                                </div>
+                                <img id="communicationWebcamPreview"
+                                     class="st-webcam-photo-preview-img mt-2"
+                                     alt="Anteprima foto comunicazione"
+                                     hidden>
                                 <div class="text-secondary small mt-2" id="communicationFileName">
                                     Trascina qui una mail/file oppure selezionalo.
                                 </div>
                             </div>
                         </div>
+                        {% endif %}
                         <div class="col-12 text-end">
                             <button type="submit" class="btn btn-primary">
                                 <i class="ti ti-device-floppy"></i>
@@ -336,21 +303,32 @@
 
                 {% if comunicazioni %}
                     <div class="table-responsive">
-                        <table class="table table-vcenter">
+                        <table class="table table-vcenter st-comunicazioni-table">
                             <thead>
                                 <tr>
-                                    <th>Data e ora</th>
+                                    <th>
+                                        {% if comunicazioni_formato_data == "solo_data" %}
+                                            Data
+                                        {% else %}
+                                            Data e ora
+                                        {% endif %}
+                                    </th>
                                     <th>Descrizione</th>
                                     <th>Allegato</th>
+                                    <th class="text-end">Azioni</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for comunicazione in comunicazioni %}
                                     <tr>
-                                        <td class="text-secondary">
-                                            {{ comunicazione.data_ora|date:"d/m/Y H:i" }}
+                                        <td class="text-secondary text-nowrap">
+                                            {% if comunicazioni_formato_data == "solo_data" %}
+                                                {{ comunicazione.data_ora|date:"d/m/Y" }}
+                                            {% else %}
+                                                {{ comunicazione.data_ora|date:"d/m/Y H:i" }}
+                                            {% endif %}
                                         </td>
-                                        <td>{{ comunicazione.descrizione|linebreaksbr }}</td>
+                                        <td class="st-comunicazioni-descrizione">{{ comunicazione.descrizione|linebreaksbr }}</td>
                                         <td>
                                             {% if comunicazione.allegato %}
                                                 <a href="{% url 'pratiche:comunicazione_preview' pratica.pk comunicazione.pk %}"
@@ -362,6 +340,25 @@
                                             {% else %}
                                                 <span class="text-secondary">-</span>
                                             {% endif %}
+                                        </td>
+                                        <td class="text-end text-nowrap">
+                                            <div class="st-table-azioni">
+                                                <a href="{% url 'pratiche:comunicazione_update' pratica.pk comunicazione.pk %}?next={% url 'pratiche:pratica_detail' pratica.pk %}"
+                                                   class="btn btn-icon btn-outline-primary"
+                                                   title="Modifica comunicazione">
+                                                    <i class="ti ti-edit"></i>
+                                                </a>
+                                                <form method="post"
+                                                      action="{% url 'pratiche:comunicazione_delete' pratica.pk comunicazione.pk %}"
+                                                      data-comunicazione-delete>
+                                                    {% csrf_token %}
+                                                    <button type="submit"
+                                                            class="btn btn-icon btn-outline-danger"
+                                                            title="Elimina comunicazione">
+                                                        <i class="ti ti-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
                                         </td>
                                     </tr>
                                 {% endfor %}
@@ -412,7 +409,7 @@
                         <table class="table table-vcenter">
                             <thead>
                                 <tr>
-                                    <th>Data</th>
+                                    <th>Data ora</th>
                                     <th>Tipo</th>
                                     <th>Titolo</th>
                                     <th>Stato</th>
@@ -425,7 +422,7 @@
                                         <td>
                                             {{ evento.data_inizio|date:"d/m/Y" }}
                                             {% if evento.ora_inizio %}
-                                                <div class="text-secondary small">{{ evento.ora_inizio|time:"H:i" }}</div>
+                                                {{ evento.ora_inizio|time:"H:i" }}
                                             {% endif %}
                                         </td>
                                         <td>
@@ -465,599 +462,27 @@
     </div>
 </div>
 
-<div class="row mt-3">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">Categorie</h3>
-                <div class="card-actions">
-                    <a href="{% url 'pratiche:pratica_categoria_create' pratica.pk %}" class="btn btn-primary btn-sm">
-                        <i class="ti ti-plus"></i>
-                        Aggiungi
-                    </a>
-                    <button type="button"
-                            class="btn btn-icon btn-sm btn-outline-secondary st-collapse-toggle"
-                            data-collapse-target="practice-categories-section"
-                            data-collapse-key="categories"
-                            aria-controls="practice-categories-section"
-                            aria-expanded="true"
-                            title="Comprimi sezione">
-                        <i class="ti ti-chevron-down"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="card-body st-collapsible-section" id="practice-categories-section">
-                <div class="row g-3 align-items-end mb-3">
-                    <div class="col-lg-6">
-                        <div class="text-secondary small mb-1">Macro-categorie collegate</div>
-                        {% for collegamento_macro in macro_categorie_pratica %}
-                            <span class="badge bg-purple-lt me-1 mb-1">
-                                {{ collegamento_macro.macro_categoria.denominazione }}
-                            </span>
-                        {% empty %}
-                            <span class="text-secondary small">Nessuna macro-categoria collegata</span>
-                        {% endfor %}
-                    </div>
-                    <div class="col-lg-6">
-                        <form method="post"
-                              action="{% url 'pratiche:pratica_macro_categoria_apply' pratica.pk %}"
-                              class="row g-2 align-items-end">
-                            {% csrf_token %}
-                            <div class="col">
-                                <label class="form-label small mb-1" for="{{ macro_categoria_apply_form.macro_categoria.id_for_label }}">
-                                    Collega macro-categoria
-                                </label>
-                                {{ macro_categoria_apply_form.macro_categoria }}
-                            </div>
-                            <div class="col-auto">
-                                <button type="submit" class="btn btn-outline-primary btn-sm">
-                                    <i class="ti ti-link"></i>
-                                    Applica
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
-                {% if categorie_pratica %}
-                    <div class="table-responsive">
-                        <table class="table table-vcenter">
-                            <thead>
-                                <tr>
-                                    <th class="w-1"></th>
-                                    <th>Categoria</th>
-                                    <th>Macro-categoria</th>
-                                    <th>Versione</th>
-                                    <th>Note</th>
-                                    <th>Cartella</th>
-                                    <th class="text-end">Azioni</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for collegamento in categorie_pratica %}
-                                    <tr>
-                                        <td>
-                                            <button type="button"
-                                                    class="btn btn-icon btn-sm btn-outline-secondary st-category-toggle"
-                                                    data-target="category-detail-{{ collegamento.pk }}"
-                                                    title="Mostra cartella e file">
-                                                <i class="ti ti-chevron-right"></i>
-                                            </button>
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-blue-lt">{{ collegamento.categoria.denominazione }}</span>
-                                        </td>
-                                        <td>
-                                            {% if collegamento.macro_categoria %}
-                                                <span class="badge bg-purple-lt">{{ collegamento.macro_categoria.denominazione }}</span>
-                                            {% else %}
-                                                <span class="text-secondary">-</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>{{ collegamento.versione|default:"-" }}</td>
-                                        <td class="st-category-note">
-                                            {{ collegamento.note|linebreaksbr|default:"-" }}
-                                        </td>
-                                        <td>
-                                            {% if collegamento.cartella %}
-                                                {% if collegamento.cartella_is_link %}
-                                                    <a href="{{ collegamento.cartella }}" target="_blank" rel="noopener">
-                                                        {{ collegamento.cartella }}
-                                                    </a>
-                                                {% else %}
-                                                    <div class="text-secondary small st-folder-path">{{ collegamento.cartella }}</div>
-                                                    {% if collegamento.cartella_error %}
-                                                        <span class="badge bg-red-lt">{{ collegamento.cartella_error }}</span>
-                                                    {% elif collegamento.cartella_is_folder %}
-                                                        <span class="badge bg-green-lt">Cartella collegata</span>
-                                                    {% endif %}
-                                                {% endif %}
-                                            {% else %}
-                                                -
-                                            {% endif %}
-                                        </td>
-                                        <td class="text-end">
-                                            <a href="{% url 'pratiche:pratica_categoria_update' pratica.pk collegamento.pk %}"
-                                               class="btn btn-icon btn-outline-primary"
-                                               title="Modifica">
-                                                <i class="ti ti-edit"></i>
-                                            </a>
-                                            <button type="button"
-                                                    class="btn btn-icon btn-outline-danger js-delete-category"
-                                                    title="Elimina"
-                                                    data-delete-action="{% url 'pratiche:pratica_categoria_delete' pratica.pk collegamento.pk %}"
-                                                    data-delete-name="{{ collegamento.categoria.denominazione }}{% if collegamento.versione %} - {{ collegamento.versione }}{% endif %}">
-                                                <i class="ti ti-trash"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    <tr class="st-category-detail" id="category-detail-{{ collegamento.pk }}" hidden>
-                                        <td colspan="7">
-                                            <form method="post"
-                                                  action="{% url 'pratiche:pratica_categoria_allegato_upload' pratica.pk collegamento.pk %}"
-                                                  enctype="multipart/form-data"
-                                                  class="row g-2 align-items-end mb-3">
-                                                {% csrf_token %}
-                                                <div class="col-lg-4">
-                                                    <label class="form-label small mb-1">Collega file singolo</label>
-                                                    <input type="file"
-                                                           name="file"
-                                                           class="form-control form-control-sm"
-                                                           multiple
-                                                           accept=".doc,.docx,.htm,.html,.jpeg,.jpg,.pdf,.png,.txt,.xls,.xlsm,.xlsx"
-                                                           required>
-                                                </div>
-                                                <div class="col-lg-6">
-                                                    <label class="form-label small mb-1">Descrizione</label>
-                                                    <input type="text"
-                                                           name="descrizione"
-                                                           class="form-control form-control-sm"
-                                                           placeholder="Descrizione del file">
-                                                </div>
-                                                <div class="col-lg-2">
-                                                    <button type="submit" class="btn btn-sm btn-primary w-100">
-                                                        <i class="ti ti-paperclip"></i>
-                                                        Collega
-                                                    </button>
-                                                </div>
-                                            </form>
-
-                                            <form method="post"
-                                                  action="{% url 'pratiche:pratica_categoria_allegato_pick' pratica.pk collegamento.pk %}"
-                                                  class="mb-3">
-                                                {% csrf_token %}
-                                                <button type="submit" class="btn btn-sm btn-outline-primary">
-                                                    <i class="ti ti-file-plus"></i>
-                                                    Scegli file
-                                                </button>
-                                            </form>
-
-                                            {% if collegamento.allegato_entries %}
-                                                <div class="table-responsive mt-2 mb-3">
-                                                    <table class="table table-vcenter table-sm mb-0">
-                                                        <thead>
-                                                            <tr>
-                                                                <th>File singolo</th>
-                                                                <th>Descrizione</th>
-                                                                <th>Modificato il</th>
-                                                                <th>Tipo</th>
-                                                                <th>Dimensione</th>
-                                                                <th class="text-end">Azioni</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            {% for allegato in collegamento.allegato_entries %}
-                                                                <tr>
-                                                                    <td>{{ allegato.name }}</td>
-                                                                    <td>{{ allegato.description|default:"-" }}</td>
-                                                                    <td>{{ allegato.modified_at }}</td>
-                                                                    <td><span class="badge bg-secondary-lt">{{ allegato.extension }}</span></td>
-                                                                    <td>{{ allegato.size_kb }} KB</td>
-                                                                    <td class="text-end st-file-actions">
-                                                                        <a href="{% if allegato.open_app_url %}{{ allegato.open_app_url }}?next={{ request.get_full_path|urlencode }}%23category-detail-{{ collegamento.pk }}{% else %}{{ allegato.open_url }}{% endif %}"
-                                                                           {% if not allegato.open_app_url %}target="_blank"{% endif %}
-                                                                           class="btn btn-icon btn-outline-primary"
-                                                                           title="{% if allegato.open_app_url %}Apri con applicazione originale{% else %}Apri anteprima{% endif %}">
-                                                                            <i class="ti ti-eye"></i>
-                                                                        </a>
-                                                                        <button type="button"
-                                                                                class="btn btn-icon btn-outline-secondary js-delete-file"
-                                                                                title="Scollega file"
-                                                                                data-delete-action="{{ allegato.delete_url }}"
-                                                                                data-delete-file="{{ allegato.name }}"
-                                                                                data-delete-mode="unlink">
-                                                                            <i class="ti ti-unlink"></i>
-                                                                        </button>
-                                                                        <button type="button"
-                                                                                class="btn btn-icon btn-outline-danger js-delete-file"
-                                                                                title="Elimina file"
-                                                                                data-delete-action="{{ allegato.destroy_url }}"
-                                                                                data-delete-file="{{ allegato.name }}"
-                                                                                data-delete-mode="delete">
-                                                                            <i class="ti ti-trash"></i>
-                                                                        </button>
-                                                                    </td>
-                                                                </tr>
-                                                            {% endfor %}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            {% endif %}
-
-                                            {% if collegamento.cartella_is_folder %}
-                                                <form method="post"
-                                                      action="{% url 'pratiche:pratica_categoria_file_upload' pratica.pk collegamento.pk %}"
-                                                      enctype="multipart/form-data"
-                                                      class="row g-2 align-items-end mb-3">
-                                                    {% csrf_token %}
-                                                    <div class="col-lg-4">
-                                                        <label class="form-label small mb-1">Aggiungi file</label>
-                                                        <input type="file"
-                                                               name="file"
-                                                               class="form-control form-control-sm"
-                                                               multiple
-                                                               accept=".doc,.docx,.htm,.html,.jpeg,.jpg,.pdf,.png,.txt,.xls,.xlsm,.xlsx"
-                                                               required>
-                                                    </div>
-                                                    <div class="col-lg-6">
-                                                        <label class="form-label small mb-1">Descrizione</label>
-                                                        <input type="text"
-                                                               name="descrizione"
-                                                               class="form-control form-control-sm"
-                                                               placeholder="Descrizione del file">
-                                                    </div>
-                                                    <div class="col-lg-2">
-                                                        <button type="submit" class="btn btn-sm btn-primary w-100">
-                                                            <i class="ti ti-upload"></i>
-                                                            Aggiungi
-                                                        </button>
-                                                    </div>
-                                                </form>
-                                            {% endif %}
-                                            {% if collegamento.file_entries %}
-                                                <div class="table-responsive mt-2">
-                                                    <table class="table table-vcenter table-sm mb-0">
-                                                        <thead>
-                                                            <tr>
-                                                                <th>Nome file</th>
-                                                                <th>Descrizione</th>
-                                                                <th>Creato il</th>
-                                                                <th>Modificato il</th>
-                                                                <th>Tipo</th>
-                                                                <th>Dimensione</th>
-                                                                <th class="text-end">Azioni</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            {% for file in collegamento.file_entries %}
-                                                                <tr>
-                                                                    <td>{{ file.name }}</td>
-                                                                    <td>
-                                                                        <form method="post"
-                                                                              action="{{ file.description_url }}"
-                                                                              class="d-flex gap-2 st-file-description-form">
-                                                                            {% csrf_token %}
-                                                                            <input type="hidden" name="file" value="{{ file.name }}">
-                                                                            <input type="text"
-                                                                                   name="descrizione"
-                                                                                   value="{{ file.description }}"
-                                                                                   class="form-control form-control-sm"
-                                                                                   placeholder="Aggiungi descrizione">
-                                                                            <button type="submit"
-                                                                                    class="btn btn-icon btn-sm btn-outline-primary"
-                                                                                    title="Salva descrizione">
-                                                                                <i class="ti ti-device-floppy"></i>
-                                                                            </button>
-                                                                        </form>
-                                                                    </td>
-                                                                    <td>{{ file.created_at }}</td>
-                                                                    <td>{{ file.modified_at }}</td>
-                                                                    <td>
-                                                                        <span class="badge bg-secondary-lt">{{ file.extension }}</span>
-                                                                    </td>
-                                                                    <td>{{ file.size_kb }} KB</td>
-                                                                    <td class="text-end st-file-actions">
-                                                                        <a href="{% if file.open_app_url %}{{ file.open_app_url }}&next={{ request.get_full_path|urlencode }}%23category-detail-{{ collegamento.pk }}{% else %}{{ file.url }}{% endif %}"
-                                                                           {% if not file.open_app_url %}target="_blank"{% endif %}
-                                                                           class="btn btn-icon btn-outline-primary"
-                                                                           title="{% if file.open_app_url %}Apri con applicazione originale{% else %}Apri anteprima{% endif %}">
-                                                                            <i class="ti ti-eye"></i>
-                                                                        </a>
-                                                                        <button type="button"
-                                                                                class="btn btn-icon btn-outline-secondary js-delete-file"
-                                                                                title="Scollega file dalla pratica"
-                                                                                data-delete-action="{{ file.unlink_url }}"
-                                                                                data-delete-file="{{ file.name }}"
-                                                                                data-delete-mode="unlink">
-                                                                            <i class="ti ti-unlink"></i>
-                                                                        </button>
-                                                                        <button type="button"
-                                                                                class="btn btn-icon btn-outline-danger js-delete-file"
-                                                                                title="Elimina file"
-                                                                                data-delete-action="{{ file.delete_url }}"
-                                                                                data-delete-file="{{ file.name }}"
-                                                                                data-delete-mode="delete">
-                                                                            <i class="ti ti-trash"></i>
-                                                                        </button>
-                                                                    </td>
-                                                                </tr>
-                                                            {% endfor %}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            {% elif collegamento.cartella_is_folder %}
-                                                <div class="text-secondary small mt-2">
-                                                    Nessun file supportato nella cartella.
-                                                </div>
-                                            {% elif collegamento.cartella_is_link %}
-                                                <a href="{{ collegamento.cartella }}" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">
-                                                    <i class="ti ti-external-link"></i>
-                                                    Apri collegamento
-                                                </a>
-                                            {% elif collegamento.cartella_error %}
-                                                <span class="badge bg-red-lt">{{ collegamento.cartella_error }}</span>
-                                            {% else %}
-                                                <div class="text-secondary small">
-                                                    Nessuna cartella collegata.
-                                                </div>
-                                            {% endif %}
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                {% else %}
-                    <div class="empty">
-                        <div class="empty-icon">
-                            <i class="ti ti-tags"></i>
-                        </div>
-                        <p class="empty-title">Nessuna categoria collegata</p>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row mt-3">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">Tecnici</h3>
-                <div class="card-actions">
-                    <a href="{% url 'pratiche:tecnico_create' pratica.pk %}" class="btn btn-primary btn-sm">
-                        <i class="ti ti-plus"></i>
-                        Aggiungi
-                    </a>
-                    <button type="button"
-                            class="btn btn-icon btn-sm btn-outline-secondary st-collapse-toggle"
-                            data-collapse-target="practice-technicians-section"
-                            data-collapse-key="technicians"
-                            aria-controls="practice-technicians-section"
-                            aria-expanded="true"
-                            title="Comprimi sezione">
-                        <i class="ti ti-chevron-down"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="card-body st-collapsible-section" id="practice-technicians-section">
-                {% if tecnici %}
-                    <div class="table-responsive">
-                        <table class="table table-vcenter">
-                            <thead>
-                                <tr>
-                                    <th>Nome</th>
-                                    <th>Studio</th>
-                                    <th>Incarico</th>
-                                    <th>Email</th>
-                                    <th>Telefono</th>
-                                    <th class="text-end">Azioni</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for tecnico in tecnici %}
-                                    <tr>
-                                        <td>
-                                            <div class="fw-bold">{{ tecnico.nome }} {{ tecnico.cognome }}</div>
-                                        </td>
-                                        <td>{{ tecnico.studio_appartenenza|default:"-" }}</td>
-                                        <td>{{ tecnico.incarico|default:"-" }}</td>
-                                        <td>{{ tecnico.email|default:"-" }}</td>
-                                        <td>{{ tecnico.telefono|default:"-" }}</td>
-                                        <td class="text-end">
-                                            <a href="{% url 'pratiche:tecnico_update' pratica.pk tecnico.pk %}"
-                                               class="btn btn-icon btn-outline-primary"
-                                               title="Modifica">
-                                                <i class="ti ti-edit"></i>
-                                            </a>
-                                            <button type="button"
-                                                    class="btn btn-icon btn-outline-danger js-delete-tecnico"
-                                                    title="Elimina"
-                                                    data-delete-action="{% url 'pratiche:tecnico_delete' pratica.pk tecnico.pk %}"
-                                                    data-delete-name="{{ tecnico.nome }} {{ tecnico.cognome }}">
-                                                <i class="ti ti-trash"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                {% else %}
-                    <div class="empty">
-                        <div class="empty-icon">
-                            <i class="ti ti-users"></i>
-                        </div>
-                        <p class="empty-title">Nessun tecnico registrato</p>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="st-confirm" id="deleteCategoryModal" hidden>
-    <div class="st-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="deleteCategoryTitle">
-        <form method="post" id="deleteCategoryForm">
-            {% csrf_token %}
-
-            <div class="st-confirm-body">
-                <div class="st-confirm-icon">
-                    <i class="ti ti-trash"></i>
-                </div>
-
-                <div>
-                    <div class="st-confirm-title" id="deleteCategoryTitle">
-                        Rimuovere questa categoria?
-                    </div>
-                    <div class="st-confirm-text">
-                        <span class="st-confirm-name" id="deleteCategoryName">Categoria selezionata</span>
-                        non sarà più collegata alla pratica.
-                    </div>
-                </div>
-            </div>
-
-            <div class="st-confirm-footer">
-                <button type="button" class="btn btn-outline-secondary js-delete-cancel">
-                    Annulla
-                </button>
-                <button type="submit" class="btn btn-danger">
-                    <i class="ti ti-trash"></i>
-                    Elimina
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<div class="st-confirm" id="deleteFileModal" hidden>
-    <div class="st-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="deleteFileTitle">
-        <form method="post" id="deleteFileForm">
-            {% csrf_token %}
-            <input type="hidden" name="file" id="deleteFileInput">
-
-            <div class="st-confirm-body">
-                <div class="st-confirm-icon">
-                    <i class="ti ti-trash"></i>
-                </div>
-
-                <div>
-                    <div class="st-confirm-title" id="deleteFileTitle">
-                        Eliminare questo file?
-                    </div>
-                    <div class="st-confirm-text" id="deleteFileText">
-                        <span class="st-confirm-name" id="deleteFileName">File selezionato</span>
-                        sarà rimosso dalla cartella collegata.
-                    </div>
-                </div>
-            </div>
-
-            <div class="st-confirm-footer">
-                <button type="button" class="btn btn-outline-secondary js-delete-cancel">
-                    Annulla
-                </button>
-                <button type="submit" class="btn btn-danger" id="deleteFileSubmit">
-                    <i class="ti ti-trash"></i>
-                    <span id="deleteFileSubmitText">Elimina</span>
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<div class="st-confirm" id="deleteTecnicoModal" hidden>
-    <div class="st-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="deleteTecnicoTitle">
-        <form method="post" id="deleteTecnicoForm">
-            {% csrf_token %}
-
-            <div class="st-confirm-body">
-                <div class="st-confirm-icon">
-                    <i class="ti ti-trash"></i>
-                </div>
-
-                <div>
-                    <div class="st-confirm-title" id="deleteTecnicoTitle">
-                        Eliminare questo tecnico?
-                    </div>
-                    <div class="st-confirm-text">
-                        <span class="st-confirm-name" id="deleteTecnicoName">Tecnico selezionato</span>
-                        non sarà più visibile nella pratica.
-                    </div>
-                </div>
-            </div>
-
-            <div class="st-confirm-footer">
-                <button type="button" class="btn btn-outline-secondary js-delete-cancel">
-                    Annulla
-                </button>
-                <button type="submit" class="btn btn-danger">
-                    <i class="ti ti-trash"></i>
-                    Elimina
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
+{% include "partials/webcam_modal.html" %}
+{% include "partials/busta_print_modal.html" %}
+{% include "partials/privacy_print_modal.html" %}
+{% include "partials/confirm_dialog.html" %}
 
 {% endblock %}
 
 {% block extra_js %}
 {{ block.super }}
+{% load static %}
+<script src="{% static 'securtek/js/pratica_foto.js' %}"></script>
+<script src="{% static 'securtek/js/webcam_capture.js' %}"></script>
+<script src="{% static 'securtek/js/pratica_save_before_print.js' %}"></script>
+<script src="{% static 'securtek/js/busta_print.js' %}"></script>
+<script src="{% static 'securtek/js/privacy_print.js' %}"></script>
+<script src="{% static 'securtek/js/confirm_dialog.js' %}"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    const modalElement = document.getElementById("deleteTecnicoModal");
-    const form = document.getElementById("deleteTecnicoForm");
-    const nameElement = document.getElementById("deleteTecnicoName");
-    const cancelButton = modalElement ? modalElement.querySelector(".js-delete-cancel") : null;
-    const fileModalElement = document.getElementById("deleteFileModal");
-    const fileForm = document.getElementById("deleteFileForm");
-    const fileTitleElement = document.getElementById("deleteFileTitle");
-    const fileTextElement = document.getElementById("deleteFileText");
-    const fileNameElement = document.getElementById("deleteFileName");
-    const fileInput = document.getElementById("deleteFileInput");
-    const fileSubmitElement = document.getElementById("deleteFileSubmit");
-    const fileSubmitTextElement = document.getElementById("deleteFileSubmitText");
-    const fileCancelButton = fileModalElement ? fileModalElement.querySelector(".js-delete-cancel") : null;
-    const categoryModalElement = document.getElementById("deleteCategoryModal");
-    const categoryForm = document.getElementById("deleteCategoryForm");
-    const categoryNameElement = document.getElementById("deleteCategoryName");
-    const categoryCancelButton = categoryModalElement ? categoryModalElement.querySelector(".js-delete-cancel") : null;
     const communicationDropZone = document.getElementById("communicationDropZone");
     const communicationFileInput = communicationDropZone ? communicationDropZone.querySelector("input[type='file']") : null;
     const communicationFileName = document.getElementById("communicationFileName");
-
-    function setSectionCollapsed(button, section, collapsed, persist) {
-        section.hidden = collapsed;
-        button.classList.toggle("is-collapsed", collapsed);
-        button.setAttribute("aria-expanded", collapsed ? "false" : "true");
-        button.title = collapsed ? "Espandi sezione" : "Comprimi sezione";
-
-        if (persist) {
-            localStorage.setItem(button.dataset.storageKey, collapsed ? "1" : "0");
-        }
-    }
-
-    document.querySelectorAll(".st-collapse-toggle").forEach(function (button) {
-        const section = document.getElementById(button.dataset.collapseTarget);
-
-        if (!section) {
-            return;
-        }
-
-        button.dataset.storageKey = [
-            "securtek",
-            "pratica-detail",
-            window.location.pathname,
-            button.dataset.collapseKey
-        ].join(":");
-
-        setSectionCollapsed(button, section, localStorage.getItem(button.dataset.storageKey) === "1", false);
-
-        button.addEventListener("click", function () {
-            setSectionCollapsed(button, section, !section.hidden, true);
-        });
-    });
 
     function setCommunicationFileName() {
         if (!communicationFileInput || !communicationFileName) {
@@ -1066,6 +491,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (communicationFileInput.files.length > 0) {
             communicationFileName.textContent = communicationFileInput.files[0].name;
+        }
+
+        const communicationPreview = document.getElementById("communicationWebcamPreview");
+        if (communicationPreview && communicationFileInput.files.length > 0 && communicationFileInput.files[0].type.startsWith("image/")) {
+            communicationPreview.src = URL.createObjectURL(communicationFileInput.files[0]);
+            communicationPreview.hidden = false;
         }
     }
 
@@ -1093,159 +524,6 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
     }
-
-    function openCategoryDetail(button, detailRow) {
-        detailRow.hidden = false;
-        button.classList.add("is-open");
-        button.title = "Nascondi cartella e file";
-    }
-
-    document.querySelectorAll(".st-category-toggle").forEach(function (button) {
-        const detailRow = document.getElementById(button.dataset.target);
-
-        if (!detailRow) {
-            return;
-        }
-
-        button.addEventListener("click", function () {
-            const isHidden = detailRow.hidden;
-            detailRow.hidden = !isHidden;
-            button.classList.toggle("is-open", isHidden);
-            button.title = isHidden ? "Nascondi cartella e file" : "Mostra cartella e file";
-        });
-    });
-
-    if (window.location.hash && window.location.hash.startsWith("#category-detail-")) {
-        const detailRow = document.querySelector(window.location.hash);
-        const toggleButton = detailRow
-            ? document.querySelector(`.st-category-toggle[data-target="${detailRow.id}"]`)
-            : null;
-        const categoriesSection = document.getElementById("practice-categories-section");
-        const categoriesToggle = document.querySelector('[data-collapse-target="practice-categories-section"]');
-
-        if (detailRow && toggleButton) {
-            if (categoriesSection && categoriesToggle) {
-                setSectionCollapsed(categoriesToggle, categoriesSection, false, true);
-            }
-            openCategoryDetail(toggleButton, detailRow);
-            detailRow.scrollIntoView({block: "center"});
-        }
-    }
-
-    function closeTecnicoModal() {
-        if (!modalElement || !form) {
-            return;
-        }
-        modalElement.hidden = true;
-        form.removeAttribute("action");
-    }
-
-    function closeFileModal() {
-        if (!fileModalElement || !fileForm || !fileInput) {
-            return;
-        }
-        fileModalElement.hidden = true;
-        fileForm.removeAttribute("action");
-        fileInput.value = "";
-    }
-
-    function closeCategoryModal() {
-        if (!categoryModalElement || !categoryForm) {
-            return;
-        }
-        categoryModalElement.hidden = true;
-        categoryForm.removeAttribute("action");
-    }
-
-    if (modalElement && form && nameElement && cancelButton) {
-        document.querySelectorAll(".js-delete-tecnico").forEach(function (button) {
-            button.addEventListener("click", function () {
-                form.action = button.dataset.deleteAction;
-                nameElement.textContent = button.dataset.deleteName || "Tecnico selezionato";
-                modalElement.hidden = false;
-            });
-        });
-
-        cancelButton.addEventListener("click", closeTecnicoModal);
-
-        modalElement.addEventListener("click", function (event) {
-            if (event.target === modalElement) {
-                closeTecnicoModal();
-            }
-        });
-    }
-
-    if (fileModalElement && fileForm && fileNameElement && fileInput && fileCancelButton) {
-        document.querySelectorAll(".js-delete-file").forEach(function (button) {
-            button.addEventListener("click", function () {
-                const mode = button.dataset.deleteMode || "delete";
-                const fileName = button.dataset.deleteFile || "File selezionato";
-                fileForm.action = button.dataset.deleteAction;
-                fileInput.value = fileName;
-                fileNameElement.textContent = fileName;
-
-                if (mode === "unlink") {
-                    fileTitleElement.textContent = "Scollegare questo file?";
-                    fileTextElement.textContent = `${fileName} non sarà più visibile nella pratica, ma resterà nella cartella.`;
-                    fileSubmitElement.classList.remove("btn-danger");
-                    fileSubmitElement.classList.add("btn-secondary");
-                    fileSubmitTextElement.textContent = "Scollega";
-                } else {
-                    fileTitleElement.textContent = "Eliminare questo file?";
-                    fileTextElement.textContent = `${fileName} sarà rimosso fisicamente dalla cartella collegata.`;
-                    fileSubmitElement.classList.remove("btn-secondary");
-                    fileSubmitElement.classList.add("btn-danger");
-                    fileSubmitTextElement.textContent = "Elimina";
-                }
-
-                fileModalElement.hidden = false;
-            });
-        });
-
-        fileCancelButton.addEventListener("click", closeFileModal);
-
-        fileModalElement.addEventListener("click", function (event) {
-            if (event.target === fileModalElement) {
-                closeFileModal();
-            }
-        });
-    }
-
-    if (categoryModalElement && categoryForm && categoryNameElement && categoryCancelButton) {
-        document.querySelectorAll(".js-delete-category").forEach(function (button) {
-            button.addEventListener("click", function () {
-                categoryForm.action = button.dataset.deleteAction;
-                categoryNameElement.textContent = button.dataset.deleteName || "Categoria selezionata";
-                categoryModalElement.hidden = false;
-            });
-        });
-
-        categoryCancelButton.addEventListener("click", closeCategoryModal);
-
-        categoryModalElement.addEventListener("click", function (event) {
-            if (event.target === categoryModalElement) {
-                closeCategoryModal();
-            }
-        });
-    }
-
-    document.addEventListener("keydown", function (event) {
-        if (event.key !== "Escape") {
-            return;
-        }
-
-        if (modalElement && !modalElement.hidden) {
-            closeTecnicoModal();
-        }
-
-        if (fileModalElement && !fileModalElement.hidden) {
-            closeFileModal();
-        }
-
-        if (categoryModalElement && !categoryModalElement.hidden) {
-            closeCategoryModal();
-        }
-    });
 });
 </script>
 {% endblock %}

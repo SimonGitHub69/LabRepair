@@ -1,0 +1,4 @@
+# Opzionale: sync MSSQL / gestionale.
+# Su Python 3.14 richiede Visual C++ Build Tools oppure una wheel precompilata.
+#   .\.venv\Scripts\python.exe -m pip install -r requirements-mssql.txt
+pyodbc==5.2.0

@@ -1,0 +1,174 @@
+{% extends "base/layout.html" %}
+
+{% block page_title %}
+Tipi di oggetto
+{% endblock %}
+
+
+{% block content %}
+
+<div class="page-header d-print-none mb-3">
+    <div class="row align-items-center">
+        <div class="col">
+            <h2 class="page-title">Tipi di oggetto</h2>
+            <div class="text-secondary">Tipologie selezionabili nelle schede riparazione</div>
+        </div>
+        <div class="col-auto">
+            <a href="{% url 'pratiche:tipo_oggetto_create' %}" class="btn btn-primary">
+                <i class="ti ti-plus"></i>
+                Nuovo tipo
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label">Ricerca</label>
+                    <input type="text"
+                           name="q"
+                           value="{{ request.GET.q }}"
+                           class="form-control"
+                           placeholder="Denominazione o descrizione">
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-secondary">Cerca</button>
+                </div>
+                <div class="col-auto">
+                    <a href="{% url 'pratiche:tipo_oggetto_list' %}" class="btn btn-outline-secondary">Pulisci</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-vcenter">
+            <thead>
+                <tr>
+                    <th>Denominazione</th>
+                    <th>UM</th>
+                    <th>Descrizione</th>
+                    <th>Riparazioni</th>
+                    <th class="text-end">Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tipo in tipi_oggetto %}
+                    <tr>
+                        <td class="fw-bold">{{ tipo.denominazione }}</td>
+                        <td>{{ tipo.get_um_display|default:"-" }}</td>
+                        <td>{{ tipo.descrizione|default:"-" }}</td>
+                        <td>
+                            <span class="badge bg-blue-lt">{{ tipo.pratiche_attive }}</span>
+                        </td>
+                        <td class="text-end">
+                            <a href="{% url 'pratiche:tipo_oggetto_update' tipo.pk %}"
+                               class="btn btn-icon btn-outline-primary"
+                               title="Modifica">
+                                <i class="ti ti-edit"></i>
+                            </a>
+                            <button type="button"
+                                    class="btn btn-icon btn-outline-danger js-delete-tipo-oggetto"
+                                    title="Elimina"
+                                    data-delete-action="{% url 'pratiche:tipo_oggetto_delete' tipo.pk %}"
+                                    data-delete-name="{{ tipo.denominazione }}">
+                                <i class="ti ti-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-secondary py-4">
+                            Nessun tipo di oggetto presente
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% include "partials/pagination.html" %}
+</div>
+
+<div class="st-confirm" id="deleteTipoOggettoModal" hidden>
+    <div class="st-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="deleteTipoOggettoTitle">
+        <form method="post" id="deleteTipoOggettoForm">
+            {% csrf_token %}
+
+            <div class="st-confirm-body">
+                <div class="st-confirm-icon">
+                    <i class="ti ti-trash"></i>
+                </div>
+
+                <div>
+                    <div class="st-confirm-title" id="deleteTipoOggettoTitle">
+                        Eliminare questo tipo di oggetto?
+                    </div>
+                    <div class="st-confirm-text">
+                        <span class="st-confirm-name" id="deleteTipoOggettoName">Tipo selezionato</span>
+                        non sarà più disponibile nella lista.
+                    </div>
+                </div>
+            </div>
+
+            <div class="st-confirm-footer">
+                <button type="button" class="btn btn-outline-secondary js-delete-cancel">
+                    Annulla
+                </button>
+                <button type="submit" class="btn btn-danger">
+                    <i class="ti ti-trash"></i>
+                    Elimina
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const modalElement = document.getElementById("deleteTipoOggettoModal");
+    const form = document.getElementById("deleteTipoOggettoForm");
+    const nameElement = document.getElementById("deleteTipoOggettoName");
+    const cancelButton = modalElement ? modalElement.querySelector(".js-delete-cancel") : null;
+
+    if (!modalElement || !form || !nameElement || !cancelButton) {
+        return;
+    }
+
+    function closeModal() {
+        modalElement.hidden = true;
+        form.removeAttribute("action");
+    }
+
+    document.querySelectorAll(".js-delete-tipo-oggetto").forEach(function (button) {
+        button.addEventListener("click", function () {
+            form.action = button.dataset.deleteAction;
+            nameElement.textContent = button.dataset.deleteName || "Tipo selezionato";
+            modalElement.hidden = false;
+        });
+    });
+
+    cancelButton.addEventListener("click", closeModal);
+
+    modalElement.addEventListener("click", function (event) {
+        if (event.target === modalElement) {
+            closeModal();
+        }
+    });
+
+    document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape" && !modalElement.hidden) {
+            closeModal();
+        }
+    });
+});
+</script>
+{% endblock %}

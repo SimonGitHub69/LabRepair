@@ -1,6 +1,7 @@
 from django import forms
 
 from apps.anagrafiche.models import Contatto
+from apps.core.widgets import NoAutofillTextInput
 
 
 class ContattoForm(forms.ModelForm):
@@ -14,16 +15,18 @@ class ContattoForm(forms.ModelForm):
             "note",
         ]
         widgets = {
-            "tipo": forms.Select(attrs={"class": "form-select"}),
-            "valore": forms.TextInput(attrs={"class": "form-control"}),
-            "descrizione": forms.TextInput(attrs={"class": "form-control"}),
+            "tipo": forms.Select(attrs={"class": "form-select", "autocomplete": "off"}),
+            "valore": NoAutofillTextInput(),
+            "descrizione": NoAutofillTextInput(),
             "principale": forms.CheckboxInput(attrs={"class": "form-check-input"}),
-            "note": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+            "note": forms.Textarea(attrs={"class": "form-control", "rows": 3, "autocomplete": "off"}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["valore"].required = False
+        for field in self.fields.values():
+            field.widget.attrs.setdefault("autocomplete", "off")
 
     def clean(self):
         cleaned_data = super().clean()

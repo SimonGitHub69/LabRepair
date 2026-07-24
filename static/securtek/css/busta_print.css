@@ -1,0 +1,303 @@
+/* Layout calibrato su Busta_Riparazione.pdf (A4, 595x841 pt) */
+
+:root {
+    --busta-print-scale: 0.763; /* 0.82 - 7% */
+}
+
+@font-face {
+    font-family: "Libre Barcode 39";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("../fonts/LibreBarcode39-Regular.ttf") format("truetype");
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    background: #dfe3e8;
+    color: #111;
+    font-family: Arial, "Segoe UI", Helvetica, sans-serif;
+    font-size: 12pt; /* +20% rispetto a 10pt */
+    line-height: 1.2;
+    margin: 0;
+    padding: 16px;
+}
+
+.toolbar {
+    margin: 0 auto 8px;
+    max-width: 210mm;
+    text-align: right;
+}
+
+.print-hint {
+    color: #7a5b00;
+    font-size: 12px;
+    margin: 0 auto 16px;
+    max-width: 210mm;
+}
+
+@media print {
+    .toolbar,
+    .print-hint {
+        display: none !important;
+    }
+}
+
+.toolbar button,
+.toolbar a {
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    color: #111;
+    cursor: pointer;
+    display: inline-block;
+    font-size: 14px;
+    margin-left: 6px;
+    padding: 8px 14px;
+    text-decoration: none;
+}
+
+.sheet {
+    background: #fff;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    margin: 0 auto;
+    min-height: 297mm;
+    /* margine sinistro: +37mm rispetto a 30.8mm (14mm + 23mm) */
+    padding: 5.3mm 0 0 67.8mm;
+    width: 210mm;
+    zoom: var(--busta-print-scale);
+}
+
+.busta-slip + .busta-slip {
+    margin-top: 33.8mm;
+}
+
+.busta-label {
+    color: #111;
+    font-weight: 400;
+}
+
+.busta-value {
+    font-weight: 700;
+}
+
+.busta-header {
+    align-items: flex-start;
+    display: grid;
+    grid-template-columns: 1fr 48mm;
+    min-height: 24mm;
+}
+
+.busta-header-left {
+    display: grid;
+    gap: 2.8mm;
+}
+
+.busta-header-left > .busta-line {
+    transform: translateY(1mm);
+}
+
+.busta-header-dates {
+    display: flex;
+    flex-direction: column;
+    gap: 2.8mm;
+    margin-top: 0.5mm;
+}
+
+.busta-header-dates .busta-line {
+    display: block;
+    white-space: nowrap;
+    width: 100%;
+}
+
+.busta-header-dates .busta-line:nth-child(1) {
+    transform: translateY(-1mm);
+}
+
+.busta-header-dates .busta-line:nth-child(2) {
+    transform: translateY(-3mm);
+}
+
+.busta-header-left .busta-line {
+    white-space: nowrap;
+}
+
+.busta-header-left .busta-value {
+    margin-left: 1.5mm;
+}
+
+.busta-header-right {
+    align-items: flex-end;
+    display: flex;
+    flex-direction: column;
+    gap: 3mm;
+    padding-right: 14mm;
+    text-align: right;
+    /* zona codice/barcode: +1 cm a destra rispetto a -15mm */
+    transform: translateX(-5mm);
+}
+
+.busta-barcode {
+    display: inline-block;
+    font-family: "Libre Barcode 39", cursive;
+    font-size: 41.58pt; /* -20% rispetto a 51.98pt */
+    line-height: 0.85;
+    margin-top: 0;
+    transform: translateX(10mm) scaleX(0.45125) scaleY(0.832); /* allineato al codice */
+    transform-origin: top right;
+    white-space: nowrap;
+}
+
+.busta-code {
+    font-family: Arial, "Segoe UI", Helvetica, sans-serif;
+    font-size: 19.2pt; /* -20% rispetto a 24pt */
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1;
+    transform: translate(10mm, 1mm);
+    white-space: nowrap;
+}
+
+.busta-content {
+    /* alzato di 3 cm rispetto a 49.6mm, poi abbassato di 12mm + 4mm */
+    margin-top: 35.6mm;
+}
+
+.busta-slip:first-child .busta-content {
+    margin-top: 28.6mm;
+}
+
+.busta-slip:last-child .busta-content {
+    margin-top: 47.6mm;
+}
+
+.busta-slip:last-child .busta-header {
+    transform: translateY(16mm);
+}
+
+.busta-row {
+    align-items: baseline;
+    display: grid;
+    margin-bottom: 5.6mm;
+}
+
+.busta-row-cliente {
+    align-items: baseline;
+    display: block;
+}
+
+.busta-row-cliente.has-riparatore,
+.busta-row-oggetto.has-centro,
+.busta-row-oggetto.has-peso,
+.busta-row-descr.has-peso {
+    align-items: baseline;
+    column-gap: 4mm;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 69mm;
+}
+
+.busta-row-oggetto {
+    transform: translateY(-4mm);
+}
+
+.busta-row-oggetto.has-centro {
+    /* allineato a Centro Assist. (stessa riga) */
+    transform: translateY(-4mm);
+}
+
+.busta-row-main {
+    align-items: baseline;
+    display: flex;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.busta-row-main .busta-label {
+    flex: 0 0 auto;
+}
+
+.busta-row-main .busta-value {
+    flex: 1 1 auto;
+    margin-left: 1.5mm;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.busta-riparatore-block,
+.busta-centro-block,
+.busta-peso-block {
+    align-items: baseline;
+    column-gap: 1.5mm;
+    display: grid;
+    grid-template-columns: 28mm minmax(0, 1fr);
+    justify-self: stretch;
+    min-width: 0;
+    white-space: nowrap;
+}
+
+.busta-riparatore-block .busta-label,
+.busta-centro-block .busta-label,
+.busta-peso-block .busta-label {
+    text-align: right;
+}
+
+.busta-riparatore-block .busta-value,
+.busta-centro-block .busta-value,
+.busta-peso-block .busta-value {
+    min-width: 0;
+    overflow: hidden;
+    text-align: left;
+    text-overflow: ellipsis;
+}
+
+.busta-row-descr {
+    margin-bottom: 0;
+    transform: translateY(-8mm);
+}
+
+.busta-row-descr.has-centro {
+    transform: translateY(-8mm);
+}
+
+.busta-row-descr.has-peso .busta-descr {
+    min-width: 0;
+    padding-right: 0;
+}
+
+.busta-descr {
+    display: block;
+    font-weight: 700;
+    padding-right: 14mm;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+@media print {
+    body {
+        background: #fff;
+        padding: 0;
+    }
+
+    .toolbar {
+        display: none;
+    }
+
+    .sheet {
+        box-shadow: none;
+        margin: 0;
+        min-height: 297mm;
+        page-break-after: avoid;
+        page-break-inside: avoid;
+        padding-top: 5.3mm;
+    }
+
+    @page {
+        margin: 0;
+        size: A4 portrait;
+    }
+}

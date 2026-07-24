@@ -1,23 +1,86 @@
-.navbar{
-    height:72px;
-    background:#fff;
+.st-navbar {
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.92);
+    border-bottom: 1px solid var(--st-border);
+    min-height: var(--st-navbar-height);
+    position: sticky;
+    top: 0;
+    z-index: 1020;
 }
 
-[data-bs-theme="dark"] .navbar {
-    background: #111827 !important;
-    border-color: #243041 !important;
+[data-bs-theme="dark"] .st-navbar {
+    background: rgba(17, 24, 39, 0.92);
+    border-color: var(--st-border);
 }
 
-.navbar .form-control{
-    border-radius:12px;
+.st-navbar .navbar-title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0;
 }
 
-.avatar{
-    width:40px;
-    height:40px;
-    border-radius:50%;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-weight:700;
+.st-navbar .form-control {
+    background: var(--tblr-bg-surface-secondary, #f8fafc);
+    border-color: transparent;
+    border-radius: 999px;
+    min-height: 2.5rem;
+    padding-left: 1rem;
+    width: min(320px, 42vw);
+}
+
+.st-navbar .form-control:focus {
+    background: var(--st-surface);
+    border-color: var(--st-primary);
+}
+
+.st-navbar .btn-icon {
+    align-items: center;
+    border-radius: 999px;
+    display: inline-flex;
+    height: 2.5rem;
+    justify-content: center;
+    width: 2.5rem;
+}
+
+.st-navbar .avatar {
+    align-items: center;
+    border-radius: 50%;
+    display: flex;
+    font-size: 0.875rem;
+    font-weight: 700;
+    height: 2.5rem;
+    justify-content: center;
+    width: 2.5rem;
+}
+
+.st-navbar-user-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.st-navbar-user-role {
+    color: var(--st-text-muted);
+    font-size: 0.75rem;
+}
+
+.st-negozio-badge {
+    border-radius: 999px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.st-sidebar-toggle {
+    display: none;
+}
+
+@media (max-width: 991.98px) {
+    .st-sidebar-toggle {
+        display: inline-flex;
+    }
+
+    .st-navbar .form-control {
+        width: 100%;
+    }
 }

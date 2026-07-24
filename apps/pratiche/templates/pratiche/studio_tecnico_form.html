@@ -1,7 +1,7 @@
 {% extends "base/layout.html" %}
 
 {% block page_title %}
-{% if object %}Modifica studio tecnico{% else %}Nuovo studio tecnico{% endif %}
+{% if object %}Modifica riparatore{% else %}Nuovo riparatore{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -10,15 +10,15 @@
     <div class="row align-items-center">
         <div class="col">
             <h2 class="page-title">
-                {% if object %}Modifica studio tecnico{% else %}Nuovo studio tecnico{% endif %}
+                {% if object %}Modifica riparatore{% else %}Nuovo riparatore{% endif %}
             </h2>
-            <div class="text-secondary">Dati dello studio da associare ai tecnici</div>
+            <div class="text-secondary">Dati del riparatore da associare alle schede riparazione</div>
         </div>
     </div>
 </div>
 
 <div class="card">
-    <form method="post">
+    <form method="post" autocomplete="off" data-lpignore="true" data-block-suggestions="1">
         {% csrf_token %}
 
         <div class="card-body">

@@ -1,0 +1,172 @@
+{% load static %}
+<!doctype html>
+<html lang="it">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ document_title }}</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            background: #e8ecf1;
+            font-family: "Segoe UI", Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .toolbar {
+            align-items: center;
+            background: #fff;
+            border-bottom: 1px solid #d0d5dd;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            justify-content: space-between;
+            padding: 0.75rem 1rem;
+        }
+        .toolbar-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .hint {
+            background: #eef6ff;
+            border: 1px solid #b6d4fe;
+            border-radius: 8px;
+            color: #1e3a5f;
+            flex: 1 1 280px;
+            font-size: 0.875rem;
+            line-height: 1.35;
+            max-width: 560px;
+            padding: 0.55rem 0.75rem;
+        }
+        button, a.btn {
+            background: #206bc4;
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            padding: 0.55rem 0.9rem;
+            text-decoration: none;
+        }
+        a.btn-secondary {
+            background: #fff;
+            border: 1px solid #cfd6e0;
+            color: #1f2937;
+        }
+        .frame-wrap {
+            height: calc(100vh - 74px);
+            padding: 0;
+        }
+        iframe {
+            border: 0;
+            height: 100%;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <div class="hint">
+            Premi <strong>Stampa</strong>: la scheda viene inviata alla stampante
+            senza l&apos;indirizzo del sito.
+        </div>
+        <div class="toolbar-actions">
+            <button type="button" id="privacyPrintBtn">Stampa</button>
+            <a class="btn btn-secondary" href="{{ pdf_url }}" download="{{ filename }}">Scarica PDF</a>
+            <a class="btn btn-secondary" href="{% url 'pratiche:pratica_detail' pratica.pk %}">Chiudi</a>
+        </div>
+    </div>
+    <div class="frame-wrap">
+        <iframe id="privacyPdfFrame" src="{{ pdf_url }}" title="{{ document_title }}"></iframe>
+    </div>
+    {{ page_images|json_script:"privacy-page-images" }}
+    <script>
+    (function () {
+        var btn = document.getElementById("privacyPrintBtn");
+        var pagesNode = document.getElementById("privacy-page-images");
+        var pages = pagesNode ? JSON.parse(pagesNode.textContent) : [];
+
+        function privacyPrintStylesheet() {
+            return (
+                "@page { size: A4 portrait; margin: 0; }" +
+                "html, body { margin: 0; padding: 0; background: #fff; }" +
+                ".privacy-print-page { width: 210mm; height: 297mm; overflow: hidden; page-break-inside: avoid; break-inside: avoid; }" +
+                ".privacy-print-page + .privacy-print-page { page-break-before: always; break-before: page; }" +
+                ".privacy-print-page img { display: block; width: 100%; height: 100%; object-fit: contain; }"
+            );
+        }
+
+        function buildPrivacyPrintBody(images) {
+            var body = "";
+            for (var i = 0; i < images.length; i++) {
+                body +=
+                    '<div class="privacy-print-page">' +
+                    '<img src="' + images[i] + '" alt="Pagina ' + (i + 1) + '">' +
+                    '</div>';
+            }
+            return body;
+        }
+
+        function doPrint() {
+            if (!pages.length) {
+                window.print();
+                return;
+            }
+            var html = "<!DOCTYPE html><html><head><meta charset='utf-8'>" +
+                "<title>Scheda Privacy</title>" +
+                "<style>" +
+                privacyPrintStylesheet() +
+                "</style></head><body>" +
+                buildPrivacyPrintBody(pages) +
+                "</body></html>";
+
+            var w = window.open("about:blank", "_blank");
+            if (!w) {
+                alert("Consenti i popup per stampare la scheda.");
+                return;
+            }
+            w.document.open();
+            w.document.write(html);
+            w.document.close();
+
+            function trigger() {
+                try {
+                    w.focus();
+                    w.print();
+                } catch (err) {
+                    alert("Impossibile aprire la stampa.");
+                }
+            }
+
+            // Attende il caricamento immagini prima di stampare.
+            var imgs = w.document.images;
+            if (!imgs || !imgs.length) {
+                setTimeout(trigger, 200);
+                return;
+            }
+            var pending = imgs.length;
+            function done() {
+                pending -= 1;
+                if (pending <= 0) {
+                    setTimeout(trigger, 100);
+                }
+            }
+            for (var j = 0; j < imgs.length; j++) {
+                if (imgs[j].complete) {
+                    done();
+                } else {
+                    imgs[j].onload = done;
+                    imgs[j].onerror = done;
+                }
+            }
+        }
+
+        if (btn) {
+            btn.addEventListener("click", doPrint);
+        }
+    })();
+    </script>
+</body>
+</html>

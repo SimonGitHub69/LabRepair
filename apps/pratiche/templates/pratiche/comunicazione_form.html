@@ -1,0 +1,87 @@
+{% extends "base/layout.html" %}
+
+{% block page_title %}
+Modifica comunicazione
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header d-print-none mb-3">
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+        <div>
+            <h2 class="page-title">Modifica comunicazione</h2>
+            <div class="text-secondary">
+                {{ pratica.codice }} · {{ pratica.cliente_label }}
+            </div>
+        </div>
+        <div>
+            <a href="{{ cancel_url }}" class="btn btn-outline-secondary">
+                <i class="ti ti-arrow-left"></i>
+                Indietro
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            {% if next_url %}
+                <input type="hidden" name="next" value="{{ next_url }}">
+            {% endif %}
+
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            <div class="row g-3">
+                {% if form.data_ora %}
+                <div class="col-md-4">
+                    <label class="form-label" for="{{ form.data_ora.id_for_label }}">{{ form.data_ora.label }}</label>
+                    {{ form.data_ora }}
+                    {% if form.data_ora.errors %}
+                        <div class="invalid-feedback d-block">{{ form.data_ora.errors|join:", " }}</div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <div class="col-12">
+                    <label class="form-label" for="{{ form.descrizione.id_for_label }}">{{ form.descrizione.label }}</label>
+                    {{ form.descrizione }}
+                    {% if form.descrizione.errors %}
+                        <div class="invalid-feedback d-block">{{ form.descrizione.errors|join:", " }}</div>
+                    {% endif %}
+                </div>
+
+                {% if comunicazioni_mostra_allegato and form.allegato %}
+                <div class="col-md-6">
+                    <label class="form-label" for="{{ form.allegato.id_for_label }}">{{ form.allegato.label }}</label>
+                    {{ form.allegato }}
+                    {% if form.instance.allegato %}
+                        <div class="form-hint mt-1">
+                            Allegato attuale:
+                            <a href="{% url 'pratiche:comunicazione_preview' pratica.pk form.instance.pk %}" target="_blank">
+                                {{ form.instance.allegato_nome }}
+                            </a>
+                        </div>
+                    {% endif %}
+                    {% if form.allegato.errors %}
+                        <div class="invalid-feedback d-block">{{ form.allegato.errors|join:", " }}</div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 mt-4">
+                <a href="{{ cancel_url }}" class="btn btn-outline-secondary">Annulla</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="ti ti-device-floppy"></i>
+                    Salva
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}

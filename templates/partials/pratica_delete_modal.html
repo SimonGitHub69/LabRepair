@@ -1,0 +1,33 @@
+<div class="st-confirm" id="deletePraticaModal" hidden>
+    <div class="st-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="deletePraticaTitle">
+        <form method="post" id="deletePraticaForm">
+            {% csrf_token %}
+
+            <div class="st-confirm-body">
+                <div class="st-confirm-icon is-danger">
+                    <i class="ti ti-trash"></i>
+                </div>
+
+                <div>
+                    <div class="st-confirm-title" id="deletePraticaTitle">
+                        Eliminare questa riparazione?
+                    </div>
+                    <div class="st-confirm-text">
+                        <span class="st-confirm-name" id="deletePraticaName">Riparazione selezionata</span>
+                        non sarà più visibile nell&apos;elenco.
+                    </div>
+                </div>
+            </div>
+
+            <div class="st-confirm-footer">
+                <button type="button" class="btn btn-outline-secondary js-delete-pratica-cancel">
+                    Annulla
+                </button>
+                <button type="submit" class="btn btn-danger">
+                    <i class="ti ti-trash"></i>
+                    Elimina
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

@@ -1,0 +1,286 @@
+{% extends "base/layout.html" %}
+
+{% block page_title %}
+Comandi vocali
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header d-print-none mb-3">
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+        <div>
+            <h2 class="page-title">Comandi vocali</h2>
+            <div class="text-secondary">Attiva il microfono e personalizza le frasi riconosciute</div>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'agenda:configurazione_programma' %}" class="btn btn-outline-secondary">
+                <i class="ti ti-adjustments"></i>
+                Parametri programma
+            </a>
+            <a href="{% url 'dashboard:sistema' %}" class="btn btn-outline-secondary">
+                <i class="ti ti-arrow-left"></i>
+                Sistema
+            </a>
+        </div>
+    </div>
+</div>
+
+<form method="post" id="comandiVoceForm">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <div class="card mb-3" id="comandi-vocali">
+        <div class="card-header">
+            <h3 class="card-title mb-0">
+                <i class="ti ti-microphone me-1"></i>
+                Impostazioni
+            </h3>
+        </div>
+        <div class="card-body">
+            <label class="form-check mb-3">
+                {{ form.comandi_voce_attivi }}
+                <span class="form-check-label">{{ form.comandi_voce_attivi.label }}</span>
+            </label>
+            {% if form.comandi_voce_attivi.errors %}
+                <div class="invalid-feedback d-block">{{ form.comandi_voce_attivi.errors|join:", " }}</div>
+            {% endif %}
+            <div class="form-hint mb-3">
+                1) Attiva i comandi e scegli la lingua.
+                2) Aggiungi i <strong>tuoi comandi</strong> (frasi → destinazione).
+                3) Se vuoi, personalizza anche le frasi dei comandi standard.
+                Richiede Chrome/Edge e permesso microfono.
+            </div>
+            <div class="mb-4" style="max-width: 16rem;">
+                <label class="form-label" for="{{ form.comandi_voce_lingua.id_for_label }}">{{ form.comandi_voce_lingua.label }}</label>
+                {{ form.comandi_voce_lingua }}
+                {% if form.comandi_voce_lingua.errors %}
+                    <div class="invalid-feedback d-block">{{ form.comandi_voce_lingua.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                <div class="fw-semibold mb-0">I tuoi comandi personalizzati</div>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="voceExtraAddBtn">
+                    <i class="ti ti-plus"></i>
+                    Aggiungi comando
+                </button>
+            </div>
+            <div class="form-hint mb-3">
+                Esempio: frasi <em>cerca riparazioni non ritirate, non ritirate</em>
+                → destinazione <em>Riparazioni: Non ritirate</em>.
+                Oppure destinazione <em>URL personalizzato</em> con percorso interno tipo
+                <code>/pratiche/categorie/</code>.
+            </div>
+
+            <input type="hidden" name="voce_extra_TOTAL_FORMS" id="id_voce_extra_TOTAL_FORMS" value="{{ form.voice_extra_rows|length }}">
+            <div id="voceExtraRows" class="d-flex flex-column gap-3 mb-4">
+                {% for row in form.voice_extra_rows %}
+                <div class="border rounded p-3 js-voce-extra-row" data-index="{{ forloop.counter0 }}">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-5">
+                            <label class="form-label">Frasi (separate da virgola)</label>
+                            <input type="text"
+                                   class="form-control"
+                                   name="voce_extra-{{ forloop.counter0 }}-frasi"
+                                   value="{{ row.frasi|join:', ' }}"
+                                   autocomplete="off"
+                                   placeholder="apri operatori, operatori">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Destinazione</label>
+                            <select class="form-select js-voce-dest" name="voce_extra-{{ forloop.counter0 }}-destinazione">
+                                {% for value, label in form.voice_destination_choices %}
+                                <option value="{{ value }}"{% if row.destinazione == value %} selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3 js-voce-url-wrap"{% if row.destinazione != 'url' %} hidden{% endif %}>
+                            <label class="form-label">URL interno</label>
+                            <input type="text"
+                                   class="form-control"
+                                   name="voce_extra-{{ forloop.counter0 }}-url"
+                                   value="{{ row.url }}"
+                                   autocomplete="off"
+                                   placeholder="/pratiche/operatori/">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Etichetta (opzionale)</label>
+                            <input type="text"
+                                   class="form-control"
+                                   name="voce_extra-{{ forloop.counter0 }}-etichetta"
+                                   value="{{ row.etichetta }}"
+                                   autocomplete="off"
+                                   placeholder="Operatori">
+                        </div>
+                        <div class="col-auto">
+                            <button type="button" class="btn btn-outline-danger js-voce-extra-remove" title="Rimuovi">
+                                <i class="ti ti-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-secondary small" id="voceExtraEmptyHint">
+                    Nessun comando personalizzato: usa «Aggiungi comando» oppure modifica le frasi standard qui sotto.
+                </div>
+                {% endfor %}
+            </div>
+
+            <template id="voceExtraEmptyRow">
+                <div class="border rounded p-3 js-voce-extra-row" data-index="__prefix__">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-5">
+                            <label class="form-label">Frasi (separate da virgola)</label>
+                            <input type="text"
+                                   class="form-control"
+                                   name="voce_extra-__prefix__-frasi"
+                                   value=""
+                                   autocomplete="off"
+                                   placeholder="apri operatori, operatori">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Destinazione</label>
+                            <select class="form-select js-voce-dest" name="voce_extra-__prefix__-destinazione">
+                                {% for value, label in form.voice_destination_choices %}
+                                <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3 js-voce-url-wrap" hidden>
+                            <label class="form-label">URL interno</label>
+                            <input type="text"
+                                   class="form-control"
+                                   name="voce_extra-__prefix__-url"
+                                   value=""
+                                   autocomplete="off"
+                                   placeholder="/pratiche/operatori/">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Etichetta (opzionale)</label>
+                            <input type="text"
+                                   class="form-control"
+                                   name="voce_extra-__prefix__-etichetta"
+                                   value=""
+                                   autocomplete="off"
+                                   placeholder="Operatori">
+                        </div>
+                        <div class="col-auto">
+                            <button type="button" class="btn btn-outline-danger js-voce-extra-remove" title="Rimuovi">
+                                <i class="ti ti-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            <details class="mb-0">
+                <summary class="fw-semibold" style="cursor: pointer;">Personalizza frasi dei comandi standard</summary>
+                <div class="form-hint mt-2 mb-3">
+                    Per ogni azione standard puoi cambiare le frasi riconosciute (separate da virgola).
+                    Campo vuoto = ripristino predefiniti al salvataggio.
+                </div>
+                <div class="row g-3 mt-1">
+                    {% for item in form.voice_command_fields %}
+                    <div class="col-md-6">
+                        <label class="form-label" for="{{ item.field.id_for_label }}">{{ item.label }}</label>
+                        {{ item.field }}
+                        {% if item.field.errors %}
+                            <div class="invalid-feedback d-block">{{ item.field.errors|join:", " }}</div>
+                        {% endif %}
+                        <div class="form-hint">{{ item.hint }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </details>
+        </div>
+        <div class="card-footer text-end">
+            <button type="submit" class="btn btn-primary">
+                <i class="ti ti-device-floppy"></i>
+                Salva comandi vocali
+            </button>
+        </div>
+    </div>
+</form>
+
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+(function () {
+    var rowsHost = document.getElementById("voceExtraRows");
+    var totalInput = document.getElementById("id_voce_extra_TOTAL_FORMS");
+    var template = document.getElementById("voceExtraEmptyRow");
+    var addBtn = document.getElementById("voceExtraAddBtn");
+    if (!rowsHost || !totalInput || !template || !addBtn) {
+        return;
+    }
+
+    function syncDest(row) {
+        var select = row.querySelector(".js-voce-dest");
+        var wrap = row.querySelector(".js-voce-url-wrap");
+        if (!select || !wrap) {
+            return;
+        }
+        wrap.hidden = select.value !== "url";
+    }
+
+    function reindex() {
+        var rows = rowsHost.querySelectorAll(".js-voce-extra-row");
+        rows.forEach(function (row, index) {
+            row.dataset.index = String(index);
+            row.querySelectorAll("input, select").forEach(function (field) {
+                if (!field.name) {
+                    return;
+                }
+                field.name = field.name.replace(/voce_extra-\d+-/, "voce_extra-" + index + "-");
+            });
+        });
+        totalInput.value = String(rows.length);
+        var hint = document.getElementById("voceExtraEmptyHint");
+        if (hint) {
+            hint.hidden = rows.length > 0;
+        }
+    }
+
+    rowsHost.querySelectorAll(".js-voce-extra-row").forEach(syncDest);
+
+    rowsHost.addEventListener("change", function (event) {
+        if (event.target && event.target.classList.contains("js-voce-dest")) {
+            syncDest(event.target.closest(".js-voce-extra-row"));
+        }
+    });
+
+    rowsHost.addEventListener("click", function (event) {
+        var btn = event.target.closest(".js-voce-extra-remove");
+        if (!btn) {
+            return;
+        }
+        var row = btn.closest(".js-voce-extra-row");
+        if (row) {
+            row.remove();
+            reindex();
+        }
+    });
+
+    addBtn.addEventListener("click", function () {
+        var index = rowsHost.querySelectorAll(".js-voce-extra-row").length;
+        var html = template.innerHTML.replaceAll("__prefix__", String(index));
+        rowsHost.insertAdjacentHTML("beforeend", html);
+        var hint = document.getElementById("voceExtraEmptyHint");
+        if (hint) {
+            hint.remove();
+        }
+        var row = rowsHost.querySelector('.js-voce-extra-row[data-index="' + index + '"]') ||
+            rowsHost.lastElementChild;
+        if (row) {
+            syncDest(row);
+        }
+        reindex();
+    });
+})();
+</script>
+{% endblock %}

@@ -1,10 +1,28 @@
+from datetime import datetime, time
+
 from django import forms
+from django.utils import timezone
 
 from apps.agenda.models import ConfigurazioneNotificaEmail, EventoAgenda
+from apps.core.date_fields import apply_current_year_datetime_widget, validate_current_year_date
 from apps.pratiche.models import Pratica
 
 
 class EventoAgendaForm(forms.ModelForm):
+    data_ora = forms.DateTimeField(
+        label="Data ora",
+        widget=forms.DateTimeInput(
+            attrs={"class": "form-control", "type": "datetime-local"},
+            format="%Y-%m-%dT%H:%M",
+        ),
+        input_formats=[
+            "%Y-%m-%dT%H:%M",
+            "%Y-%m-%dT%H:%M:%S",
+            "%Y-%m-%d %H:%M:%S",
+            "%Y-%m-%d %H:%M",
+        ],
+    )
+
     class Meta:
         model = EventoAgenda
         fields = [
@@ -12,10 +30,6 @@ class EventoAgendaForm(forms.ModelForm):
             "titolo",
             "tipo",
             "stato",
-            "data_inizio",
-            "ora_inizio",
-            "data_fine",
-            "ora_fine",
             "notifica_email",
             "descrizione",
             "note",
@@ -25,10 +39,6 @@ class EventoAgendaForm(forms.ModelForm):
             "titolo": forms.TextInput(attrs={"class": "form-control"}),
             "tipo": forms.Select(attrs={"class": "form-select"}),
             "stato": forms.Select(attrs={"class": "form-select"}),
-            "data_inizio": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
-            "ora_inizio": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
-            "data_fine": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
-            "ora_fine": forms.TimeInput(attrs={"class": "form-control", "type": "time"}),
             "notifica_email": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "descrizione": forms.Textarea(attrs={"class": "form-control", "rows": 4}),
             "note": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
@@ -42,19 +52,68 @@ class EventoAgendaForm(forms.ModelForm):
             .select_related("cliente")
             .order_by("-data_apertura", "-id")
         )
-        self.fields["data_fine"].required = False
-        self.fields["ora_inizio"].required = False
-        self.fields["ora_fine"].required = False
 
-    def clean(self):
-        cleaned_data = super().clean()
-        data_inizio = cleaned_data.get("data_inizio")
-        data_fine = cleaned_data.get("data_fine")
+        if self.instance.pk and self.instance.data_inizio and "data_ora" not in self.initial:
+            self.initial["data_ora"] = datetime.combine(
+                self.instance.data_inizio,
+                self.instance.ora_inizio or time.min,
+            )
+        elif not self.instance.pk and "data_ora" not in self.initial:
+            self.initial["data_ora"] = timezone.localtime().replace(second=0, microsecond=0)
 
-        if data_inizio and data_fine and data_fine < data_inizio:
-            self.add_error("data_fine", "La data fine non puo' precedere la data inizio.")
+        instance_value = None
+        if self.instance.pk and self.instance.data_inizio:
+            instance_value = datetime.combine(
+                self.instance.data_inizio,
+                self.instance.ora_inizio or time.min,
+            )
+        apply_current_year_datetime_widget(
+            self.fields["data_ora"],
+            instance_value=instance_value,
+        )
 
-        return cleaned_data
+        self.order_fields(
+            [
+                "pratica",
+                "titolo",
+                "tipo",
+                "stato",
+                "data_ora",
+                "notifica_email",
+                "descrizione",
+                "note",
+            ]
+        )
+
+    def clean_data_ora(self):
+        value = self.cleaned_data.get("data_ora")
+        if value is None:
+            return value
+
+        validate_current_year_date(
+            value,
+            instance=self.instance,
+            field_name="data_inizio",
+        )
+        return value
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        data_ora = self.cleaned_data["data_ora"]
+
+        if timezone.is_aware(data_ora):
+            data_ora = timezone.localtime(data_ora)
+
+        instance.data_inizio = data_ora.date()
+        instance.ora_inizio = data_ora.time()
+        instance.data_fine = None
+        instance.ora_fine = None
+
+        if commit:
+            instance.save()
+            self.save_m2m()
+
+        return instance
 
 
 class ConfigurazioneNotificaEmailForm(forms.ModelForm):

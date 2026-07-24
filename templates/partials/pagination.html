@@ -1,0 +1,135 @@
+{% if page_obj %}
+<div class="card-footer st-pagination" data-list-pagination>
+    <div class="st-pagination-meta">
+        <div class="st-pagination-info text-secondary">
+            {% if page_obj.paginator.count %}
+                {{ page_range_start }}–{{ page_range_end }} di {{ page_obj.paginator.count }}
+                · pag. {{ page_obj.number }}/{{ page_obj.paginator.num_pages }}
+            {% else %}
+                Nessun risultato
+            {% endif %}
+        </div>
+        <label class="st-pagination-size mb-0">
+            <span class="text-secondary">Righe</span>
+            <select class="form-select form-select-sm" data-page-size-select aria-label="Righe per pagina">
+                {% for size in page_size_choices %}
+                    <option value="{{ size }}"{% if page_size == size %} selected{% endif %}>{{ size }}</option>
+                {% endfor %}
+            </select>
+        </label>
+    </div>
+
+    <div class="st-pagination-nav">
+        <ul class="pagination m-0">
+            <li class="page-item{% if not page_obj.has_previous %} disabled{% endif %}">
+                {% if page_obj.has_previous %}
+                    <a class="page-link"
+                       href="?{% if filters_query %}{{ filters_query }}&{% endif %}page=1"
+                       aria-label="Prima pagina"
+                       title="Prima">
+                        <i class="ti ti-chevrons-left"></i>
+                    </a>
+                {% else %}
+                    <span class="page-link"><i class="ti ti-chevrons-left"></i></span>
+                {% endif %}
+            </li>
+            <li class="page-item{% if not page_obj.has_previous %} disabled{% endif %}">
+                {% if page_obj.has_previous %}
+                    <a class="page-link"
+                       href="?{% if filters_query %}{{ filters_query }}&{% endif %}page={{ page_obj.previous_page_number }}"
+                       aria-label="Precedente"
+                       title="Precedente"
+                       data-page-prev>
+                        <i class="ti ti-chevron-left"></i>
+                    </a>
+                {% else %}
+                    <span class="page-link"><i class="ti ti-chevron-left"></i></span>
+                {% endif %}
+            </li>
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if num == page_obj.number %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ num }}</span>
+                    </li>
+                {% elif num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+                    <li class="page-item">
+                        <a class="page-link"
+                           href="?{% if filters_query %}{{ filters_query }}&{% endif %}page={{ num }}">{{ num }}</a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+
+            <li class="page-item{% if not page_obj.has_next %} disabled{% endif %}">
+                {% if page_obj.has_next %}
+                    <a class="page-link"
+                       href="?{% if filters_query %}{{ filters_query }}&{% endif %}page={{ page_obj.next_page_number }}"
+                       aria-label="Successiva"
+                       title="Successiva"
+                       data-page-next>
+                        <i class="ti ti-chevron-right"></i>
+                    </a>
+                {% else %}
+                    <span class="page-link"><i class="ti ti-chevron-right"></i></span>
+                {% endif %}
+            </li>
+            <li class="page-item{% if not page_obj.has_next %} disabled{% endif %}">
+                {% if page_obj.has_next %}
+                    <a class="page-link"
+                       href="?{% if filters_query %}{{ filters_query }}&{% endif %}page={{ page_obj.paginator.num_pages }}"
+                       aria-label="Ultima pagina"
+                       title="Ultima"
+                       data-page-last>
+                        <i class="ti ti-chevrons-right"></i>
+                    </a>
+                {% else %}
+                    <span class="page-link"><i class="ti ti-chevrons-right"></i></span>
+                {% endif %}
+            </li>
+        </ul>
+
+        {% if page_obj.paginator.num_pages > 1 %}
+        <form class="st-pagination-jump" method="get" action="" data-page-jump>
+            {% for key, value in request.GET.items %}
+                {% if key != "page" %}
+                    <input type="hidden" name="{{ key }}" value="{{ value }}">
+                {% endif %}
+            {% endfor %}
+            <label class="text-secondary mb-0" for="stPageJump">Vai</label>
+            <input id="stPageJump"
+                   class="form-control form-control-sm"
+                   type="number"
+                   name="page"
+                   min="1"
+                   max="{{ page_obj.paginator.num_pages }}"
+                   value="{{ page_obj.number }}"
+                   inputmode="numeric"
+                   aria-label="Vai alla pagina">
+            <button type="submit" class="btn btn-sm btn-outline-secondary">OK</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+<script>
+(function () {
+    var root = document.currentScript && document.currentScript.previousElementSibling;
+    if (!root || !root.matches || !root.matches("[data-list-pagination]")) {
+        root = document.querySelector("[data-list-pagination]");
+    }
+    if (!root || root.dataset.bound === "1") {
+        return;
+    }
+    root.dataset.bound = "1";
+    var select = root.querySelector("[data-page-size-select]");
+    if (!select) {
+        return;
+    }
+    select.addEventListener("change", function () {
+        var url = new URL(window.location.href);
+        url.searchParams.set("page_size", select.value);
+        url.searchParams.set("page", "1");
+        window.location.href = url.toString();
+    });
+})();
+</script>
+{% endif %}

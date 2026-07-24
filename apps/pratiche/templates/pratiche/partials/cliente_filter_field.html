@@ -1,0 +1,38 @@
+<div class="st-pratica-filter-cliente">
+    <label class="form-label" for="clienteFilterSearchInput">Cliente</label>
+    <div class="st-cliente-search-field st-cliente-search-field-compact"
+         data-cliente-search-root
+         data-search-url="{% url 'pratiche:cliente_search' %}">
+        <input type="hidden"
+               name="cliente"
+               id="clienteFilterId"
+               value="{{ selected_cliente|default:'' }}">
+        <div class="st-cliente-search">
+            <div class="st-cliente-search-input-wrap">
+                <span class="input-icon">
+                    <span class="input-icon-addon">
+                        <i class="ti ti-search"></i>
+                    </span>
+                    <input type="text"
+                           id="clienteFilterSearchInput"
+                           class="form-control"
+                           value="{% if cliente_filtro %}{{ cliente_filtro.display_name }}{% endif %}"
+                           placeholder="Cerca cliente..."
+                           autocomplete="off"
+                           data-cliente-search-input
+                           {% if cliente_filtro %}data-selected-label="{{ cliente_filtro.display_name }}"{% endif %}>
+                </span>
+                <button type="button"
+                        class="btn btn-icon btn-outline-secondary st-cliente-search-clear"
+                        data-cliente-search-clear
+                        title="Rimuovi cliente"
+                        {% if not cliente_filtro %}hidden{% endif %}>
+                    <i class="ti ti-x"></i>
+                </button>
+            </div>
+            <div class="st-cliente-search-results"
+                 data-cliente-search-results
+                 hidden></div>
+        </div>
+    </div>
+</div>

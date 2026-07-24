@@ -8,11 +8,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <title>{% block title %}LabRepair{% endblock %}</title>
+    <link rel="icon" href="{% static 'securtek/img/favicon.svg' %}" type="image/svg+xml">
 
     <script>
         (function () {
             try {
-                const savedTheme = localStorage.getItem("securtek-theme");
+                const savedTheme = localStorage.getItem("labrepair-theme") || localStorage.getItem("securtek-theme");
                 const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
                 const theme = savedTheme || (prefersDark ? "dark" : "light");
                 document.documentElement.setAttribute("data-bs-theme", theme);
@@ -22,38 +23,33 @@
         })();
     </script>
 
-    <!-- Tabler -->
-    
-    <link rel="stylesheet"
-      href="{% static 'vendor/tabler/css/tabler.min.css' %}">
+    <link rel="stylesheet" href="{% static 'vendor/tabler/css/tabler.min.css' %}">
+    <link rel="stylesheet" href="{% static 'vendor/tabler-icons/tabler-icons.min.css' %}">
 
-    <link rel="stylesheet"
-      href="{% static 'vendor/tabler-icons/tabler-icons.min.css' %}">
-
-    <!-- CSS progetto -->
-    <link rel="stylesheet"
-        href="{% static 'securtek/css/variables.css' %}">
-
-    <link rel="stylesheet"
-        href="{% static 'securtek/css/style.css' %}">
-
-    <link rel="stylesheet"
-        href="{% static 'securtek/css/sidebar.css' %}">
-
-    <link rel="stylesheet"
-        href="{% static 'securtek/css/navbar.css' %}">
-
-    <link rel="stylesheet"
-        href="{% static 'securtek/css/components.css' %}">
-
-    <link rel="stylesheet"
-        href="{% static 'securtek/css/dashboard.css' %}">
+    <link rel="stylesheet" href="{% static 'securtek/css/variables.css' %}">
+    <link rel="stylesheet" href="{% static 'securtek/css/style.css' %}?v=20260722d">
+    <link rel="stylesheet" href="{% static 'securtek/css/sidebar.css' %}">
+    <link rel="stylesheet" href="{% static 'securtek/css/navbar.css' %}">
+    <link rel="stylesheet" href="{% static 'securtek/css/components.css' %}?v=20260724b">
+    <link rel="stylesheet" href="{% static 'securtek/css/dashboard.css' %}?v=20260724c">
 
     {% block extra_css %}{% endblock %}
 
 </head>
 
-<body>
+<body
+    autocomplete="off"
+    data-layout-stile="{{ layout_stile|default:'standard' }}"
+    data-webcam-hotkey-scatto="{{ webcam_tasto_scatto|default:'' }}"
+    data-webcam-hotkey-usa="{{ webcam_tasto_usa_foto|default:'' }}"
+    data-webcam-hotkey-nuovo-scatto="{{ webcam_tasto_nuovo_scatto|default:'' }}"
+    {% if comandi_voce_attivi %}data-voice-commands="1" data-voice-lang="{{ comandi_voce_lingua|default:'it-IT' }}"{% endif %}
+    {% if user.is_authenticated and request.session.labrepair_app %}
+    data-logout-on-close="1"
+    data-logout-url="{% url 'accounts:logout' %}"
+    {% endif %}>
+
+<div class="st-sidebar-backdrop" data-sidebar-backdrop></div>
 
 <div class="page">
 
@@ -83,12 +79,118 @@
 </div>
 
 <script src="{% static 'vendor/tabler/js/tabler.min.js' %}"></script>
-
 <script defer src="{% static 'vendor/alpinejs/cdn.min.js' %}"></script>
-
 <script src="{% static 'vendor/htmx/htmx.min.js' %}"></script>
+<script src="{% static 'securtek/js/app.js' %}?v=20260722d"></script>
+{% if comandi_voce_attivi and user.is_authenticated %}
+{{ comandi_voce_mappa|json_script:"labrepair-voice-commands" }}
+{{ comandi_voce_extra|json_script:"labrepair-voice-extra" }}
+<script>
+window.labrepairVoiceUrls = {
+    dashboard: "{% url 'dashboard:index' %}",
+    riparazioni: "{% url 'pratiche:pratica_list' %}",
+    nuovaRiparazione: "{% url 'pratiche:pratica_create' %}",
+    nuova_riparazione: "{% url 'pratiche:pratica_create' %}",
+    anagrafiche: "{% url 'anagrafiche:anagrafica_list' %}",
+    nuovoCliente: "{% url 'anagrafiche:anagrafica_create' %}?tipo=cliente",
+    nuovo_cliente: "{% url 'anagrafiche:anagrafica_create' %}?tipo=cliente",
+    agenda: "{% url 'agenda:calendar' %}",
+    parametri: "{% url 'agenda:configurazione_programma' %}",
+    comandi_vocali: "{% url 'agenda:comandi_voce' %}",
+    operatori: "{% url 'pratiche:operatore_list' %}",
+    tipi_oggetto: "{% url 'pratiche:tipo_oggetto_list' %}",
+    aziende: "{% url 'dashboard:azienda_list' %}",
+    sistema: "{% url 'dashboard:sistema' %}",
+    webcam: "{% url 'dashboard:webcam' %}",
+    non_ritirate: "{% url 'pratiche:pratica_list' %}?attenzione=non_ritirate",
+    ritardo_lavorazione: "{% url 'pratiche:pratica_list' %}?attenzione=ritardo_lavorazione"
+};
+</script>
+<script src="{% static 'securtek/js/voice_commands.js' %}?v=20260724a"></script>
+{% endif %}
+<script>
+(function () {
+    function syncNoAutofillMirrors(form) {
+        if (!form) {
+            return;
+        }
+        form.querySelectorAll("[data-no-autofill-mirror]").forEach(function (mirror) {
+            var storeName = mirror.getAttribute("data-store-name");
+            if (!storeName) {
+                return;
+            }
+            var store = form.querySelector(
+                '[data-no-autofill-store][name="' + storeName.replace(/"/g, '\\"') + '"]'
+            );
+            if (store) {
+                store.value = mirror.value;
+            }
+        });
+    }
 
-<script src="{% static 'securtek/js/app.js' %}"></script>
+    function bindNoAutofill(root) {
+        var scope = root && root.querySelectorAll ? root : document;
+
+        scope.querySelectorAll("form").forEach(function (form) {
+            if (form.dataset.noAutofillBound === "1") {
+                return;
+            }
+            form.dataset.noAutofillBound = "1";
+            form.addEventListener(
+                "submit",
+                function () {
+                    syncNoAutofillMirrors(form);
+                },
+                true
+            );
+            form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(function (btn) {
+                btn.addEventListener(
+                    "click",
+                    function () {
+                        syncNoAutofillMirrors(form);
+                    },
+                    true
+                );
+            });
+        });
+
+        scope.querySelectorAll("[data-no-autofill-mirror]").forEach(function (mirror) {
+            if (mirror.dataset.noAutofillReady === "1") {
+                return;
+            }
+            mirror.dataset.noAutofillReady = "1";
+            mirror.setAttribute("autocomplete", "off");
+            mirror.addEventListener("input", function () {
+                syncNoAutofillMirrors(mirror.form || mirror.closest("form"));
+            });
+            mirror.addEventListener("change", function () {
+                syncNoAutofillMirrors(mirror.form || mirror.closest("form"));
+            });
+            mirror.addEventListener("keydown", function (event) {
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                }
+            });
+        });
+    }
+
+    window.labrepairSyncNoAutofillMirrors = syncNoAutofillMirrors;
+    window.labrepairBindNoAutofill = bindNoAutofill;
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", function () {
+            bindNoAutofill(document);
+        });
+    } else {
+        bindNoAutofill(document);
+    }
+
+    document.body &&
+        document.body.addEventListener("htmx:afterSwap", function (event) {
+            bindNoAutofill(event.target || document);
+        });
+})();
+</script>
 
 {% block extra_js %}{% endblock %}
 

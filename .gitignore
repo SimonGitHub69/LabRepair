@@ -36,7 +36,20 @@ node_modules/
 
 # Logs
 *.log
+logs/
+
+# Database backups
+backups/
 
 # Coverage
 .coverage
 htmlcov/
+
+# CIE reader build artifacts
+tools/cie_reader/bin/
+tools/cie_reader/obj/
+tools/cie_reader/vendor/CIE.MRTD.SDK/bin/
+tools/cie_reader/vendor/CIE.MRTD.SDK/obj/
+
+# NSSM binary (scaricato da install_service.ps1)
+tools/nssm/
