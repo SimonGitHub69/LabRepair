@@ -41,7 +41,7 @@
                     {% elif request.GET.tipo == "cliente" or object.tipo == "cliente" %}
                         Dati personali, residenza, documento e recapiti
                     {% else %}
-                        Dati anagrafici, contatti e indirizzi
+                Scheda anagrafica cliente
                     {% endif %}
                 </div>
             </div>
@@ -83,6 +83,24 @@
 
         {% if form.non_field_errors %}
             <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+        {% endif %}
+        {% if indirizzo_formset.non_form_errors or contatto_formset.non_form_errors %}
+            <div class="alert alert-danger">
+                {{ indirizzo_formset.non_form_errors }}
+                {{ contatto_formset.non_form_errors }}
+            </div>
+        {% endif %}
+        {% if indirizzo_formset.errors %}
+            {% for form_errors in indirizzo_formset.errors %}
+                {% if form_errors %}
+                    <div class="alert alert-danger">
+                        Controlla l'indirizzo:
+                        {% for field, errs in form_errors.items %}
+                            {{ errs|join:", " }}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endfor %}
         {% endif %}
 
         <div id="clienteSections" hidden>
@@ -170,8 +188,8 @@
                                     {% if form.provincia_nascita.errors %}<div class="invalid-feedback d-block">{{ form.provincia_nascita.errors|join:", " }}</div>{% endif %}
                                 </div>
                             </div>
-                            <div class="col-12">
-                                <div class="mb-3">
+                            <div class="col-12" id="clienteCodiceFiscaleHost">
+                                <div class="mb-3" id="codiceFiscaleField">
                                     <label class="form-label" for="{{ form.codice_fiscale.id_for_label }}">{{ form.codice_fiscale.label }}</label>
                                     {{ form.codice_fiscale }}
                                     {% if form.codice_fiscale.errors %}<div class="invalid-feedback d-block">{{ form.codice_fiscale.errors|join:", " }}</div>{% endif %}
@@ -201,8 +219,8 @@
                                     {% if form.provincia_nascita.errors %}<div class="invalid-feedback d-block">{{ form.provincia_nascita.errors|join:", " }}</div>{% endif %}
                                 </div>
                             </div>
-                            <div class="col-md-12 col-lg-3">
-                                <div class="mb-3">
+                            <div class="col-md-12 col-lg-3" id="clienteCodiceFiscaleHost">
+                                <div class="mb-3" id="codiceFiscaleField">
                                     <label class="form-label" for="{{ form.codice_fiscale.id_for_label }}">{{ form.codice_fiscale.label }}</label>
                                     {{ form.codice_fiscale }}
                                     {% if form.codice_fiscale.errors %}<div class="invalid-feedback d-block">{{ form.codice_fiscale.errors|join:", " }}</div>{% endif %}
@@ -238,12 +256,7 @@
                                 {{ form.partita_iva }}
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="mb-0">
-                                <label class="form-label" for="{{ form.codice_fiscale.id_for_label }}">{{ form.codice_fiscale.label }}</label>
-                                {{ form.codice_fiscale }}
-                            </div>
-                        </div>
+                        <div class="col-md-4" id="businessCodiceFiscaleHost"></div>
                     </div>
                 </div>
             </div>
@@ -580,51 +593,13 @@
             </div>
         </div>
 
-        <div id="businessContattiSection" hidden>
-            <div class="card st-form-section" id="contattiSection">
-                <div class="card-header">
-                    <div class="st-form-section-icon">
-                        <i class="ti ti-address-book"></i>
-                    </div>
-                    <h3 class="card-title mb-0">Contatti</h3>
-                    <div class="card-actions">
-                        <button type="button" class="btn btn-outline-primary btn-sm" data-formset-add="contatti">
-                            <i class="ti ti-plus"></i> Aggiungi contatto
-                        </button>
-                    </div>
-                </div>
-                <div class="card-body">
-                    {{ contatto_formset.management_form }}
-                    <div id="contattiRows">
-                        {% for contatto_form in contatto_formset %}
-                        <div class="border rounded p-3 mb-3 js-formset-row">
-                            {% for hidden in contatto_form.hidden_fields %}{{ hidden }}{% endfor %}
-                            <div class="row align-items-end">
-                                <div class="col-md-3"><div class="mb-3"><label class="form-label">{{ contatto_form.tipo.label }}</label>{{ contatto_form.tipo }}</div></div>
-                                <div class="col-md-4"><div class="mb-3"><label class="form-label">{{ contatto_form.valore.label }}</label>{{ contatto_form.valore }}</div></div>
-                                <div class="col-md-3"><div class="mb-3"><label class="form-label">{{ contatto_form.descrizione.label }}</label>{{ contatto_form.descrizione }}</div></div>
-                                <div class="col-md-2"><label class="form-check mb-3">{{ contatto_form.principale }}<span class="form-check-label">{{ contatto_form.principale.label }}</span></label></div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    <template id="contattiEmptyForm">
-                        <div class="border rounded p-3 mb-3 js-formset-row">
-                            {% for hidden in contatto_formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
-                            <div class="row align-items-end">
-                                <div class="col-md-3"><div class="mb-3"><label class="form-label">{{ contatto_formset.empty_form.tipo.label }}</label>{{ contatto_formset.empty_form.tipo }}</div></div>
-                                <div class="col-md-4"><div class="mb-3"><label class="form-label">{{ contatto_formset.empty_form.valore.label }}</label>{{ contatto_formset.empty_form.valore }}</div></div>
-                                <div class="col-md-3"><div class="mb-3"><label class="form-label">{{ contatto_formset.empty_form.descrizione.label }}</label>{{ contatto_formset.empty_form.descrizione }}</div></div>
-                                <div class="col-md-2"><label class="form-check mb-3">{{ contatto_formset.empty_form.principale }}<span class="form-check-label">{{ contatto_formset.empty_form.principale.label }}</span></label></div>
-                            </div>
-                        </div>
-                    </template>
-                </div>
-            </div>
+        {# Contatti multipli SECURTEK: non usati in LabRepair (email/tel/cell su anagrafica) #}
+        <div hidden aria-hidden="true">
+            {{ contatto_formset.management_form }}
         </div>
 
         <div class="st-form-actions">
-            <a href="{% if object %}{% url 'anagrafiche:anagrafica_detail' object.pk %}{% else %}{% url 'anagrafiche:anagrafica_list' %}{% endif %}"
+            <a href="{% if next_url %}{{ next_url }}{% elif object %}{% url 'anagrafiche:anagrafica_detail' object.pk %}{% else %}{% url 'anagrafiche:anagrafica_list' %}{% endif %}"
                class="btn btn-outline-secondary">Annulla</a>
             <button type="submit" class="btn btn-primary">
                 <i class="ti ti-device-floppy"></i> Conferma
@@ -694,13 +669,26 @@ document.addEventListener("DOMContentLoaded", function () {
     const indirizzoSubtitle = document.querySelector(".js-indirizzo-subtitle");
     const recapitiCard = document.getElementById("recapitiCard");
     const clienteRecapitiHost = document.getElementById("clienteRecapitiHost");
-    const businessContattiSection = document.getElementById("businessContattiSection");
     const cognomeInput = document.getElementById("id_cognome");
     const nomeInput = document.getElementById("id_nome");
     const ragioneSocialeInput = document.getElementById("id_ragione_sociale");
+    const codiceFiscaleField = document.getElementById("codiceFiscaleField");
+    const clienteCodiceFiscaleHost = document.getElementById("clienteCodiceFiscaleHost");
+    const businessCodiceFiscaleHost = document.getElementById("businessCodiceFiscaleHost");
 
     if (window.LabRepairNameCase) {
         window.LabRepairNameCase.bind(cognomeInput, nomeInput);
+    }
+
+    function setSectionControlsEnabled(section, enabled) {
+        if (!section) {
+            return;
+        }
+        section.querySelectorAll("input, select, textarea, button").forEach(function (el) {
+            // I campi della sezione nascosta non devono andare in POST
+            // (altrimenti il secondo codice_fiscale vuoto azzera quello compilato).
+            el.disabled = !enabled;
+        });
     }
 
     function toggleAnagraficaSections() {
@@ -708,15 +696,26 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (clienteSections) {
             clienteSections.hidden = !isCliente;
+            setSectionControlsEnabled(clienteSections, isCliente);
         }
         if (clienteExtraSections) {
             clienteExtraSections.hidden = !isCliente;
+            setSectionControlsEnabled(clienteExtraSections, isCliente);
         }
         if (businessSections) {
             businessSections.hidden = isCliente;
+            setSectionControlsEnabled(businessSections, !isCliente);
         }
-        if (businessContattiSection) {
-            businessContattiSection.hidden = isCliente;
+        if (codiceFiscaleField) {
+            if (isCliente && clienteCodiceFiscaleHost) {
+                clienteCodiceFiscaleHost.appendChild(codiceFiscaleField);
+            } else if (!isCliente && businessCodiceFiscaleHost) {
+                businessCodiceFiscaleHost.appendChild(codiceFiscaleField);
+            }
+            // Il CF è unico: sempre abilitato quando spostato nella sezione attiva.
+            codiceFiscaleField.querySelectorAll("input, select, textarea").forEach(function (el) {
+                el.disabled = false;
+            });
         }
         if (cieHeaderBtn) {
             cieHeaderBtn.hidden = !isCliente;
@@ -767,6 +766,20 @@ document.addEventListener("DOMContentLoaded", function () {
     if (tipoField) {
         tipoField.addEventListener("change", toggleAnagraficaSections);
         toggleAnagraficaSections();
+    }
+
+    const anagraficaForm = document.getElementById("anagraficaForm");
+    if (anagraficaForm) {
+        anagraficaForm.addEventListener(
+            "submit",
+            function () {
+                toggleAnagraficaSections();
+                if (typeof window.labrepairSyncNoAutofillMirrors === "function") {
+                    window.labrepairSyncNoAutofillMirrors(anagraficaForm);
+                }
+            },
+            true
+        );
     }
 
     function addFormsetRow(prefix) {

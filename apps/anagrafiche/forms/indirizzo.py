@@ -38,20 +38,12 @@ class IndirizzoForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        has_details = any(
-            cleaned_data.get(field_name)
-            for field_name in [
-                "indirizzo",
-                "civico",
-                "cap",
-                "comune",
-                "provincia",
-                "principale",
-                "note",
-            ]
-        )
+        # Non usare "principale"/"nazione": in creazione sono già valorizzati
+        # e farebbero fallire il salvataggio con indirizzo ancora vuoto.
+        detail_fields = ("indirizzo", "civico", "cap", "comune", "provincia", "note")
+        has_details = any((cleaned_data.get(name) or "").strip() for name in detail_fields)
 
-        if has_details and not cleaned_data.get("indirizzo"):
+        if has_details and not (cleaned_data.get("indirizzo") or "").strip():
             self.add_error("indirizzo", "Inserisci l'indirizzo.")
 
         return cleaned_data

@@ -30,7 +30,7 @@
     <link rel="stylesheet" href="{% static 'securtek/css/style.css' %}?v=20260722d">
     <link rel="stylesheet" href="{% static 'securtek/css/sidebar.css' %}">
     <link rel="stylesheet" href="{% static 'securtek/css/navbar.css' %}">
-    <link rel="stylesheet" href="{% static 'securtek/css/components.css' %}?v=20260724b">
+    <link rel="stylesheet" href="{% static 'securtek/css/components.css' %}?v=20260725e">
     <link rel="stylesheet" href="{% static 'securtek/css/dashboard.css' %}?v=20260724d">
 
     {% block extra_css %}{% endblock %}
@@ -115,15 +115,37 @@ window.labrepairVoiceUrls = {
             return;
         }
         form.querySelectorAll("[data-no-autofill-mirror]").forEach(function (mirror) {
-            var storeName = mirror.getAttribute("data-store-name");
-            if (!storeName) {
+            if (mirror.disabled) {
                 return;
             }
-            var store = form.querySelector(
-                '[data-no-autofill-store][name="' + storeName.replace(/"/g, '\\"') + '"]'
-            );
+            var store = null;
+            if (mirror.id) {
+                store = document.getElementById(mirror.id + "_store");
+            }
+            if (!store) {
+                var storeName = mirror.getAttribute("data-store-name");
+                if (!storeName) {
+                    return;
+                }
+                // Preferisci lo store nello stesso contenitore del mirror (evita collisioni di name).
+                var scope = mirror.parentElement || form;
+                store = scope.querySelector(
+                    '[data-no-autofill-store][name="' + storeName.replace(/"/g, '\\"') + '"]'
+                );
+                if (!store) {
+                    store = form.querySelector(
+                        '[data-no-autofill-store][name="' + storeName.replace(/"/g, '\\"') + '"]'
+                    );
+                }
+            }
             if (store) {
-                store.value = mirror.value;
+                // Se il mirror è attivo, lo store deve seguire anche se era rimasto disabled.
+                if (store.disabled && !mirror.disabled) {
+                    store.disabled = false;
+                }
+                if (!store.disabled) {
+                    store.value = mirror.value;
+                }
             }
         });
     }

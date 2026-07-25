@@ -51,8 +51,13 @@ class AnagraficaForm(forms.ModelForm):
             ),
             "ragione_sociale": NoAutofillTextInput(),
             "partita_iva": forms.TextInput(attrs={"class": "form-control", "autocomplete": "off"}),
-            "codice_fiscale": NoAutofillTextInput(
-                attrs={"class": "form-control text-uppercase"}
+            # TextInput semplice: il widget NoAutofill (hidden+mirror) azzerava il CF in POST.
+            "codice_fiscale": forms.TextInput(
+                attrs={
+                    "class": "form-control text-uppercase",
+                    "autocomplete": "off",
+                    "spellcheck": "false",
+                }
             ),
             "cellulare": NoAutofillTextInput(),
             "telefono": NoAutofillTextInput(),
@@ -98,6 +103,10 @@ class AnagraficaForm(forms.ModelForm):
         cleaned_data["cognome"] = cognome
         cleaned_data["nome"] = nome
         ragione_sociale = (cleaned_data.get("ragione_sociale") or "").strip()
+        cleaned_data["codice_fiscale"] = self._first_non_empty_post(
+            "codice_fiscale",
+            cleaned_data.get("codice_fiscale"),
+        ).upper()
         prezioso = self.prezioso
 
         if tipo == Anagrafica.Tipo.CLIENTE:
@@ -116,6 +125,19 @@ class AnagraficaForm(forms.ModelForm):
             cleaned_data["cognome"] = ""
 
         return cleaned_data
+
+    def _first_non_empty_post(self, field_name, fallback=""):
+        """Se il campo è renderizzato più volte, preferisci il primo valore non vuoto."""
+        values = []
+        if hasattr(self.data, "getlist"):
+            values = self.data.getlist(field_name)
+        elif self.data is not None:
+            values = [self.data.get(field_name)]
+        for value in values:
+            text = (value or "").strip()
+            if text:
+                return text
+        return (fallback or "").strip()
 
     def _validate_prezioso_cliente(self, cleaned_data):
         required_fields = {
@@ -151,7 +173,7 @@ ContattoFormSet = inlineformset_factory(
     Anagrafica,
     Contatto,
     form=ContattoForm,
-    extra=1,
+    extra=0,
     can_delete=False,
 )
 
