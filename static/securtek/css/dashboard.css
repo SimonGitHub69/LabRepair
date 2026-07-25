@@ -251,11 +251,17 @@
 }
 
 .lr-recent-client {
+    color: inherit;
     font-weight: 650;
     line-height: 1.25;
     overflow: hidden;
     text-overflow: ellipsis;
+    transition: color var(--st-transition, 0.15s ease);
     white-space: nowrap;
+}
+
+.lr-recent-item:hover .lr-recent-client {
+    color: var(--st-primary, #206bc4);
 }
 
 .lr-recent-meta {

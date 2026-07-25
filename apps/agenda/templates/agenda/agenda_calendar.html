@@ -14,7 +14,9 @@ Agenda
             {% if pratica_corrente %}
                 <div class="text-secondary">{{ pratica_corrente.codice }} · {{ pratica_corrente.cliente_label }}</div>
             {% else %}
-                <div class="text-secondary">Eventi, lavori e scadenze collegati alle riparazioni</div>
+                <div class="text-secondary">
+                    Eventi, lavori e scadenze · {{ negozio_filter_label }}
+                </div>
             {% endif %}
         </div>
         <div class="col-auto d-flex flex-wrap gap-2">
@@ -37,6 +39,19 @@ Agenda
         <form method="get" class="row g-2 align-items-end">
             <input type="hidden" name="year" value="{{ month_start.year }}">
             <input type="hidden" name="month" value="{{ month_start.month }}">
+            <div class="col-md-3">
+                <label class="form-label" for="agendaNegozioFilter">Negozio</label>
+                <select name="negozio" class="form-select" id="agendaNegozioFilter">
+                    {% for value, label in negozi %}
+                        <option value="{{ value }}" {% if negozio_filter == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                    <option value="all" {% if negozio_filter_all %}selected{% endif %}>
+                        Tutti i negozi
+                    </option>
+                </select>
+            </div>
             <div class="col-md-4">
                 <label class="form-label">Riparazione</label>
                 <select name="pratica" class="form-select">

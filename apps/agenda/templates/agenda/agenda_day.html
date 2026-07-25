@@ -13,6 +13,7 @@ Agenda giornaliera
             <h2 class="page-title">Agenda giornaliera</h2>
             <div class="text-secondary">
                 {{ selected_date|date:"l d F Y" }}
+                · {{ negozio_filter_label }}
                 {% if pratica_corrente %} · {{ pratica_corrente.codice }}{% endif %}
             </div>
         </div>
@@ -39,6 +40,19 @@ Agenda giornaliera
     <div class="card-body">
         <form method="get" class="row g-2 align-items-end">
             <input type="hidden" name="data" value="{{ selected_date|date:'Y-m-d' }}">
+            <div class="col-md-3">
+                <label class="form-label" for="agendaDayNegozioFilter">Negozio</label>
+                <select name="negozio" class="form-select" id="agendaDayNegozioFilter">
+                    {% for value, label in negozi %}
+                        <option value="{{ value }}" {% if negozio_filter == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                    <option value="all" {% if negozio_filter_all %}selected{% endif %}>
+                        Tutti i negozi
+                    </option>
+                </select>
+            </div>
             <div class="col-md-4">
                 <label class="form-label">Riparazione</label>
                 <select name="pratica" class="form-select">

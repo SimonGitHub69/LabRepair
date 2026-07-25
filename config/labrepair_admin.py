@@ -1,5 +1,19 @@
 """
 Admin Django riorganizzato come il menu LabRepair.
+
+Come aggiornare il menu
+-----------------------
+Modifica solo la tupla ADMIN_MENU_SECTIONS qui sotto, poi riavvia Waitress.
+
+Formati voce:
+  ("app.modello", "Etichetta opzionale")
+      -> apre la pagina Django Admin del modello registrato
+  ("__link__", "Etichetta", "namespace:url_name")
+      -> apre una pagina LabRepair (stesse maschere del sidebar)
+  ("__link__", "Etichetta", "namespace:url_name", "app.permesso")
+      -> come sopra, ma solo se l'utente ha il permesso
+  ("__link__", "Etichetta", "#")
+      -> voce disabilitata / placeholder
 """
 
 from django.contrib import admin
@@ -7,9 +21,7 @@ from django.contrib.admin import AdminSite
 from django.urls import reverse
 
 
-# Sezioni allineate al menu LabRepair.
-# Chiave modello = label_lower (app_label.model_name).
-# Link custom: ("__link__", etichetta, url_name)
+# Sezioni allineate a templates/base/sidebar.html
 ADMIN_MENU_SECTIONS = (
     {
         "name": "Dashboard",
@@ -22,10 +34,10 @@ ADMIN_MENU_SECTIONS = (
         "name": "Gestione",
         "app_label": "labrepair_gestione",
         "models": (
-            ("pratiche.pratica", None),
-            ("anagrafiche.anagrafica", None),
-            ("pratiche.studiotecnico", None),
-            ("agenda.eventoagenda", "Agenda"),
+            ("__link__", "Riparazioni", "pratiche:pratica_list"),
+            ("__link__", "Anagrafiche", "anagrafiche:anagrafica_list"),
+            ("__link__", "Riparatori", "pratiche:studio_tecnico_list"),
+            ("__link__", "Agenda", "agenda:calendar"),
             ("__link__", "Documenti", "dashboard:documenti"),
         ),
     },
@@ -52,8 +64,9 @@ ADMIN_MENU_SECTIONS = (
         "name": "Parametri",
         "app_label": "labrepair_parametri",
         "models": (
-            ("pratiche.operatore", None),
-            ("pratiche.tipooggetto", None),
+            ("__link__", "Operatori", "pratiche:operatore_list"),
+            ("__link__", "Tipi di oggetto", "pratiche:tipo_oggetto_list"),
+            ("__link__", "Parametri PC", "agenda:configurazione_pc_list"),
             (
                 "__link__",
                 "Parametri mail e SQL",
@@ -66,13 +79,19 @@ ADMIN_MENU_SECTIONS = (
                 "agenda:configurazione_programma",
                 "core.access_parametri_programma",
             ),
+            (
+                "__link__",
+                "Comandi vocali",
+                "agenda:comandi_voce",
+                "core.access_parametri_programma",
+            ),
         ),
     },
     {
         "name": "Sistema",
         "app_label": "labrepair_sistema",
         "models": (
-            ("core.azienda", None),
+            ("__link__", "Aziende", "dashboard:azienda_list"),
             ("__link__", "Sistema", "dashboard:sistema"),
         ),
     },
@@ -80,6 +99,7 @@ ADMIN_MENU_SECTIONS = (
         "name": "Autenticazione",
         "app_label": "labrepair_auth",
         "models": (
+            # Restano in Django Admin (utenti/gruppi)
             ("auth.user", "Utenti"),
             ("accounts.user", "Utenti"),
             ("auth.group", "Gruppi"),

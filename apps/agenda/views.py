@@ -23,6 +23,13 @@ from apps.core.models import ConfigurazioneMssql, ConfigurazionePC, Configurazio
 from apps.core.mssql import config_from_post, test_mssql_connection
 from apps.core.pc import detect_client_pc_name
 from apps.core.programma import get_mailto_preview
+from apps.core.negozi import (
+    NEGOZI,
+    NEGOZIO_FILTER_ALL,
+    apply_negozio_queryset_filter,
+    negozio_label,
+    resolve_negozio_filter,
+)
 from apps.pratiche.models import Pratica
 
 
@@ -39,10 +46,14 @@ def get_pratica_corrente(pratica_id):
 def get_agenda_filters(request):
     pratica_id = (request.GET.get("pratica") or "").strip()
     stato = (request.GET.get("stato") or "").strip()
-    return pratica_id, stato
+    negozio_filter = resolve_negozio_filter(
+        request.GET.get("negozio"),
+        request.session.get("negozio"),
+    )
+    return pratica_id, stato, negozio_filter
 
 
-def build_agenda_filter_query(pratica_id="", stato=""):
+def build_agenda_filter_query(pratica_id="", stato="", negozio_filter=""):
     from urllib.parse import urlencode
 
     params = {}
@@ -50,23 +61,41 @@ def build_agenda_filter_query(pratica_id="", stato=""):
         params["pratica"] = pratica_id
     if stato:
         params["stato"] = stato
+    if negozio_filter:
+        params["negozio"] = negozio_filter
     return urlencode(params)
 
 
-def get_agenda_pratiche_queryset(stato=""):
+def get_agenda_pratiche_queryset(stato="", negozio_filter=""):
     queryset = Pratica.objects.filter(is_active=True).order_by("-data_apertura", "-id")
     if stato:
         queryset = queryset.filter(stato=stato)
-    return queryset
+    return apply_negozio_queryset_filter(queryset, negozio_filter)
 
 
-def apply_agenda_event_filters(queryset, pratica_id="", stato=""):
+def apply_agenda_event_filters(queryset, pratica_id="", stato="", negozio_filter=""):
     if pratica_id:
         queryset = queryset.filter(pratica_id=pratica_id)
     if stato:
         queryset = queryset.filter(pratica__stato=stato)
-    return queryset
+    return apply_negozio_queryset_filter(queryset, negozio_filter, field="pratica__negozio")
 
+
+def agenda_filter_context(pratica_id, stato, negozio_filter):
+    return {
+        "pratiche": get_agenda_pratiche_queryset(stato, negozio_filter),
+        "stati": [
+            (stato.value, stato.label) for stato in Pratica.STATI_SELEZIONABILI
+        ],
+        "negozi": NEGOZI,
+        "selected_pratica": pratica_id,
+        "selected_stato": stato,
+        "negozio_filter": negozio_filter,
+        "negozio_filter_all": negozio_filter == NEGOZIO_FILTER_ALL,
+        "negozio_filter_label": negozio_label(negozio_filter),
+        "filter_query": build_agenda_filter_query(pratica_id, stato, negozio_filter),
+        "pratica_corrente": get_pratica_corrente(pratica_id),
+    }
 
 class PraticaScadenzaAgendaItem:
     tipo = EventoAgenda.Tipo.SCADENZA
@@ -91,7 +120,7 @@ class PraticaScadenzaAgendaItem:
         return "Programmato"
 
 
-def get_pratica_deadline_items(start_date, end_date, pratica_id="", stato=""):
+def get_pratica_deadline_items(start_date, end_date, pratica_id="", stato="", negozio_filter=""):
     stati_finali = [
         Pratica.Stato.COMPLETATA,
         Pratica.Stato.ANNULLATA,
@@ -112,6 +141,7 @@ def get_pratica_deadline_items(start_date, end_date, pratica_id="", stato=""):
         pratiche = pratiche.filter(pk=pratica_id)
     if stato:
         pratiche = pratiche.filter(stato=stato)
+    pratiche = apply_negozio_queryset_filter(pratiche, negozio_filter)
 
     return [PraticaScadenzaAgendaItem(pratica) for pratica in pratiche]
 
@@ -131,14 +161,14 @@ class AgendaCalendarView(LoginRequiredMixin, TemplateView):
         except ValueError:
             return date(today.year, today.month, 1)
 
-    def get_events_queryset(self, month_start, month_end, pratica_id="", stato=""):
+    def get_events_queryset(self, month_start, month_end, pratica_id="", stato="", negozio_filter=""):
         queryset = (
             EventoAgenda.objects.filter(is_active=True)
             .filter(data_inizio__lte=month_end)
             .filter(Q(data_fine__isnull=True, data_inizio__gte=month_start) | Q(data_fine__gte=month_start))
             .select_related("pratica", "pratica__cliente")
         )
-        return apply_agenda_event_filters(queryset, pratica_id, stato).order_by(
+        return apply_agenda_event_filters(queryset, pratica_id, stato, negozio_filter).order_by(
             "data_inizio", "ora_inizio", "titolo"
         )
 
@@ -149,10 +179,9 @@ class AgendaCalendarView(LoginRequiredMixin, TemplateView):
         month_end = date(month_start.year, month_start.month, days_in_month)
         previous_month = date(month_start.year - 1, 12, 1) if month_start.month == 1 else date(month_start.year, month_start.month - 1, 1)
         next_month = date(month_start.year + 1, 1, 1) if month_start.month == 12 else date(month_start.year, month_start.month + 1, 1)
-        pratica_id, stato = get_agenda_filters(self.request)
-        filter_query = build_agenda_filter_query(pratica_id, stato)
-        events = list(self.get_events_queryset(month_start, month_end, pratica_id, stato))
-        events.extend(get_pratica_deadline_items(month_start, month_end, pratica_id, stato))
+        pratica_id, stato, negozio_filter = get_agenda_filters(self.request)
+        events = list(self.get_events_queryset(month_start, month_end, pratica_id, stato, negozio_filter))
+        events.extend(get_pratica_deadline_items(month_start, month_end, pratica_id, stato, negozio_filter))
         events.sort(key=lambda event: (event.data_inizio, event.ora_inizio or time.min, event.tipo, event.titolo))
         events_by_day = {}
 
@@ -192,14 +221,9 @@ class AgendaCalendarView(LoginRequiredMixin, TemplateView):
                     if event.data_termine >= today
                     and event.stato not in {EventoAgenda.Stato.COMPLETATO, EventoAgenda.Stato.ANNULLATO}
                 ][:12],
-                "pratiche": get_agenda_pratiche_queryset(stato),
-                "stati": Pratica.Stato.choices,
-                "selected_pratica": pratica_id,
-                "selected_stato": stato,
-                "filter_query": filter_query,
-                "pratica_corrente": get_pratica_corrente(pratica_id),
             }
         )
+        context.update(agenda_filter_context(pratica_id, stato, negozio_filter))
         return context
 
 
@@ -217,8 +241,7 @@ class AgendaDayView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         selected_date = self.get_selected_date()
-        pratica_id, stato = get_agenda_filters(self.request)
-        filter_query = build_agenda_filter_query(pratica_id, stato)
+        pratica_id, stato, negozio_filter = get_agenda_filters(self.request)
         events = list(
             apply_agenda_event_filters(
                 EventoAgenda.objects.filter(is_active=True)
@@ -227,10 +250,11 @@ class AgendaDayView(LoginRequiredMixin, TemplateView):
                 .select_related("pratica", "pratica__cliente"),
                 pratica_id,
                 stato,
+                negozio_filter,
             ).order_by("ora_inizio", "tipo", "titolo")
         )
 
-        events.extend(get_pratica_deadline_items(selected_date, selected_date, pratica_id, stato))
+        events.extend(get_pratica_deadline_items(selected_date, selected_date, pratica_id, stato, negozio_filter))
         events.sort(key=lambda event: (event.ora_inizio or time.min, event.tipo, event.titolo))
 
         previous_day = selected_date - timedelta(days=1)
@@ -241,14 +265,9 @@ class AgendaDayView(LoginRequiredMixin, TemplateView):
                 "previous_day": previous_day,
                 "next_day": next_day,
                 "events": events,
-                "pratiche": get_agenda_pratiche_queryset(stato),
-                "stati": Pratica.Stato.choices,
-                "selected_pratica": pratica_id,
-                "selected_stato": stato,
-                "filter_query": filter_query,
-                "pratica_corrente": get_pratica_corrente(pratica_id),
             }
         )
+        context.update(agenda_filter_context(pratica_id, stato, negozio_filter))
         return context
 
 
