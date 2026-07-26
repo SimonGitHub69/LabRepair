@@ -1,0 +1,36 @@
+{% extends "base/layout.html" %}
+
+{% block page_title %}Accesso non consentito{% endblock %}
+{% block title %}Accesso non consentito · LabRepair{% endblock %}
+
+{% block content %}
+<div class="container-xl py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-7 col-xl-6">
+            <div class="card st-permission-denied">
+                <div class="card-body text-center p-4 p-md-5">
+                    <div class="st-permission-denied-icon mb-3" aria-hidden="true">
+                        <i class="ti ti-lock"></i>
+                    </div>
+                    <h1 class="h2 mb-2">Accesso non consentito</h1>
+                    <p class="text-secondary mb-4">
+                        Non hai i permessi per aprire questa funzione.
+                        Se ti serve, chiedi all&apos;amministratore di abilitare
+                        il tuo utente o il tuo gruppo.
+                    </p>
+                    <div class="d-flex flex-wrap justify-content-center gap-2">
+                        <a href="{% url 'dashboard:index' %}" class="btn btn-primary">
+                            <i class="ti ti-home"></i>
+                            Torna alla home
+                        </a>
+                        <button type="button" class="btn btn-outline-secondary" onclick="history.back()">
+                            <i class="ti ti-arrow-left"></i>
+                            Indietro
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

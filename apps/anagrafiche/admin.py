@@ -1,12 +1,6 @@
 from django.contrib import admin
 
-from apps.anagrafiche.models import Anagrafica, Contatto, Indirizzo
-
-
-class ContattoInline(admin.TabularInline):
-    model = Contatto
-    extra = 0
-    fields = ("tipo", "valore", "descrizione", "principale", "is_active")
+from apps.anagrafiche.models import Anagrafica, Indirizzo
 
 
 class IndirizzoInline(admin.TabularInline):
@@ -30,11 +24,11 @@ class AnagraficaAdmin(admin.ModelAdmin):
     list_display = ("denominazione", "tipo", "partita_iva", "email", "telefono", "is_active")
     search_fields = ("ragione_sociale", "cognome", "nome", "partita_iva", "codice_fiscale", "email", "telefono")
     list_filter = ("tipo", "is_active")
-    inlines = (ContattoInline, IndirizzoInline)
+    inlines = (IndirizzoInline,)
 
     @admin.display(description="Denominazione", ordering="ragione_sociale")
     def denominazione(self, obj):
         return obj.display_name
 
 
-# Contatto e Indirizzo non compaiono come voci separate: solo inline in Anagrafica.
+# Indirizzo solo come inline (residenza cliente). Contatto SECURTEK non usato in LabRepair.

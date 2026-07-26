@@ -38,14 +38,19 @@ ADMIN_MENU_SECTIONS = (
             ("__link__", "Anagrafiche", "anagrafiche:anagrafica_list"),
             ("__link__", "Riparatori", "pratiche:studio_tecnico_list"),
             ("__link__", "Agenda", "agenda:calendar"),
-            ("__link__", "Documenti", "dashboard:documenti"),
+            (
+                "__link__",
+                "Documenti",
+                "dashboard:documenti",
+                "dashboard.access_documenti",
+            ),
         ),
     },
     {
         "name": "Analisi",
         "app_label": "labrepair_analisi",
         "models": (
-            ("__link__", "Report", "#"),
+            ("__link__", "Report", "#", "dashboard.access_report"),
         ),
     },
     {
@@ -66,7 +71,12 @@ ADMIN_MENU_SECTIONS = (
         "models": (
             ("__link__", "Operatori", "pratiche:operatore_list"),
             ("__link__", "Tipi di oggetto", "pratiche:tipo_oggetto_list"),
-            ("__link__", "Parametri PC", "agenda:configurazione_pc_list"),
+            (
+                "__link__",
+                "Parametri PC",
+                "agenda:configurazione_pc_list",
+                "dashboard.access_parametri_pc",
+            ),
             (
                 "__link__",
                 "Parametri mail e SQL",
@@ -83,7 +93,7 @@ ADMIN_MENU_SECTIONS = (
                 "__link__",
                 "Comandi vocali",
                 "agenda:comandi_voce",
-                "core.access_parametri_programma",
+                "dashboard.access_comandi_vocali",
             ),
         ),
     },
@@ -92,7 +102,7 @@ ADMIN_MENU_SECTIONS = (
         "app_label": "labrepair_sistema",
         "models": (
             ("__link__", "Aziende", "dashboard:azienda_list"),
-            ("__link__", "Sistema", "dashboard:sistema"),
+            ("__link__", "Sistema", "dashboard:sistema", "dashboard.access_sistema"),
         ),
     },
     {

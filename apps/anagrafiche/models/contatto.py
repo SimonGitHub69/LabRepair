@@ -43,6 +43,8 @@ class Contatto(BaseModel):
         verbose_name = "Contatto"
         verbose_name_plural = "Contatti"
         ordering = ["anagrafica__ragione_sociale", "-principale", "tipo", "valore"]
+        # Residuo SECURTEK multi-contatto: non in menu LabRepair
+        default_permissions = ()
 
     def __str__(self):
         label = self.get_tipo_display()

@@ -1,5 +1,5 @@
 from django.contrib import messages
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.db.models import Count, Q, Sum
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
@@ -319,8 +319,10 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         return context
 
 
-class DocumentiView(LoginRequiredMixin, TemplateView):
+class DocumentiView(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
     template_name = "dashboard/documenti.html"
+    permission_required = "dashboard.access_documenti"
+    raise_exception = True
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -388,8 +390,10 @@ class DocumentiView(LoginRequiredMixin, TemplateView):
         return context
 
 
-class SistemaView(LoginRequiredMixin, TemplateView):
+class SistemaView(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
     template_name = "dashboard/sistema.html"
+    permission_required = "dashboard.access_sistema"
+    raise_exception = True
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

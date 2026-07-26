@@ -22,6 +22,8 @@ class CategoriaPratica(BaseModel):
         verbose_name = "Categoria riparazione"
         verbose_name_plural = "Categorie riparazioni"
         ordering = ["denominazione"]
+        # Residuo SECURTEK: non esporre nei permessi gruppi LabRepair
+        default_permissions = ()
 
     def __str__(self):
         return self.denominazione
@@ -41,6 +43,7 @@ class MacroCategoriaPratica(BaseModel):
         verbose_name = "Macro-categoria riparazione"
         verbose_name_plural = "Macro-categorie riparazioni"
         ordering = ["denominazione"]
+        default_permissions = ()
 
     def __str__(self):
         return self.denominazione
@@ -361,6 +364,7 @@ class TemplatePratica(BaseModel):
         verbose_name = "Template riparazione"
         verbose_name_plural = "Template riparazioni"
         ordering = ["tipologia"]
+        default_permissions = ()
 
     def __str__(self):
         return self.get_tipologia_display()
@@ -395,6 +399,7 @@ class PraticaCategoria(BaseModel):
         verbose_name = "Categoria riparazione collegata"
         verbose_name_plural = "Categorie riparazione collegate"
         ordering = ["macro_categoria__denominazione", "categoria__denominazione", "versione"]
+        default_permissions = ()
         constraints = [
             models.UniqueConstraint(
                 fields=["pratica", "categoria", "versione"],
@@ -435,6 +440,7 @@ class PraticaMacroCategoria(BaseModel):
         verbose_name = "Macro-categoria riparazione collegata"
         verbose_name_plural = "Macro-categorie riparazione collegate"
         ordering = ["macro_categoria__denominazione"]
+        default_permissions = ()
         constraints = [
             models.UniqueConstraint(
                 fields=["pratica", "macro_categoria"],
@@ -462,6 +468,7 @@ class PraticaCategoriaFile(BaseModel):
         verbose_name = "File categoria riparazione"
         verbose_name_plural = "File categorie riparazione"
         ordering = ["percorso_relativo"]
+        default_permissions = ()
         constraints = [
             models.UniqueConstraint(
                 fields=["pratica_categoria", "percorso_relativo"],
@@ -495,6 +502,7 @@ class PraticaCategoriaAllegato(BaseModel):
         verbose_name = "Allegato singolo categoria riparazione"
         verbose_name_plural = "Allegati singoli categorie riparazione"
         ordering = ["file"]
+        default_permissions = ()
 
     def __str__(self):
         return self.file_nome
@@ -553,19 +561,6 @@ class StudioTecnico(BaseModel):
         return self.denominazione
 
 
-class IncaricoTecnico(BaseModel):
-    denominazione = models.CharField("Denominazione", max_length=150, unique=True)
-    descrizione = models.TextField("Descrizione", blank=True)
-
-    class Meta:
-        verbose_name = "Incarico"
-        verbose_name_plural = "Incarichi"
-        ordering = ["denominazione"]
-
-    def __str__(self):
-        return self.denominazione
-
-
 class Operatore(BaseModel):
     nominativo = models.CharField("Nominativo", max_length=150, unique=True)
 
@@ -576,40 +571,3 @@ class Operatore(BaseModel):
 
     def __str__(self):
         return self.nominativo
-
-
-class Tecnico(BaseModel):
-    pratica = models.ForeignKey(
-        Pratica,
-        on_delete=models.CASCADE,
-        related_name="tecnici",
-        verbose_name="Riparazione",
-    )
-    nome = models.CharField("Nome", max_length=100)
-    cognome = models.CharField("Cognome", max_length=100)
-    studio_appartenenza = models.ForeignKey(
-        StudioTecnico,
-        on_delete=models.PROTECT,
-        related_name="tecnici",
-        verbose_name="Studio di appartenenza",
-        null=True,
-        blank=True,
-    )
-    incarico = models.ForeignKey(
-        IncaricoTecnico,
-        on_delete=models.PROTECT,
-        related_name="tecnici",
-        verbose_name="Incarico",
-        null=True,
-        blank=True,
-    )
-    email = models.EmailField("Email", blank=True)
-    telefono = models.CharField("Telefono", max_length=30, blank=True)
-
-    class Meta:
-        verbose_name = "Tecnico"
-        verbose_name_plural = "Tecnici"
-        ordering = ["cognome", "nome"]
-
-    def __str__(self):
-        return f"{self.nome} {self.cognome}".strip()

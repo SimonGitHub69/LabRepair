@@ -503,7 +503,7 @@ class ParametriProgrammaView(LoginRequiredMixin, PermissionRequiredMixin, View):
 
 class ParametriComandiVoceView(LoginRequiredMixin, PermissionRequiredMixin, View):
     template_name = "agenda/comandi_voce_form.html"
-    permission_required = "core.access_parametri_programma"
+    permission_required = "dashboard.access_comandi_vocali"
     raise_exception = True
 
     def get_context(self, form=None):
@@ -529,11 +529,13 @@ class ParametriComandiVoceView(LoginRequiredMixin, PermissionRequiredMixin, View
         return render(request, self.template_name, self.get_context(form=form))
 
 
-class ConfigurazionePCListView(LoginRequiredMixin, ConfigurablePaginationMixin, ListView):
+class ConfigurazionePCListView(LoginRequiredMixin, PermissionRequiredMixin, ConfigurablePaginationMixin, ListView):
     model = ConfigurazionePC
     template_name = "agenda/configurazione_pc_list.html"
     context_object_name = "postazioni"
     paginate_by = 20
+    permission_required = "dashboard.access_parametri_pc"
+    raise_exception = True
 
     def get_queryset(self):
         queryset = ConfigurazionePC.objects.filter(is_active=True)
@@ -547,10 +549,12 @@ class ConfigurazionePCListView(LoginRequiredMixin, ConfigurablePaginationMixin, 
         return queryset.order_by("nome_pc")
 
 
-class ConfigurazionePCCreateView(LoginRequiredMixin, CreateView):
+class ConfigurazionePCCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
     model = ConfigurazionePC
     form_class = ConfigurazionePCForm
     template_name = "agenda/configurazione_pc_form.html"
+    permission_required = "dashboard.access_parametri_pc"
+    raise_exception = True
 
     def get_detected_nome_pc(self):
         return detect_client_pc_name(self.request)
@@ -587,10 +591,12 @@ class ConfigurazionePCCreateView(LoginRequiredMixin, CreateView):
         return reverse("agenda:configurazione_pc_list")
 
 
-class ConfigurazionePCUpdateView(LoginRequiredMixin, UpdateView):
+class ConfigurazionePCUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
     model = ConfigurazionePC
     form_class = ConfigurazionePCForm
     template_name = "agenda/configurazione_pc_form.html"
+    permission_required = "dashboard.access_parametri_pc"
+    raise_exception = True
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -609,7 +615,10 @@ class ConfigurazionePCUpdateView(LoginRequiredMixin, UpdateView):
         return reverse("agenda:configurazione_pc_list")
 
 
-class ConfigurazionePCDeleteView(LoginRequiredMixin, View):
+class ConfigurazionePCDeleteView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    permission_required = "dashboard.access_parametri_pc"
+    raise_exception = True
+
     def post(self, request, *args, **kwargs):
         postazione = get_object_or_404(ConfigurazionePC, pk=kwargs["pk"], is_active=True)
         postazione.soft_delete(user=request.user)

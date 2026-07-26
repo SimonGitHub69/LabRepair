@@ -43,17 +43,21 @@
             <span>Agenda</span>
         </a>
 
+        {% if perms.dashboard.access_documenti %}
         <a class="st-nav-link {% if request.path == '/documenti/' %}active{% endif %}" href="/documenti/">
             <i class="ti ti-file-text"></i>
             <span>Documenti</span>
         </a>
+        {% endif %}
 
+        {% if perms.dashboard.access_report %}
         <div class="st-nav-section">Analisi</div>
 
         <a class="st-nav-link" href="#">
             <i class="ti ti-chart-bar"></i>
             <span>Report</span>
         </a>
+        {% endif %}
 
         {% if perms.anagrafiche.import_clienti_csv %}
         <div class="st-nav-section">Strumenti</div>
@@ -76,10 +80,12 @@
             <span>Tipi di oggetto</span>
         </a>
 
+        {% if perms.dashboard.access_parametri_pc %}
         <a class="st-nav-link {% if request.path|slice:':18' == '/agenda/parametri-pc' %}active{% endif %}" href="{% url 'agenda:configurazione_pc_list' %}">
             <i class="ti ti-device-desktop"></i>
             <span>Parametri PC</span>
         </a>
+        {% endif %}
 
         {% if perms.agenda.access_parametri_mail_sql %}
         <a class="st-nav-link {% if request.path == '/agenda/parametri-mail/' %}active{% endif %}" href="/agenda/parametri-mail/">
@@ -93,6 +99,8 @@
             <i class="ti ti-adjustments"></i>
             <span>Parametri programma</span>
         </a>
+        {% endif %}
+        {% if perms.dashboard.access_comandi_vocali %}
         <a class="st-nav-link {% if request.path == '/agenda/comandi-vocali/' %}active{% endif %}" href="{% url 'agenda:comandi_voce' %}">
             <i class="ti ti-microphone"></i>
             <span>Comandi vocali</span>
@@ -106,10 +114,12 @@
             <span>Aziende</span>
         </a>
 
+        {% if perms.dashboard.access_sistema %}
         <a class="st-nav-link {% if request.path == '/sistema/' %}active{% endif %}" href="/sistema/">
             <i class="ti ti-settings"></i>
             <span>Sistema</span>
         </a>
+        {% endif %}
 
     </nav>
 

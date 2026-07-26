@@ -62,6 +62,8 @@ class Indirizzo(BaseModel):
         verbose_name = "Indirizzo"
         verbose_name_plural = "Indirizzi"
         ordering = ["anagrafica__ragione_sociale", "-principale", "tipo"]
+        # Residuo SECURTEK multi-indirizzo: in LabRepair solo formset residenza
+        default_permissions = ()
 
     def __str__(self):
         parts = [self.indirizzo]

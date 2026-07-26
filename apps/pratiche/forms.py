@@ -18,7 +18,6 @@ from apps.pratiche.riparatori import get_assistenza_riparatore_id, is_assistenza
 from apps.pratiche.models import (
     CategoriaPratica,
     ComunicazionePratica,
-    IncaricoTecnico,
     MacroCategoriaPratica,
     Operatore,
     Pratica,
@@ -26,7 +25,6 @@ from apps.pratiche.models import (
     PraticaCategoria,
     PraticaCategoriaFile,
     StudioTecnico,
-    Tecnico,
     TipoOggetto,
 )
 
@@ -451,36 +449,6 @@ class PraticaForm(forms.ModelForm):
         return value
 
 
-class TecnicoForm(forms.ModelForm):
-    class Meta:
-        model = Tecnico
-        fields = [
-            "nome",
-            "cognome",
-            "studio_appartenenza",
-            "incarico",
-            "email",
-            "telefono",
-            "note",
-        ]
-        widgets = {
-            "nome": forms.TextInput(attrs={"class": "form-control"}),
-            "cognome": forms.TextInput(attrs={"class": "form-control"}),
-            "studio_appartenenza": forms.Select(attrs={"class": "form-select"}),
-            "incarico": forms.Select(attrs={"class": "form-select"}),
-            "email": forms.EmailInput(attrs={"class": "form-control"}),
-            "telefono": forms.TextInput(attrs={"class": "form-control"}),
-            "note": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
-        }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields["studio_appartenenza"].queryset = StudioTecnico.objects.filter(is_active=True)
-        self.fields["studio_appartenenza"].required = False
-        self.fields["incarico"].queryset = IncaricoTecnico.objects.filter(is_active=True)
-        self.fields["incarico"].required = False
-
-
 class StudioTecnicoForm(forms.ModelForm):
     class Meta:
         model = StudioTecnico
@@ -841,16 +809,6 @@ PraticaCategoriaFormSet = inlineformset_factory(
     form=PraticaCategoriaForm,
     formset=BasePraticaCategoriaInlineFormSet,
     fields=["macro_categoria", "categoria", "origine_template", "versione", "cartella", "note"],
-    extra=1,
-    can_delete=True,
-)
-
-
-TecnicoFormSet = inlineformset_factory(
-    Pratica,
-    Tecnico,
-    form=TecnicoForm,
-    fields=["nome", "cognome", "studio_appartenenza", "incarico", "email", "telefono", "note"],
     extra=1,
     can_delete=True,
 )

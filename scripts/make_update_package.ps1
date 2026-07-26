@@ -99,21 +99,27 @@ SUL SERVER (prima di tutto: backup database PostgreSQL)
    oppure servizio Windows:
      .\scripts\install_service.ps1
 
-5. Verifica:
-   - Login e selezione negozio
-   - Parametri PC (/agenda/parametri-pc/)
-   - Nuova migration core.0019_configurazione_pc
+5. Privilegi menu (obbligatorio dopo questo aggiornamento):
+     .\.venv\Scripts\python.exe manage.py rebuild_labrepair_permissions --reset-groups
 
-6. (Opzionale) Normalizza nomi anagrafiche storiche:
+6. Verifica:
+   - Login e selezione negozio
+   - Nuova anagrafica (codice fiscale e salvataggio)
+   - Menu: Documenti, Report, Parametri PC, Comandi vocali, Sistema
+   - In Admin > Gruppi: privilegi "Può accedere al menu ..."
+
+7. (Opzionale) Normalizza nomi anagrafiche storiche:
      .\.venv\Scripts\python.exe manage.py normalizza_nomi_anagrafiche --dry-run
      .\.venv\Scripts\python.exe manage.py normalizza_nomi_anagrafiche
 
-7. Backup PostgreSQL schedulato (consigliato, PowerShell Amministratore):
+8. Backup PostgreSQL schedulato (consigliato, PowerShell Amministratore):
      .\scripts\install_backup_task.ps1
      # oppure orario diverso:
      .\scripts\install_backup_task.ps1 -Time "02:30" -KeepDays 21
 
 NOTA: non copiare .env dal pacchetto. Mantieni quello del server.
+NOTA: --reset-groups riassegna i privilegi dei gruppi Montale/Quarrata/Pistoia
+      secondo il catalogo LabRepair (togli residui SECURTEK).
 "@
 Set-Content -Path (Join-Path $Staging "AGGIORNAMENTO.txt") -Value $Readme -Encoding UTF8
 
