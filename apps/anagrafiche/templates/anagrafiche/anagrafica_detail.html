@@ -5,460 +5,361 @@
 {% endblock %}
 
 {% block content %}
+{% url 'anagrafiche:anagrafica_detail' anagrafica.pk as anagrafica_return_url %}
 
-<div class="container-xl{% if layout_stile == 'compatta' %} st-anagrafica-detail-compact{% endif %}">
+<div class="container-xl st-anagrafica-detail{% if layout_stile == 'compatta' %} st-anagrafica-detail-compact{% endif %}">
 
-    <div class="page-header d-print-none mb-3 st-anagrafica-detail-header">
-        <div class="row align-items-center">
-
-            <div class="col">
-                <h2 class="page-title">
-                    {{ anagrafica.display_name }}
-                </h2>
-
-                <div class="text-secondary">
-                    {{ anagrafica.get_tipo_display }} · Scheda anagrafica
+    <div class="card st-anagrafica-hero d-print-none mb-3">
+        <div class="card-body">
+            <div class="row align-items-center g-3">
+                <div class="col">
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="st-anagrafica-avatar" aria-hidden="true">
+                            {{ anagrafica_initials }}
+                        </div>
+                        <div class="min-w-0">
+                            <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                                <h2 class="page-title mb-0 st-anagrafica-hero-title">
+                                    {{ anagrafica.display_name }}
+                                </h2>
+                                <span class="badge bg-azure-lt">{{ anagrafica.get_tipo_display }}</span>
+                                {% if documento_scaduto %}
+                                <span class="badge bg-red-lt">
+                                    <i class="ti ti-alert-triangle"></i>
+                                    Documento scaduto
+                                </span>
+                                {% endif %}
+                            </div>
+                            <div class="text-secondary small mb-2">Scheda anagrafica</div>
+                            <div class="st-anagrafica-chips">
+                                {% if anagrafica.cellulare %}
+                                <a class="st-anagrafica-chip" href="tel:{{ anagrafica.cellulare }}">
+                                    <i class="ti ti-device-mobile"></i>
+                                    {{ anagrafica.cellulare }}
+                                </a>
+                                {% endif %}
+                                {% if anagrafica.telefono %}
+                                <a class="st-anagrafica-chip" href="tel:{{ anagrafica.telefono }}">
+                                    <i class="ti ti-phone"></i>
+                                    {{ anagrafica.telefono }}
+                                </a>
+                                {% endif %}
+                                {% if anagrafica.email %}
+                                <a class="st-anagrafica-chip" href="mailto:{{ anagrafica.email }}">
+                                    <i class="ti ti-mail"></i>
+                                    {{ anagrafica.email }}
+                                </a>
+                                {% endif %}
+                                {% with ind=indirizzo_principale %}
+                                {% if ind %}
+                                <span class="st-anagrafica-chip is-muted">
+                                    <i class="ti ti-map-pin"></i>
+                                    {{ ind.indirizzo }}{% if ind.civico %}, {{ ind.civico }}{% endif %}
+                                    {% if ind.comune %} · {{ ind.comune }}{% endif %}
+                                    {% if ind.provincia %} ({{ ind.provincia }}){% endif %}
+                                </span>
+                                {% endif %}
+                                {% endwith %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-auto">
+                    <div class="btn-list">
+                        <a href="{% url 'anagrafiche:anagrafica_update' anagrafica.pk %}?next={{ request.get_full_path|urlencode }}" class="btn btn-primary">
+                            <i class="ti ti-edit"></i>
+                            Modifica
+                        </a>
+                        <a href="{{ list_url }}" class="btn btn-outline-secondary">
+                            <i class="ti ti-arrow-left"></i>
+                            Elenco
+                        </a>
+                    </div>
                 </div>
             </div>
-
-            <div class="col-auto">
-
-                <a href="{% url 'anagrafiche:anagrafica_update' anagrafica.pk %}"
-                   class="btn btn-primary">
-
-                    <i class="ti ti-edit"></i>
-                    Modifica
-
-                </a>
-
-                <a href="{% url 'anagrafiche:anagrafica_list' %}"
-                   class="btn btn-outline-secondary">
-
-                    <i class="ti ti-arrow-left"></i>
-                    Elenco
-
-                </a>
-
-            </div>
-
         </div>
     </div>
 
-
     <div class="row g-3 st-anagrafica-detail-top">
-
-        <div class="col-lg-6">
-
+        <div class="col-lg-{% if anagrafica.is_cliente %}6{% else %}12{% endif %}">
             <div class="card st-anagrafica-detail-card h-100">
-
                 <div class="card-header">
-                    <h3 class="card-title">
-                        Dati Generali
-                    </h3>
+                    <div class="st-anagrafica-section-icon">
+                        <i class="ti ti-id"></i>
+                    </div>
+                    <h3 class="card-title mb-0">Dati generali</h3>
                 </div>
-
                 <div class="card-body">
-
-                    <table class="table table-borderless table-sm st-detail-kv mb-0">
-
-                        <tr>
-                            <th>Tipo</th>
-                            <td>{{ anagrafica.get_tipo_display }}</td>
-                        </tr>
-
+                    <div class="st-anagrafica-facts">
                         {% if anagrafica.is_cliente %}
-                        <tr>
-                            <th>Cognome</th>
-                            <td>{{ anagrafica.cognome|default:"-" }}</td>
-                        </tr>
-
-                        <tr>
-                            <th>Nome</th>
-                            <td>{{ anagrafica.nome|default:"-" }}</td>
-                        </tr>
+                        <div class="st-anagrafica-fact">
+                            <span class="st-anagrafica-fact-label">Cognome</span>
+                            <span class="st-anagrafica-fact-value">{{ anagrafica.cognome|default:"—" }}</span>
+                        </div>
+                        <div class="st-anagrafica-fact">
+                            <span class="st-anagrafica-fact-label">Nome</span>
+                            <span class="st-anagrafica-fact-value">{{ anagrafica.nome|default:"—" }}</span>
+                        </div>
                         {% else %}
-                        <tr>
-                            <th>Ragione sociale</th>
-                            <td>{{ anagrafica.ragione_sociale }}</td>
-                        </tr>
+                        <div class="st-anagrafica-fact st-anagrafica-fact-wide">
+                            <span class="st-anagrafica-fact-label">Ragione sociale</span>
+                            <span class="st-anagrafica-fact-value">{{ anagrafica.ragione_sociale }}</span>
+                        </div>
                         {% endif %}
 
-                        <tr>
-                            <th>Partita IVA</th>
-                            <td>{{ anagrafica.partita_iva|default:"-" }}</td>
-                        </tr>
+                        {% if anagrafica.codice_fiscale %}
+                        <div class="st-anagrafica-fact">
+                            <span class="st-anagrafica-fact-label">Codice fiscale</span>
+                            <span class="st-anagrafica-fact-value is-mono">{{ anagrafica.codice_fiscale }}</span>
+                        </div>
+                        {% endif %}
+                        {% if anagrafica.partita_iva %}
+                        <div class="st-anagrafica-fact">
+                            <span class="st-anagrafica-fact-label">Partita IVA</span>
+                            <span class="st-anagrafica-fact-value is-mono">{{ anagrafica.partita_iva }}</span>
+                        </div>
+                        {% endif %}
+                        {% if anagrafica.codice_gestionale %}
+                        <div class="st-anagrafica-fact">
+                            <span class="st-anagrafica-fact-label">Codice gestionale</span>
+                            <span class="st-anagrafica-fact-value is-mono">{{ anagrafica.codice_gestionale }}</span>
+                        </div>
+                        {% endif %}
 
-                        <tr>
-                            <th>Codice Fiscale</th>
-                            <td>{{ anagrafica.codice_fiscale|default:"-" }}</td>
-                        </tr>
-
-                        {% if anagrafica.sesso or anagrafica.data_nascita or anagrafica.luogo_nascita %}
-                        <tr>
-                            <th>Sesso</th>
-                            <td>{{ anagrafica.get_sesso_display|default:"-" }}</td>
-                        </tr>
-                        <tr>
-                            <th>Data nascita</th>
-                            <td>{{ anagrafica.data_nascita|date:"d/m/Y"|default:"-" }}</td>
-                        </tr>
-                        <tr>
-                            <th>Luogo nascita</th>
-                            <td>
-                                {{ anagrafica.luogo_nascita|default:"-" }}
+                        {% if anagrafica.data_nascita or anagrafica.luogo_nascita or anagrafica.sesso %}
+                        <div class="st-anagrafica-fact">
+                            <span class="st-anagrafica-fact-label">Data nascita</span>
+                            <span class="st-anagrafica-fact-value">{{ anagrafica.data_nascita|date:"d/m/Y"|default:"—" }}</span>
+                        </div>
+                        <div class="st-anagrafica-fact">
+                            <span class="st-anagrafica-fact-label">Luogo nascita</span>
+                            <span class="st-anagrafica-fact-value">
+                                {{ anagrafica.luogo_nascita|default:"—" }}
                                 {% if anagrafica.provincia_nascita %} ({{ anagrafica.provincia_nascita }}){% endif %}
-                            </td>
-                        </tr>
+                            </span>
+                        </div>
+                        {% if anagrafica.sesso %}
+                        <div class="st-anagrafica-fact">
+                            <span class="st-anagrafica-fact-label">Sesso</span>
+                            <span class="st-anagrafica-fact-value">{{ anagrafica.get_sesso_display }}</span>
+                        </div>
+                        {% endif %}
                         {% endif %}
 
-                        <tr>
-                            <th>Email</th>
-                            <td>{{ anagrafica.email|default:"-" }}</td>
-                        </tr>
+                        {% if anagrafica.email %}
+                        <div class="st-anagrafica-fact">
+                            <span class="st-anagrafica-fact-label">Email</span>
+                            <span class="st-anagrafica-fact-value">
+                                <a href="mailto:{{ anagrafica.email }}">{{ anagrafica.email }}</a>
+                            </span>
+                        </div>
+                        {% endif %}
+                        {% if anagrafica.telefono %}
+                        <div class="st-anagrafica-fact">
+                            <span class="st-anagrafica-fact-label">Telefono</span>
+                            <span class="st-anagrafica-fact-value">
+                                <a href="tel:{{ anagrafica.telefono }}">{{ anagrafica.telefono }}</a>
+                            </span>
+                        </div>
+                        {% endif %}
+                        {% if anagrafica.cellulare %}
+                        <div class="st-anagrafica-fact">
+                            <span class="st-anagrafica-fact-label">Cellulare</span>
+                            <span class="st-anagrafica-fact-value">
+                                <a href="tel:{{ anagrafica.cellulare }}">{{ anagrafica.cellulare }}</a>
+                            </span>
+                        </div>
+                        {% endif %}
 
-                        <tr>
-                            <th>Telefono</th>
-                            <td>{{ anagrafica.telefono|default:"-" }}</td>
-                        </tr>
-
-                        <tr>
-                            <th>Cellulare</th>
-                            <td>{{ anagrafica.cellulare|default:"-" }}</td>
-                        </tr>
-
-                    </table>
-
+                        {% with ind=indirizzo_principale %}
+                        {% if ind %}
+                        <div class="st-anagrafica-fact st-anagrafica-fact-wide">
+                            <span class="st-anagrafica-fact-label">Indirizzo</span>
+                            <span class="st-anagrafica-fact-value">
+                                {{ ind.indirizzo }}{% if ind.civico %}, {{ ind.civico }}{% endif %}
+                                <span class="text-secondary d-block small mt-1">
+                                    {% if ind.cap %}{{ ind.cap }}{% endif %}
+                                    {% if ind.comune %} {{ ind.comune }}{% endif %}
+                                    {% if ind.provincia %} ({{ ind.provincia }}){% endif %}
+                                </span>
+                            </span>
+                        </div>
+                        {% endif %}
+                        {% endwith %}
+                    </div>
                 </div>
-
             </div>
-
         </div>
 
         {% if anagrafica.is_cliente %}
         <div class="col-lg-6 d-flex flex-column gap-3">
-            <div class="card st-anagrafica-detail-card">
+            <div class="card st-anagrafica-detail-card{% if documento_scaduto %} is-warning{% endif %}">
                 <div class="card-header">
-                    <h3 class="card-title">Documento di identità</h3>
+                    <div class="st-anagrafica-section-icon{% if documento_scaduto %} is-danger{% endif %}">
+                        <i class="ti ti-id-badge-2"></i>
+                    </div>
+                    <h3 class="card-title mb-0">Documento di identità</h3>
+                    {% if documento_scaduto %}
+                    <div class="card-actions">
+                        <span class="badge bg-red-lt">Scaduto</span>
+                    </div>
+                    {% elif anagrafica.documento_data_scadenza %}
+                    <div class="card-actions">
+                        <span class="badge bg-green-lt">Valido</span>
+                    </div>
+                    {% endif %}
                 </div>
                 <div class="card-body">
-                    <table class="table table-borderless table-sm st-detail-kv mb-0">
-                        <tr>
-                            <th>Tipo</th>
-                            <td>{{ anagrafica.documento_tipo_label|default:"-" }}</td>
-                        </tr>
-                        <tr>
-                            <th>Numero</th>
-                            <td>{{ anagrafica.documento_numero|default:"-" }}</td>
-                        </tr>
-                        <tr>
-                            <th>Rilasciato da</th>
-                            <td>{{ anagrafica.documento_rilasciato_da|default:"-" }}</td>
-                        </tr>
-                        <tr>
-                            <th>Data rilascio</th>
-                            <td>{{ anagrafica.documento_data_rilascio|date:"d/m/Y"|default:"-" }}</td>
-                        </tr>
-                        <tr>
-                            <th>Data scadenza</th>
-                            <td>{{ anagrafica.documento_data_scadenza|date:"d/m/Y"|default:"-" }}</td>
-                        </tr>
-                        <tr>
-                            <th>Stampa privacy</th>
-                            <td>{% if anagrafica.stampa_privacy %}Sì{% else %}No{% endif %}</td>
-                        </tr>
-                    </table>
+                    {% if anagrafica.documento_tipo_label or anagrafica.documento_numero or anagrafica.documento_data_scadenza %}
+                    <div class="st-anagrafica-facts">
+                        <div class="st-anagrafica-fact">
+                            <span class="st-anagrafica-fact-label">Tipo</span>
+                            <span class="st-anagrafica-fact-value">{{ anagrafica.documento_tipo_label|default:"—" }}</span>
+                        </div>
+                        <div class="st-anagrafica-fact">
+                            <span class="st-anagrafica-fact-label">Numero</span>
+                            <span class="st-anagrafica-fact-value is-mono">{{ anagrafica.documento_numero|default:"—" }}</span>
+                        </div>
+                        {% if anagrafica.documento_rilasciato_da %}
+                        <div class="st-anagrafica-fact st-anagrafica-fact-wide">
+                            <span class="st-anagrafica-fact-label">Rilasciato da</span>
+                            <span class="st-anagrafica-fact-value">{{ anagrafica.documento_rilasciato_da }}</span>
+                        </div>
+                        {% endif %}
+                        <div class="st-anagrafica-fact">
+                            <span class="st-anagrafica-fact-label">Data rilascio</span>
+                            <span class="st-anagrafica-fact-value">{{ anagrafica.documento_data_rilascio|date:"d/m/Y"|default:"—" }}</span>
+                        </div>
+                        <div class="st-anagrafica-fact">
+                            <span class="st-anagrafica-fact-label">Data scadenza</span>
+                            <span class="st-anagrafica-fact-value{% if documento_scaduto %} text-danger fw-bold{% endif %}">
+                                {{ anagrafica.documento_data_scadenza|date:"d/m/Y"|default:"—" }}
+                            </span>
+                        </div>
+                        <div class="st-anagrafica-fact">
+                            <span class="st-anagrafica-fact-label">Stampa privacy</span>
+                            <span class="st-anagrafica-fact-value">
+                                {% if anagrafica.stampa_privacy %}
+                                <span class="badge bg-green-lt">Sì</span>
+                                {% else %}
+                                <span class="badge bg-secondary-lt">No</span>
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="st-anagrafica-empty-inline">
+                        <i class="ti ti-file-off"></i>
+                        <span>Nessun documento registrato</span>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
+
             {% if anagrafica.note %}
             <div class="card st-anagrafica-detail-card">
-                <div class="card-header"><h3 class="card-title">Note</h3></div>
-                <div class="card-body py-2">{{ anagrafica.note|linebreaksbr }}</div>
+                <div class="card-header">
+                    <div class="st-anagrafica-section-icon">
+                        <i class="ti ti-notes"></i>
+                    </div>
+                    <h3 class="card-title mb-0">Note</h3>
+                </div>
+                <div class="card-body st-anagrafica-notes">
+                    {{ anagrafica.note|linebreaksbr }}
+                </div>
             </div>
             {% endif %}
         </div>
         {% endif %}
-
     </div>
 
-    <div class="row mt-3">
-
-        <div class="col-12">
-
-            <div class="card">
-
-                <div class="card-header">
-                    <h3 class="card-title">
-                        Riparazioni in essere
-                    </h3>
-                    <div class="card-actions">
-                        {% url 'anagrafiche:anagrafica_detail' anagrafica.pk as anagrafica_return_url %}
-                        <a href="{% url 'pratiche:pratica_create' %}?cliente={{ anagrafica.pk }}&next={{ anagrafica_return_url|urlencode }}" class="btn btn-primary btn-sm">
-                            <i class="ti ti-plus"></i>
-                            Nuova riparazione
-                        </a>
-                    </div>
-                </div>
-
-                <div class="card-body">
-
-                    {% if pratiche_in_essere %}
-
-                        <div class="table-responsive">
-                            <table class="table table-vcenter">
-                                <thead>
-                                    <tr>
-                                        <th>Codice</th>
-                                        <th>Titolo</th>
-                                        <th>Categorie</th>
-                                        <th>Tipologia</th>
-                                        <th>Stato</th>
-                                        <th>Scadenza</th>
-                                        <th class="text-end">Azioni</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for pratica in pratiche_in_essere %}
-                                        <tr>
-                                            <td class="text-secondary">{{ pratica.codice }}</td>
-                                            <td>
-                                                <a href="{% url 'pratiche:pratica_detail' pratica.pk %}?next={{ anagrafica_return_url|urlencode }}" class="text-reset fw-bold">
-                                                    {{ pratica.titolo }}
-                                                </a>
-                                                {% if pratica.operatore %}
-                                                    <div class="text-secondary small">
-                                                        Operatore: {{ pratica.operatore }}
-                                                    </div>
-                                                {% endif %}
-                                            </td>
-                                            <td>
-                                                {% for collegamento in pratica.categorie_attive %}
-                                                    {{ collegamento.categoria.denominazione }}{% if collegamento.versione %} {{ collegamento.versione }}{% endif %}{% if not forloop.last %}, {% endif %}
-                                                {% empty %}
-                                                    -
-                                                {% endfor %}
-                                            </td>
-                                            <td>{{ pratica.get_tipologia_display }}</td>
-                                            <td>
-                                                <span class="badge bg-blue-lt">{{ pratica.get_stato_display }}</span>
-                                            </td>
-                                            <td>
-                                                {% if pratica.data_scadenza %}
-                                                    <span class="{% if pratica.is_scaduta %}text-danger fw-bold{% endif %}">
-                                                        {{ pratica.data_scadenza|date:"d/m/Y" }}
-                                                    </span>
-                                                {% else %}
-                                                    <span class="text-secondary">-</span>
-                                                {% endif %}
-                                            </td>
-                                            <td class="text-end">
-                                                <a href="{% url 'pratiche:pratica_detail' pratica.pk %}?next={{ anagrafica_return_url|urlencode }}"
-                                                   class="btn btn-icon btn-outline-primary"
-                                                   title="Apri riparazione">
-                                                    <i class="ti ti-edit"></i>
-                                                </a>
-                                            </td>
-                                        </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-
-                    {% else %}
-
-                        <div class="empty">
-                            <div class="empty-icon">
-                                <i class="ti ti-folder"></i>
-                            </div>
-                            <p class="empty-title">Nessuna riparazione in essere</p>
-                        </div>
-
-                    {% endif %}
-
-                </div>
-
+    <div class="card st-anagrafica-riparazioni mt-3">
+        <div class="card-header">
+            <div class="st-anagrafica-section-icon">
+                <i class="ti ti-tool"></i>
             </div>
-
-        </div>
-
-    </div>
-
-
-    <div class="row mt-3">
-
-        <div class="col-lg-6">
-
-            <div class="card">
-
-                <div class="card-header">
-                    <h3 class="card-title">
-                        Contatti
-                    </h3>
-                    <div class="card-actions">
-                        <a href="{% url 'anagrafiche:contatto_create' anagrafica.pk %}" class="btn btn-primary btn-sm">
-                            <i class="ti ti-plus"></i>
-                            Aggiungi
-                        </a>
-                    </div>
-                </div>
-
-                <div class="card-body">
-
-                    {% if contatti %}
-
-                        <div class="list-group list-group-flush">
-
-                            {% for contatto in contatti %}
-
-                                <div class="list-group-item px-0">
-                                    <div class="d-flex justify-content-between align-items-start gap-3">
-                                        <div>
-                                            <div class="fw-bold">
-                                                {{ contatto.get_tipo_display }}
-
-                                                {% if contatto.principale %}
-                                                    <span class="badge bg-primary-lt ms-2">Principale</span>
-                                                {% endif %}
-                                            </div>
-
-                                            <div>{{ contatto.valore }}</div>
-
-                                            {% if contatto.descrizione %}
-                                                <div class="text-secondary small">
-                                                    {{ contatto.descrizione }}
-                                                </div>
-                                            {% endif %}
-                                        </div>
-
-                                        <div class="btn-list flex-nowrap">
-                                            <a href="{% url 'anagrafiche:contatto_update' anagrafica.pk contatto.pk %}"
-                                               class="btn btn-outline-primary btn-sm">
-                                                <i class="ti ti-edit"></i>
-                                                Modifica
-                                            </a>
-
-                                            <form method="post"
-                                                  action="{% url 'anagrafiche:contatto_delete' anagrafica.pk contatto.pk %}">
-                                                {% csrf_token %}
-                                                <button type="submit" class="btn btn-outline-danger btn-sm">
-                                                    <i class="ti ti-trash"></i>
-                                                    Elimina
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-
-                            {% endfor %}
-
-                        </div>
-
-                    {% else %}
-
-                        <div class="empty">
-                            <div class="empty-icon">
-                                <i class="ti ti-address-book"></i>
-                            </div>
-                            <p class="empty-title">Nessun contatto registrato</p>
-                        </div>
-
-                    {% endif %}
-
-                </div>
-
+            <h3 class="card-title mb-0">
+                Riparazioni in essere
+                {% if pratiche_in_essere_count %}
+                <span class="badge bg-blue-lt ms-1">{{ pratiche_in_essere_count }}</span>
+                {% endif %}
+            </h3>
+            <div class="card-actions">
+                <a href="{% url 'pratiche:pratica_create' %}?cliente={{ anagrafica.pk }}&next={{ anagrafica_return_url|urlencode }}"
+                   class="btn btn-primary btn-sm">
+                    <i class="ti ti-plus"></i>
+                    Nuova riparazione
+                </a>
             </div>
-
         </div>
-
-
-        <div class="col-lg-6">
-
-            <div class="card">
-
-                <div class="card-header">
-                    <h3 class="card-title">
-                        Indirizzi
-                    </h3>
-                    <div class="card-actions">
-                        <a href="{% url 'anagrafiche:indirizzo_create' anagrafica.pk %}" class="btn btn-primary btn-sm">
-                            <i class="ti ti-plus"></i>
-                            Aggiungi
-                        </a>
-                    </div>
-                </div>
-
-                <div class="card-body">
-
-                    {% if indirizzi %}
-
-                        <div class="list-group list-group-flush">
-
-                            {% for indirizzo in indirizzi %}
-
-                                <div class="list-group-item px-0">
-                                    <div class="d-flex justify-content-between align-items-start gap-3">
-                                        <div>
-                                            <div class="fw-bold">
-                                                {{ indirizzo.get_tipo_display }}
-
-                                                {% if indirizzo.principale %}
-                                                    <span class="badge bg-primary-lt ms-2">Principale</span>
-                                                {% endif %}
-                                            </div>
-
-                                            <div>
-                                                {{ indirizzo.indirizzo }}{% if indirizzo.civico %}, {{ indirizzo.civico }}{% endif %}
-                                            </div>
-
-                                            <div class="text-secondary small">
-                                                {% if indirizzo.cap %}{{ indirizzo.cap }}{% endif %}
-                                                {% if indirizzo.comune %} {{ indirizzo.comune }}{% endif %}
-                                                {% if indirizzo.provincia %} ({{ indirizzo.provincia }}){% endif %}
-                                                {% if indirizzo.nazione %} - {{ indirizzo.nazione }}{% endif %}
-                                            </div>
-                                        </div>
-
-                                        <div class="btn-list flex-nowrap">
-                                            <a href="{% url 'anagrafiche:indirizzo_update' anagrafica.pk indirizzo.pk %}"
-                                               class="btn btn-outline-primary btn-sm">
-                                                <i class="ti ti-edit"></i>
-                                                Modifica
-                                            </a>
-
-                                            <form method="post"
-                                                  action="{% url 'anagrafiche:indirizzo_delete' anagrafica.pk indirizzo.pk %}">
-                                                {% csrf_token %}
-                                                <button type="submit" class="btn btn-outline-danger btn-sm">
-                                                    <i class="ti ti-trash"></i>
-                                                    Elimina
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-
-                            {% endfor %}
-
-                        </div>
-
-                    {% else %}
-
-                        <div class="empty">
-                            <div class="empty-icon">
-                                <i class="ti ti-map-pin"></i>
-                            </div>
-                            <p class="empty-title">Nessun indirizzo registrato</p>
-                        </div>
-
-                    {% endif %}
-
-                </div>
-
+        <div class="card-body{% if not pratiche_in_essere %} p-0{% endif %}">
+            {% if pratiche_in_essere %}
+            <div class="table-responsive">
+                <table class="table table-vcenter card-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Codice</th>
+                            <th>Titolo</th>
+                            <th>Tipologia</th>
+                            <th>Stato</th>
+                            <th>Scadenza</th>
+                            <th class="text-end">Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pratica in pratiche_in_essere %}
+                        <tr>
+                            <td class="text-secondary text-nowrap">{{ pratica.codice }}</td>
+                            <td>
+                                <a href="{% url 'pratiche:pratica_detail' pratica.pk %}?next={{ anagrafica_return_url|urlencode }}"
+                                   class="text-reset fw-bold">
+                                    {{ pratica.titolo }}
+                                </a>
+                                {% if pratica.operatore %}
+                                <div class="text-secondary small">Operatore: {{ pratica.operatore }}</div>
+                                {% endif %}
+                            </td>
+                            <td>{{ pratica.get_tipologia_display }}</td>
+                            <td><span class="badge bg-blue-lt">{{ pratica.get_stato_display }}</span></td>
+                            <td>
+                                {% if pratica.data_scadenza %}
+                                <span class="{% if pratica.is_scaduta %}text-danger fw-bold{% endif %}">
+                                    {{ pratica.data_scadenza|date:"d/m/Y" }}
+                                </span>
+                                {% else %}
+                                <span class="text-secondary">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <a href="{% url 'pratiche:pratica_detail' pratica.pk %}?next={{ anagrafica_return_url|urlencode }}"
+                                   class="btn btn-icon btn-outline-primary"
+                                   title="Apri riparazione">
+                                    <i class="ti ti-chevron-right"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
-
+            {% else %}
+            <div class="st-anagrafica-empty">
+                <div class="st-anagrafica-empty-icon">
+                    <i class="ti ti-tool"></i>
+                </div>
+                <div class="st-anagrafica-empty-title">Nessuna riparazione in essere</div>
+                <div class="st-anagrafica-empty-text text-secondary">
+                    Apri una nuova riparazione per questo cliente quando serve.
+                </div>
+                <a href="{% url 'pratiche:pratica_create' %}?cliente={{ anagrafica.pk }}&next={{ anagrafica_return_url|urlencode }}"
+                   class="btn btn-outline-primary btn-sm mt-2">
+                    <i class="ti ti-plus"></i>
+                    Nuova riparazione
+                </a>
+            </div>
+            {% endif %}
         </div>
-
     </div>
 
 </div>
-
 {% endblock %}

@@ -72,8 +72,6 @@ Anagrafiche
                         <th>Partita IVA</th>
                         <th>Email</th>
                         <th>Telefono</th>
-                        <th>Contatti</th>
-                        <th>Indirizzi</th>
                         <th class="text-end">Azioni</th>
                     </tr>
                 </thead>
@@ -82,7 +80,7 @@ Anagrafiche
                     {% for anagrafica in anagrafiche %}
                     <tr>
                         <td>
-                            <a href="{% url 'anagrafiche:anagrafica_detail' anagrafica.pk %}"
+                            <a href="{% url 'anagrafiche:anagrafica_detail' anagrafica.pk %}?next={{ list_return_url|urlencode }}"
                                class="text-reset fw-bold">
                                 {{ anagrafica.display_name }}
                             </a>
@@ -93,22 +91,16 @@ Anagrafiche
                         <td>{{ anagrafica.partita_iva }}</td>
                         <td>{{ anagrafica.email }}</td>
                         <td>{{ anagrafica.telefono }}</td>
-                        <td>
-                            <span class="badge bg-blue-lt">{{ anagrafica.contatti_attivi }}</span>
-                        </td>
-                        <td>
-                            <span class="badge bg-green-lt">{{ anagrafica.indirizzi_attivi }}</span>
-                        </td>
 
                         <td class="text-end">
 
-                            <a href="{% url 'anagrafiche:anagrafica_detail' anagrafica.pk %}"
+                            <a href="{% url 'anagrafiche:anagrafica_detail' anagrafica.pk %}?next={{ list_return_url|urlencode }}"
                                class="btn btn-icon btn-outline-secondary"
                                title="Visualizza scheda">
                                 <i class="ti ti-eye"></i>
                             </a>
 
-                            <a href="{% url 'anagrafiche:anagrafica_update' anagrafica.pk %}"
+                            <a href="{% url 'anagrafiche:anagrafica_update' anagrafica.pk %}?next={{ list_return_url|urlencode }}"
                             class="btn btn-icon btn-outline-primary"
                             title="Modifica">
 
@@ -127,7 +119,7 @@ Anagrafiche
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="8" class="text-center text-muted">
+                        <td colspan="6" class="text-center text-muted">
                             Nessuna anagrafica trovata
                         </td>
                     </tr>

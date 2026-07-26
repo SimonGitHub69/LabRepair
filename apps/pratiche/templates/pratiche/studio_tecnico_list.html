@@ -53,7 +53,6 @@ Riparatori
                     <th>Riparatore</th>
                     <th>Email</th>
                     <th>Telefono</th>
-                    <th>Tecnici</th>
                     <th>Riparazioni</th>
                     <th class="text-end">Azioni</th>
                 </tr>
@@ -64,9 +63,6 @@ Riparatori
                         <td class="fw-bold">{{ studio.denominazione }}</td>
                         <td>{{ studio.email|default:"-" }}</td>
                         <td>{{ studio.telefono|default:"-" }}</td>
-                        <td>
-                            <span class="badge bg-blue-lt">{{ studio.tecnici_attivi }}</span>
-                        </td>
                         <td>
                             <span class="badge bg-blue-lt">{{ studio.pratiche_attive }}</span>
                         </td>
@@ -87,7 +83,7 @@ Riparatori
                     </tr>
                 {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center text-secondary py-4">
+                        <td colspan="5" class="text-center text-secondary py-4">
                             Nessun riparatore presente
                         </td>
                     </tr>

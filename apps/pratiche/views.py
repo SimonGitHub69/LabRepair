@@ -37,7 +37,11 @@ from apps.core.programma import (
     layout_compatto,
     operatore_primo_nuova_riparazione,
 )
-from apps.pratiche.cliente_documento import documento_scaduto_message
+from apps.pratiche.cliente_documento import (
+    documento_scaduto_message,
+    documento_scaduto_privacy_message,
+    is_documento_identita_scaduto,
+)
 from apps.pratiche.cliente_referente import (
     cliente_referente_url_template,
     get_referente_from_cliente,
@@ -1045,6 +1049,11 @@ class PraticaPrivacyPrintView(LoginRequiredMixin, View):
 
         page_images = privacy_pdf_pages_as_png_data_uris(pdf_bytes)
         document_title = filename.replace(".pdf", "").replace("_", " ")
+        cliente = pratica.cliente
+        documento_scaduto = is_documento_identita_scaduto(cliente)
+        documento_warning = (
+            documento_scaduto_privacy_message(cliente) if documento_scaduto else ""
+        )
 
         # Dati per modale (stampa senza aprire una scheda con URL visibile)
         if fmt == "json":
@@ -1055,6 +1064,8 @@ class PraticaPrivacyPrintView(LoginRequiredMixin, View):
                     "title": document_title,
                     "pdf_url": pdf_url,
                     "page_images": page_images,
+                    "documento_scaduto": documento_scaduto,
+                    "documento_scaduto_warning": documento_warning,
                 }
             )
 
@@ -1068,6 +1079,8 @@ class PraticaPrivacyPrintView(LoginRequiredMixin, View):
                 "document_title": document_title,
                 "pdf_url": pdf_url,
                 "page_images": page_images,
+                "documento_scaduto": documento_scaduto,
+                "documento_scaduto_warning": documento_warning,
             },
         )
 
@@ -2186,11 +2199,6 @@ class StudioTecnicoListView(LoginRequiredMixin, ConfigurablePaginationMixin, Lis
 
     def get_queryset(self):
         queryset = StudioTecnico.objects.filter(is_active=True).annotate(
-            tecnici_attivi=Count(
-                "tecnici",
-                filter=Q(tecnici__is_active=True),
-                distinct=True,
-            ),
             pratiche_attive=Count(
                 "pratiche_riparazione",
                 filter=Q(pratiche_riparazione__is_active=True),

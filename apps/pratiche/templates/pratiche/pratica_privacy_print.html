@@ -39,6 +39,17 @@
             max-width: 560px;
             padding: 0.55rem 0.75rem;
         }
+        .warning {
+            background: linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%);
+            border: 1px solid #fdba74;
+            border-radius: 8px;
+            color: #9a3412;
+            flex: 1 1 100%;
+            font-size: 0.9rem;
+            font-weight: 600;
+            line-height: 1.4;
+            padding: 0.7rem 0.85rem;
+        }
         button, a.btn {
             background: #206bc4;
             border: none;
@@ -68,6 +79,9 @@
 </head>
 <body>
     <div class="toolbar">
+        {% if documento_scaduto and documento_scaduto_warning %}
+        <div class="warning" role="alert">{{ documento_scaduto_warning }}</div>
+        {% endif %}
         <div class="hint">
             Premi <strong>Stampa</strong>: la scheda viene inviata alla stampante
             senza l&apos;indirizzo del sito.

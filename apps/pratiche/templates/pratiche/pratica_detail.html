@@ -7,459 +7,540 @@
 
 {% block content %}
 
-<div class="page-header d-print-none mb-3">
-    <div class="row align-items-center">
-        <div class="col">
-            <h2 class="page-title">{{ pratica.codice }}</h2>
-            <div class="text-secondary">
-                {{ pratica.codice }} ·
-                {% if pratica.cliente_id %}
-                    <a href="{% url 'pratiche:pratica_list_by_cliente' pratica.cliente.pk %}">
-                        {{ pratica.cliente_label }}
-                    </a>
-                {% else %}
-                    {{ pratica.cliente_label }}
-                {% endif %}
-            </div>
-        </div>
-        <div class="col-auto">
-            <a href="{% url 'pratiche:pratica_busta_print' pratica.pk %}"
-               class="btn btn-outline-secondary"
-               data-busta-open>
-                <i class="ti ti-printer"></i>
-                Stampa busta
-            </a>
-            <a href="{% url 'pratiche:pratica_privacy_print' pratica.pk %}"
-               class="btn btn-outline-secondary"
-               data-privacy-open>
-                <i class="ti ti-file-type-pdf"></i>
-                Stampa Privacy
-            </a>
-            <a href="{% url 'pratiche:pratica_update' pratica.pk %}{% if next_url %}?next={{ next_url|urlencode }}{% endif %}" class="btn btn-primary">
-                <i class="ti ti-edit"></i>
-                Modifica
-            </a>
-            <a href="{{ return_url }}" class="btn btn-outline-secondary">
-                <i class="ti ti-arrow-left"></i>
-                {{ return_label }}
-            </a>
-        </div>
-    </div>
-</div>
+<div class="container-xl st-pratica-detail{% if layout_stile == 'compatta' %} st-pratica-detail-compact{% endif %}">
 
-<div class="row row-cards">
-    <div class="col-lg-7">
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">Dati riparazione</h3>
-            </div>
-            <div class="card-body">
-                <dl class="row">
-                    <dt class="col-sm-4">Cliente</dt>
-                    <dd class="col-sm-8">
-                        {% if pratica.cliente_id %}
-                            <a href="{% url 'pratiche:pratica_list_by_cliente' pratica.cliente.pk %}">
-                                {{ pratica.cliente_label }}
-                            </a>
-                        {% else %}
-                            {{ pratica.cliente_label }}
-                        {% endif %}
-                    </dd>
-
-                    <dt class="col-sm-4">Referente</dt>
-                    <dd class="col-sm-8">
-                        {% if pratica.referente_cognome or pratica.referente_nome %}
-                            {{ pratica.referente_cognome }} {{ pratica.referente_nome }}
-                        {% else %}
-                            -
-                        {% endif %}
-                    </dd>
-
-                    <dt class="col-sm-4">Telefono</dt>
-                    <dd class="col-sm-8">{{ pratica.referente_telefono|default:"-" }}</dd>
-
-                    <dt class="col-sm-4">Cellulare</dt>
-                    <dd class="col-sm-8">{{ pratica.referente_cellulare|default:"-" }}</dd>
-
-                    <dt class="col-sm-4">Email</dt>
-                    <dd class="col-sm-8">{{ pratica.referente_email|default:"-" }}</dd>
-
-                    <dt class="col-sm-4">Negozio</dt>
-                    <dd class="col-sm-8">{{ pratica.get_negozio_display|default:"-" }}</dd>
-
-                    {% if pratica.gs_barcode %}
-                    <dt class="col-sm-4">Barcode GS</dt>
-                    <dd class="col-sm-8"><code>{{ pratica.gs_barcode }}</code></dd>
-                    {% endif %}
-
-                    <dt class="col-sm-4">Operatore</dt>
-                    <dd class="col-sm-8">{{ pratica.operatore|default:"-" }}</dd>
-
-                    <dt class="col-sm-4">Tipologia oggetto</dt>
-                    <dd class="col-sm-8">{{ pratica.get_tipologia_display|default:"-" }}</dd>
-
-                    <dt class="col-sm-4">Tipo oggetto</dt>
-                    <dd class="col-sm-8">{{ pratica.tipo_oggetto|default:pratica.titolo|default:"-" }}</dd>
-
-                    <dt class="col-sm-4">Peso</dt>
-                    <dd class="col-sm-8">{{ pratica.peso_grammi|floatformat:3 }} gr</dd>
-
-                    <dt class="col-sm-4">Tipo di metallo</dt>
-                    <dd class="col-sm-8">{{ pratica.get_tipo_metallo_display|default:"-" }}</dd>
-
-                    <dt class="col-sm-4">Descrizione</dt>
-                    <dd class="col-sm-8">{{ pratica.descrizione|linebreaksbr|default:"-" }}</dd>
-
-                    <dt class="col-sm-4">Note</dt>
-                    <dd class="col-sm-8">{{ pratica.note|linebreaksbr|default:"-" }}</dd>
-                </dl>
-            </div>
-        </div>
-
-        <div class="card mt-3">
-            <div class="card-header">
-                <h3 class="card-title">Foto oggetto</h3>
-            </div>
-            <div class="card-body">
-                <form method="post"
-                      enctype="multipart/form-data"
-                      action="{% url 'pratiche:pratica_foto_upload' pratica.pk %}">
-                    {% csrf_token %}
-                    {% if next_url %}
-                        <input type="hidden" name="next" value="{{ next_url }}">
-                    {% endif %}
-                    {% include "pratiche/partials/pratica_foto_field.html" with pratica_foto=pratica.foto.all allow_delete=True delete_url_name="pratiche:pratica_foto_delete" pratica_pk=pratica.pk next_url=next_url show_submit=True input_id="fotoPraticaDetailInput" %}
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-lg-5">
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">Stato</h3>
-            </div>
-            <div class="card-body">
-                <p>
-                    <span class="badge bg-blue-lt">{{ pratica.get_stato_display }}</span>
-                    <span class="badge bg-secondary-lt">{{ pratica.get_priorita_display }}</span>
-                </p>
-                <dl class="row mb-0">
-                    <dt class="col-sm-5">Accettazione</dt>
-                    <dd class="col-sm-7">{{ pratica.data_apertura|date:"d/m/Y" }}</dd>
-
-                    <dt class="col-sm-5">Data prevista consegna</dt>
-                    <dd class="col-sm-7">
-                        {% if pratica.data_scadenza %}
-                            <span class="{% if pratica.is_scaduta %}text-danger fw-bold{% endif %}">
-                                {{ pratica.data_scadenza|date:"d/m/Y" }}
-                            </span>
-                        {% else %}
-                            -
-                        {% endif %}
-                    </dd>
-
-                    <dt class="col-sm-5">Chiusura</dt>
-                    <dd class="col-sm-7">{{ pratica.data_chiusura|date:"d/m/Y"|default:"-" }}</dd>
-
-                    <dt class="col-sm-5">Riparatore</dt>
-                    <dd class="col-sm-7">{{ pratica.riparatore_display|default:"-" }}</dd>
-
-                    <dt class="col-sm-5">Data riparatore</dt>
-                    <dd class="col-sm-7">{{ pratica.data_riparatore|date:"d/m/Y"|default:"-" }}</dd>
-
-                    <dt class="col-sm-5">Data rientro</dt>
-                    <dd class="col-sm-7">{{ pratica.data_rientro|date:"d/m/Y"|default:"-" }}</dd>
-
-                    <dt class="col-sm-5">Data vendita/evasione</dt>
-                    <dd class="col-sm-7">{{ pratica.data_vendita|date:"d/m/Y"|default:"-" }}</dd>
-                </dl>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row mt-3">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">Valori economici</h3>
-            </div>
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-2">
-                        <div class="text-secondary small">Costo lavorazione</div>
-                        <div class="fw-bold">{{ pratica.costo_lavorazione|floatformat:2 }}</div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="text-secondary small">Costo materiale</div>
-                        <div class="fw-bold">{{ pratica.costo_materiale|floatformat:2 }}</div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="text-secondary small">{{ pratica.peso_aggiunto_label }}</div>
-                        <div class="fw-bold">{{ pratica.oro_aggiunto|floatformat:2 }}</div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="text-secondary small">{{ pratica.prezzo_unita_label }}</div>
-                        <div class="fw-bold">{{ pratica.prezzo_unita|floatformat:2 }}</div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="text-secondary small">Costo totale</div>
-                        <div class="fw-bold st-costo-totale-value">
-                            {% if pratica.senza_spesa and pratica.costo_totale == 0 %}
-                                Senza spesa
-                            {% else %}
-                                {{ pratica.costo_totale|floatformat:2 }} €
-                            {% endif %}
+    <div class="card st-pratica-hero d-print-none mb-3">
+        <div class="card-body">
+            <div class="row align-items-center g-3">
+                <div class="col">
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="st-pratica-avatar" aria-hidden="true">
+                            <i class="ti ti-tool"></i>
                         </div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="text-secondary small">Prezzo al Pubblico</div>
-                        <div class="fw-bold st-costo-totale-value">{{ pratica.prezzo_al|floatformat:2 }} €</div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="text-secondary small">Prezzo pagato</div>
-                        <div class="fw-bold">{{ pratica.prezzo_pagato|floatformat:2 }}</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row mt-3">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">Comunicazioni</h3>
-                <div class="card-actions">
-                    <button type="button"
-                            class="btn btn-icon btn-sm btn-outline-secondary st-collapse-toggle"
-                            data-collapse-target="practice-communications-section"
-                            data-collapse-key="communications"
-                            aria-controls="practice-communications-section"
-                            aria-expanded="true"
-                            title="Comprimi sezione">
-                        <i class="ti ti-chevron-down"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="card-body st-collapsible-section" id="practice-communications-section">
-                <form method="post"
-                      action="{% url 'pratiche:comunicazione_create' pratica.pk %}"
-                      enctype="multipart/form-data"
-                      class="mb-4">
-                    {% csrf_token %}
-                    <div class="row g-3 align-items-start">
-                        {% if comunicazioni_formato_data != "nascosto" %}
-                        <div class="col-md-3">
-                            <label class="form-label" for="{{ comunicazione_form.data_ora.id_for_label }}">
-                                {{ comunicazione_form.data_ora.label }}
-                            </label>
-                            {{ comunicazione_form.data_ora }}
-                        </div>
-                        {% endif %}
-                        <div class="col-md-{% if comunicazioni_formato_data != 'nascosto' and comunicazioni_mostra_allegato %}5{% elif comunicazioni_formato_data != 'nascosto' or comunicazioni_mostra_allegato %}9{% else %}12{% endif %}">
-                            <label class="form-label" for="{{ comunicazione_form.descrizione.id_for_label }}">
-                                {{ comunicazione_form.descrizione.label }}
-                            </label>
-                            {{ comunicazione_form.descrizione }}
-                        </div>
-                        {% if comunicazioni_mostra_allegato %}
-                        <div class="col-md-4">
-                            <label class="form-label" for="{{ comunicazione_form.allegato.id_for_label }}">
-                                Mail o allegato
-                            </label>
-                            <div class="st-drop-zone" id="communicationDropZone">
-                                {{ comunicazione_form.allegato }}
-                                <div class="d-flex flex-wrap gap-2 mt-2">
-                                    <button type="button"
-                                            class="btn btn-outline-primary btn-sm"
-                                            data-webcam-trigger
-                                            data-webcam-file-input="{{ comunicazione_form.allegato.auto_id }}"
-                                            data-webcam-preview="communicationWebcamPreview">
-                                        <i class="ti ti-camera"></i>
-                                        Scatta foto
-                                    </button>
-                                </div>
-                                <img id="communicationWebcamPreview"
-                                     class="st-webcam-photo-preview-img mt-2"
-                                     alt="Anteprima foto comunicazione"
-                                     hidden>
-                                <div class="text-secondary small mt-2" id="communicationFileName">
-                                    Trascina qui una mail/file oppure selezionalo.
-                                </div>
+                        <div class="min-w-0">
+                            <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                                <h2 class="page-title mb-0 st-pratica-hero-title">{{ pratica.codice }}</h2>
+                                <span class="badge bg-blue-lt">{{ pratica.get_stato_display }}</span>
+                                <span class="badge {% if pratica.priorita == 'urgente' %}bg-red-lt{% elif pratica.priorita == 'alta' %}bg-orange-lt{% else %}bg-secondary-lt{% endif %}">
+                                    {{ pratica.get_priorita_display }}
+                                </span>
+                                {% if pratica.is_scaduta %}
+                                <span class="badge bg-red-lt">
+                                    <i class="ti ti-alert-triangle"></i>
+                                    Consegna scaduta
+                                </span>
+                                {% endif %}
+                            </div>
+                            <div class="text-secondary small mb-2">
+                                {% if pratica.cliente_id %}
+                                    <a href="{% url 'pratiche:pratica_list_by_cliente' pratica.cliente.pk %}" class="st-pratica-cliente-link">
+                                        {{ pratica.cliente_label }}
+                                    </a>
+                                {% else %}
+                                    {{ pratica.cliente_label }}
+                                {% endif %}
+                                {% if pratica.tipo_oggetto or pratica.titolo %}
+                                    · {{ pratica.tipo_oggetto|default:pratica.titolo }}
+                                {% endif %}
+                            </div>
+                            <div class="st-pratica-chips">
+                                {% if pratica.referente_cellulare %}
+                                <a class="st-pratica-chip" href="tel:{{ pratica.referente_cellulare }}">
+                                    <i class="ti ti-device-mobile"></i>
+                                    {{ pratica.referente_cellulare }}
+                                </a>
+                                {% endif %}
+                                {% if pratica.referente_telefono %}
+                                <a class="st-pratica-chip" href="tel:{{ pratica.referente_telefono }}">
+                                    <i class="ti ti-phone"></i>
+                                    {{ pratica.referente_telefono }}
+                                </a>
+                                {% endif %}
+                                {% if pratica.operatore %}
+                                <span class="st-pratica-chip is-muted">
+                                    <i class="ti ti-user"></i>
+                                    {{ pratica.operatore }}
+                                </span>
+                                {% endif %}
+                                {% if pratica.data_scadenza %}
+                                <span class="st-pratica-chip {% if pratica.is_scaduta %}is-danger{% else %}is-muted{% endif %}">
+                                    <i class="ti ti-calendar-due"></i>
+                                    Consegna {{ pratica.data_scadenza|date:"d/m/Y" }}
+                                </span>
+                                {% endif %}
                             </div>
                         </div>
-                        {% endif %}
-                        <div class="col-12 text-end">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="ti ti-device-floppy"></i>
-                                Registra comunicazione
-                            </button>
-                        </div>
                     </div>
-                </form>
-
-                {% if comunicazioni %}
-                    <div class="table-responsive">
-                        <table class="table table-vcenter st-comunicazioni-table">
-                            <thead>
-                                <tr>
-                                    <th>
-                                        {% if comunicazioni_formato_data == "solo_data" %}
-                                            Data
-                                        {% else %}
-                                            Data e ora
-                                        {% endif %}
-                                    </th>
-                                    <th>Descrizione</th>
-                                    <th>Allegato</th>
-                                    <th class="text-end">Azioni</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for comunicazione in comunicazioni %}
-                                    <tr>
-                                        <td class="text-secondary text-nowrap">
-                                            {% if comunicazioni_formato_data == "solo_data" %}
-                                                {{ comunicazione.data_ora|date:"d/m/Y" }}
-                                            {% else %}
-                                                {{ comunicazione.data_ora|date:"d/m/Y H:i" }}
-                                            {% endif %}
-                                        </td>
-                                        <td class="st-comunicazioni-descrizione">{{ comunicazione.descrizione|linebreaksbr }}</td>
-                                        <td>
-                                            {% if comunicazione.allegato %}
-                                                <a href="{% url 'pratiche:comunicazione_preview' pratica.pk comunicazione.pk %}"
-                                                   target="_blank"
-                                                   class="btn btn-outline-primary btn-sm">
-                                                    <i class="ti ti-eye"></i>
-                                                    {{ comunicazione.allegato_nome }}
-                                                </a>
-                                            {% else %}
-                                                <span class="text-secondary">-</span>
-                                            {% endif %}
-                                        </td>
-                                        <td class="text-end text-nowrap">
-                                            <div class="st-table-azioni">
-                                                <a href="{% url 'pratiche:comunicazione_update' pratica.pk comunicazione.pk %}?next={% url 'pratiche:pratica_detail' pratica.pk %}"
-                                                   class="btn btn-icon btn-outline-primary"
-                                                   title="Modifica comunicazione">
-                                                    <i class="ti ti-edit"></i>
-                                                </a>
-                                                <form method="post"
-                                                      action="{% url 'pratiche:comunicazione_delete' pratica.pk comunicazione.pk %}"
-                                                      data-comunicazione-delete>
-                                                    {% csrf_token %}
-                                                    <button type="submit"
-                                                            class="btn btn-icon btn-outline-danger"
-                                                            title="Elimina comunicazione">
-                                                        <i class="ti ti-trash"></i>
-                                                    </button>
-                                                </form>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                </div>
+                <div class="col-auto">
+                    <div class="btn-list">
+                        <a href="{% url 'pratiche:pratica_busta_print' pratica.pk %}"
+                           class="btn btn-outline-secondary"
+                           data-busta-open>
+                            <i class="ti ti-printer"></i>
+                            Stampa busta
+                        </a>
+                        <a href="{% url 'pratiche:pratica_privacy_print' pratica.pk %}"
+                           class="btn btn-outline-secondary"
+                           data-privacy-open>
+                            <i class="ti ti-file-type-pdf"></i>
+                            Stampa Privacy
+                        </a>
+                        <a href="{% url 'pratiche:pratica_update' pratica.pk %}{% if next_url %}?next={{ next_url|urlencode }}{% endif %}"
+                           class="btn btn-primary">
+                            <i class="ti ti-edit"></i>
+                            Modifica
+                        </a>
+                        <a href="{{ return_url }}" class="btn btn-outline-secondary">
+                            <i class="ti ti-arrow-left"></i>
+                            {{ return_label }}
+                        </a>
                     </div>
-                {% else %}
-                    <div class="empty">
-                        <div class="empty-icon">
-                            <i class="ti ti-message"></i>
-                        </div>
-                        <p class="empty-title">Nessuna comunicazione registrata</p>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row mt-3">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">Agenda lavori</h3>
-                <div class="card-actions">
-                    <a href="{% url 'agenda:calendar' %}?pratica={{ pratica.pk }}" class="btn btn-outline-secondary btn-sm">
-                        <i class="ti ti-calendar"></i>
-                        Calendario
-                    </a>
-                    <a href="{% url 'agenda:evento_create' %}?pratica={{ pratica.pk }}" class="btn btn-primary btn-sm">
-                        <i class="ti ti-plus"></i>
-                        Aggiungi
-                    </a>
-                    <button type="button"
-                            class="btn btn-icon btn-sm btn-outline-secondary st-collapse-toggle"
-                            data-collapse-target="practice-agenda-section"
-                            data-collapse-key="agenda"
-                            aria-controls="practice-agenda-section"
-                            aria-expanded="true"
-                            title="Comprimi sezione">
-                        <i class="ti ti-chevron-down"></i>
-                    </button>
                 </div>
             </div>
-            <div class="card-body st-collapsible-section" id="practice-agenda-section">
-                {% if eventi_agenda %}
-                    <div class="table-responsive">
-                        <table class="table table-vcenter">
-                            <thead>
-                                <tr>
-                                    <th>Data ora</th>
-                                    <th>Tipo</th>
-                                    <th>Titolo</th>
-                                    <th>Stato</th>
-                                    <th class="text-end">Azioni</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for evento in eventi_agenda %}
-                                    <tr>
-                                        <td>
-                                            {{ evento.data_inizio|date:"d/m/Y" }}
-                                            {% if evento.ora_inizio %}
-                                                {{ evento.ora_inizio|time:"H:i" }}
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            <span class="badge {% if evento.tipo == 'scadenza' %}bg-red-lt{% elif evento.tipo == 'lavoro' %}bg-green-lt{% else %}bg-blue-lt{% endif %}">
-                                                {{ evento.get_tipo_display }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div class="fw-bold">{{ evento.titolo }}</div>
-                                            {% if evento.descrizione %}
-                                                <div class="text-secondary small">{{ evento.descrizione|truncatechars:90 }}</div>
-                                            {% endif %}
-                                        </td>
-                                        <td>{{ evento.get_stato_display }}</td>
-                                        <td class="text-end">
-                                            <a href="{% url 'agenda:evento_update' evento.pk %}"
-                                               class="btn btn-icon btn-outline-primary"
-                                               title="Modifica">
-                                                <i class="ti ti-edit"></i>
-                                            </a>
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+        </div>
+    </div>
+
+    <div class="row g-3 st-pratica-detail-top">
+        <div class="col-lg-7 d-grid gap-3">
+            <div class="card st-pratica-detail-card">
+                <div class="card-header">
+                    <div class="st-pratica-section-icon">
+                        <i class="ti ti-clipboard-list"></i>
                     </div>
-                {% else %}
-                    <div class="empty">
-                        <div class="empty-icon">
-                            <i class="ti ti-calendar"></i>
+                    <h3 class="card-title mb-0">Dati riparazione</h3>
+                </div>
+                <div class="card-body">
+                    <div class="st-pratica-facts">
+                        <div class="st-pratica-fact">
+                            <span class="st-pratica-fact-label">Cliente</span>
+                            <span class="st-pratica-fact-value">
+                                {% if pratica.cliente_id %}
+                                    <a href="{% url 'pratiche:pratica_list_by_cliente' pratica.cliente.pk %}">
+                                        {{ pratica.cliente_label }}
+                                    </a>
+                                {% else %}
+                                    {{ pratica.cliente_label }}
+                                {% endif %}
+                            </span>
                         </div>
-                        <p class="empty-title">Nessun evento collegato</p>
+                        {% if pratica.referente_telefono %}
+                        <div class="st-pratica-fact">
+                            <span class="st-pratica-fact-label">Telefono</span>
+                            <span class="st-pratica-fact-value">
+                                <a href="tel:{{ pratica.referente_telefono }}">{{ pratica.referente_telefono }}</a>
+                            </span>
+                        </div>
+                        {% endif %}
+                        {% if pratica.referente_cellulare %}
+                        <div class="st-pratica-fact">
+                            <span class="st-pratica-fact-label">Cellulare</span>
+                            <span class="st-pratica-fact-value">
+                                <a href="tel:{{ pratica.referente_cellulare }}">{{ pratica.referente_cellulare }}</a>
+                            </span>
+                        </div>
+                        {% endif %}
+                        {% if pratica.referente_email %}
+                        <div class="st-pratica-fact">
+                            <span class="st-pratica-fact-label">Email</span>
+                            <span class="st-pratica-fact-value">
+                                <a href="mailto:{{ pratica.referente_email }}">{{ pratica.referente_email }}</a>
+                            </span>
+                        </div>
+                        {% endif %}
+                        <div class="st-pratica-fact">
+                            <span class="st-pratica-fact-label">Operatore</span>
+                            <span class="st-pratica-fact-value">{{ pratica.operatore|default:"—" }}</span>
+                        </div>
+                        <div class="st-pratica-fact">
+                            <span class="st-pratica-fact-label">Tipologia</span>
+                            <span class="st-pratica-fact-value">{{ pratica.get_tipologia_display|default:"—" }}</span>
+                        </div>
+                        <div class="st-pratica-fact">
+                            <span class="st-pratica-fact-label">Tipo oggetto</span>
+                            <span class="st-pratica-fact-value">{{ pratica.tipo_oggetto|default:pratica.titolo|default:"—" }}</span>
+                        </div>
+                        <div class="st-pratica-fact">
+                            <span class="st-pratica-fact-label">Peso</span>
+                            <span class="st-pratica-fact-value">{{ pratica.peso_grammi|floatformat:3 }} gr</span>
+                        </div>
+                        <div class="st-pratica-fact">
+                            <span class="st-pratica-fact-label">Tipo di metallo</span>
+                            <span class="st-pratica-fact-value">{{ pratica.get_tipo_metallo_display|default:"—" }}</span>
+                        </div>
+                        {% if pratica.descrizione %}
+                        <div class="st-pratica-fact st-pratica-fact-wide">
+                            <span class="st-pratica-fact-label">Descrizione</span>
+                            <span class="st-pratica-fact-value is-soft">{{ pratica.descrizione|linebreaksbr }}</span>
+                        </div>
+                        {% endif %}
+                        {% if pratica.note %}
+                        <div class="st-pratica-fact st-pratica-fact-wide">
+                            <span class="st-pratica-fact-label">Note</span>
+                            <span class="st-pratica-fact-value is-soft">{{ pratica.note|linebreaksbr }}</span>
+                        </div>
+                        {% endif %}
                     </div>
-                {% endif %}
+                </div>
+            </div>
+
+            <div class="card st-pratica-detail-card">
+                <div class="card-header">
+                    <div class="st-pratica-section-icon">
+                        <i class="ti ti-camera"></i>
+                    </div>
+                    <h3 class="card-title mb-0">Foto oggetto</h3>
+                </div>
+                <div class="card-body">
+                    <form method="post"
+                          enctype="multipart/form-data"
+                          action="{% url 'pratiche:pratica_foto_upload' pratica.pk %}">
+                        {% csrf_token %}
+                        {% if next_url %}
+                            <input type="hidden" name="next" value="{{ next_url }}">
+                        {% endif %}
+                        {% include "pratiche/partials/pratica_foto_field.html" with pratica_foto=pratica.foto.all allow_delete=True delete_url_name="pratiche:pratica_foto_delete" pratica_pk=pratica.pk next_url=next_url show_submit=True input_id="fotoPraticaDetailInput" %}
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card st-pratica-detail-card st-pratica-status-card h-100{% if pratica.is_scaduta %} is-warning{% endif %}">
+                <div class="card-header">
+                    <div class="st-pratica-section-icon{% if pratica.is_scaduta %} is-danger{% endif %}">
+                        <i class="ti ti-flag"></i>
+                    </div>
+                    <h3 class="card-title mb-0">Stato</h3>
+                </div>
+                <div class="card-body">
+                    <div class="st-pratica-status-badges mb-3">
+                        <span class="badge bg-blue-lt">{{ pratica.get_stato_display }}</span>
+                        <span class="badge {% if pratica.priorita == 'urgente' %}bg-red-lt{% elif pratica.priorita == 'alta' %}bg-orange-lt{% else %}bg-secondary-lt{% endif %}">
+                            {{ pratica.get_priorita_display }}
+                        </span>
+                    </div>
+                    <div class="st-pratica-facts st-pratica-facts-stack">
+                        <div class="st-pratica-fact">
+                            <span class="st-pratica-fact-label">Accettazione</span>
+                            <span class="st-pratica-fact-value">{{ pratica.data_apertura|date:"d/m/Y"|default:"—" }}</span>
+                        </div>
+                        <div class="st-pratica-fact{% if pratica.is_scaduta %} is-danger{% endif %}">
+                            <span class="st-pratica-fact-label">Data prevista consegna</span>
+                            <span class="st-pratica-fact-value{% if pratica.is_scaduta %} text-danger{% endif %}">
+                                {% if pratica.data_scadenza %}
+                                    {{ pratica.data_scadenza|date:"d/m/Y" }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="st-pratica-fact">
+                            <span class="st-pratica-fact-label">Chiusura</span>
+                            <span class="st-pratica-fact-value">{{ pratica.data_chiusura|date:"d/m/Y"|default:"—" }}</span>
+                        </div>
+                        <div class="st-pratica-fact">
+                            <span class="st-pratica-fact-label">Riparatore</span>
+                            <span class="st-pratica-fact-value">{{ pratica.riparatore_display|default:"—" }}</span>
+                        </div>
+                        <div class="st-pratica-fact">
+                            <span class="st-pratica-fact-label">Data riparatore</span>
+                            <span class="st-pratica-fact-value">{{ pratica.data_riparatore|date:"d/m/Y"|default:"—" }}</span>
+                        </div>
+                        <div class="st-pratica-fact">
+                            <span class="st-pratica-fact-label">Data rientro</span>
+                            <span class="st-pratica-fact-value">{{ pratica.data_rientro|date:"d/m/Y"|default:"—" }}</span>
+                        </div>
+                        <div class="st-pratica-fact">
+                            <span class="st-pratica-fact-label">Data vendita/evasione</span>
+                            <span class="st-pratica-fact-value">{{ pratica.data_vendita|date:"d/m/Y"|default:"—" }}</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
+
+    <div class="card st-pratica-detail-card st-pratica-economy mt-3">
+        <div class="card-header">
+            <div class="st-pratica-section-icon">
+                <i class="ti ti-currency-euro"></i>
+            </div>
+            <h3 class="card-title mb-0">Valori economici</h3>
+        </div>
+        <div class="card-body">
+            <div class="st-pratica-metrics">
+                <div class="st-pratica-metric">
+                    <span class="st-pratica-metric-label">Costo lavorazione</span>
+                    <span class="st-pratica-metric-value">{{ pratica.costo_lavorazione|floatformat:2 }} €</span>
+                </div>
+                <div class="st-pratica-metric">
+                    <span class="st-pratica-metric-label">Costo materiale</span>
+                    <span class="st-pratica-metric-value">{{ pratica.costo_materiale|floatformat:2 }} €</span>
+                </div>
+                <div class="st-pratica-metric">
+                    <span class="st-pratica-metric-label">{{ pratica.peso_aggiunto_label }}</span>
+                    <span class="st-pratica-metric-value">{{ pratica.oro_aggiunto|floatformat:2 }}</span>
+                </div>
+                <div class="st-pratica-metric">
+                    <span class="st-pratica-metric-label">{{ pratica.prezzo_unita_label }}</span>
+                    <span class="st-pratica-metric-value">{{ pratica.prezzo_unita|floatformat:2 }}</span>
+                </div>
+                <div class="st-pratica-metric is-emphasis">
+                    <span class="st-pratica-metric-label">Costo totale</span>
+                    <span class="st-pratica-metric-value st-costo-totale-value">
+                        {% if pratica.senza_spesa and pratica.costo_totale == 0 %}
+                            Senza spesa
+                        {% else %}
+                            {{ pratica.costo_totale|floatformat:2 }} €
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="st-pratica-metric is-emphasis">
+                    <span class="st-pratica-metric-label">Prezzo al Pubblico</span>
+                    <span class="st-pratica-metric-value st-costo-totale-value">{{ pratica.prezzo_al|floatformat:2 }} €</span>
+                </div>
+                <div class="st-pratica-metric">
+                    <span class="st-pratica-metric-label">Prezzo pagato</span>
+                    <span class="st-pratica-metric-value">{{ pratica.prezzo_pagato|floatformat:2 }} €</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card st-pratica-detail-card mt-3">
+        <div class="card-header">
+            <div class="st-pratica-section-icon">
+                <i class="ti ti-messages"></i>
+            </div>
+            <h3 class="card-title mb-0">Comunicazioni</h3>
+            <div class="card-actions">
+                <button type="button"
+                        class="btn btn-icon btn-sm btn-outline-secondary st-collapse-toggle"
+                        data-collapse-target="practice-communications-section"
+                        data-collapse-key="communications"
+                        aria-controls="practice-communications-section"
+                        aria-expanded="true"
+                        title="Comprimi sezione">
+                    <i class="ti ti-chevron-down"></i>
+                </button>
+            </div>
+        </div>
+        <div class="card-body st-collapsible-section" id="practice-communications-section">
+            <form method="post"
+                  action="{% url 'pratiche:comunicazione_create' pratica.pk %}"
+                  enctype="multipart/form-data"
+                  class="mb-4">
+                {% csrf_token %}
+                <div class="row g-3 align-items-start">
+                    {% if comunicazioni_formato_data != "nascosto" %}
+                    <div class="col-md-3">
+                        <label class="form-label" for="{{ comunicazione_form.data_ora.id_for_label }}">
+                            {{ comunicazione_form.data_ora.label }}
+                        </label>
+                        {{ comunicazione_form.data_ora }}
+                    </div>
+                    {% endif %}
+                    <div class="col-md-{% if comunicazioni_formato_data != 'nascosto' and comunicazioni_mostra_allegato %}5{% elif comunicazioni_formato_data != 'nascosto' or comunicazioni_mostra_allegato %}9{% else %}12{% endif %}">
+                        <label class="form-label" for="{{ comunicazione_form.descrizione.id_for_label }}">
+                            {{ comunicazione_form.descrizione.label }}
+                        </label>
+                        {{ comunicazione_form.descrizione }}
+                    </div>
+                    {% if comunicazioni_mostra_allegato %}
+                    <div class="col-md-4">
+                        <label class="form-label" for="{{ comunicazione_form.allegato.id_for_label }}">
+                            Mail o allegato
+                        </label>
+                        <div class="st-drop-zone" id="communicationDropZone">
+                            {{ comunicazione_form.allegato }}
+                            <div class="d-flex flex-wrap gap-2 mt-2">
+                                <button type="button"
+                                        class="btn btn-outline-primary btn-sm"
+                                        data-webcam-trigger
+                                        data-webcam-file-input="{{ comunicazione_form.allegato.auto_id }}"
+                                        data-webcam-preview="communicationWebcamPreview">
+                                    <i class="ti ti-camera"></i>
+                                    Scatta foto
+                                </button>
+                            </div>
+                            <img id="communicationWebcamPreview"
+                                 class="st-webcam-photo-preview-img mt-2"
+                                 alt="Anteprima foto comunicazione"
+                                 hidden>
+                            <div class="text-secondary small mt-2" id="communicationFileName">
+                                Trascina qui una mail/file oppure selezionalo.
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    <div class="col-12 text-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="ti ti-device-floppy"></i>
+                            Registra comunicazione
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            {% if comunicazioni %}
+                <div class="table-responsive">
+                    <table class="table table-vcenter st-comunicazioni-table">
+                        <thead>
+                            <tr>
+                                <th>
+                                    {% if comunicazioni_formato_data == "solo_data" %}
+                                        Data
+                                    {% else %}
+                                        Data e ora
+                                    {% endif %}
+                                </th>
+                                <th>Descrizione</th>
+                                <th>Allegato</th>
+                                <th class="text-end">Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for comunicazione in comunicazioni %}
+                                <tr>
+                                    <td class="text-secondary text-nowrap">
+                                        {% if comunicazioni_formato_data == "solo_data" %}
+                                            {{ comunicazione.data_ora|date:"d/m/Y" }}
+                                        {% else %}
+                                            {{ comunicazione.data_ora|date:"d/m/Y H:i" }}
+                                        {% endif %}
+                                    </td>
+                                    <td class="st-comunicazioni-descrizione">{{ comunicazione.descrizione|linebreaksbr }}</td>
+                                    <td>
+                                        {% if comunicazione.allegato %}
+                                            <a href="{% url 'pratiche:comunicazione_preview' pratica.pk comunicazione.pk %}"
+                                               target="_blank"
+                                               class="btn btn-outline-primary btn-sm">
+                                                <i class="ti ti-eye"></i>
+                                                {{ comunicazione.allegato_nome }}
+                                            </a>
+                                        {% else %}
+                                            <span class="text-secondary">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end text-nowrap">
+                                        <div class="st-table-azioni">
+                                            <a href="{% url 'pratiche:comunicazione_update' pratica.pk comunicazione.pk %}?next={% url 'pratiche:pratica_detail' pratica.pk %}"
+                                               class="btn btn-icon btn-outline-primary"
+                                               title="Modifica comunicazione">
+                                                <i class="ti ti-edit"></i>
+                                            </a>
+                                            <form method="post"
+                                                  action="{% url 'pratiche:comunicazione_delete' pratica.pk comunicazione.pk %}"
+                                                  data-comunicazione-delete>
+                                                {% csrf_token %}
+                                                <button type="submit"
+                                                        class="btn btn-icon btn-outline-danger"
+                                                        title="Elimina comunicazione">
+                                                    <i class="ti ti-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="st-pratica-empty">
+                    <div class="st-pratica-empty-icon">
+                        <i class="ti ti-message"></i>
+                    </div>
+                    <div class="st-pratica-empty-title">Nessuna comunicazione registrata</div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card st-pratica-detail-card mt-3">
+        <div class="card-header">
+            <div class="st-pratica-section-icon">
+                <i class="ti ti-calendar"></i>
+            </div>
+            <h3 class="card-title mb-0">Agenda lavori</h3>
+            <div class="card-actions">
+                <a href="{% url 'agenda:calendar' %}?pratica={{ pratica.pk }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="ti ti-calendar"></i>
+                    Calendario
+                </a>
+                <a href="{% url 'agenda:evento_create' %}?pratica={{ pratica.pk }}" class="btn btn-primary btn-sm">
+                    <i class="ti ti-plus"></i>
+                    Aggiungi
+                </a>
+                <button type="button"
+                        class="btn btn-icon btn-sm btn-outline-secondary st-collapse-toggle"
+                        data-collapse-target="practice-agenda-section"
+                        data-collapse-key="agenda"
+                        aria-controls="practice-agenda-section"
+                        aria-expanded="true"
+                        title="Comprimi sezione">
+                    <i class="ti ti-chevron-down"></i>
+                </button>
+            </div>
+        </div>
+        <div class="card-body st-collapsible-section" id="practice-agenda-section">
+            {% if eventi_agenda %}
+                <div class="table-responsive">
+                    <table class="table table-vcenter">
+                        <thead>
+                            <tr>
+                                <th>Data ora</th>
+                                <th>Tipo</th>
+                                <th>Titolo</th>
+                                <th>Stato</th>
+                                <th class="text-end">Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for evento in eventi_agenda %}
+                                <tr>
+                                    <td>
+                                        {{ evento.data_inizio|date:"d/m/Y" }}
+                                        {% if evento.ora_inizio %}
+                                            {{ evento.ora_inizio|time:"H:i" }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge {% if evento.tipo == 'scadenza' %}bg-red-lt{% elif evento.tipo == 'lavoro' %}bg-green-lt{% else %}bg-blue-lt{% endif %}">
+                                            {{ evento.get_tipo_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold">{{ evento.titolo }}</div>
+                                        {% if evento.descrizione %}
+                                            <div class="text-secondary small">{{ evento.descrizione|truncatechars:90 }}</div>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ evento.get_stato_display }}</td>
+                                    <td class="text-end">
+                                        <a href="{% url 'agenda:evento_update' evento.pk %}"
+                                           class="btn btn-icon btn-outline-primary"
+                                           title="Modifica">
+                                            <i class="ti ti-edit"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="st-pratica-empty">
+                    <div class="st-pratica-empty-icon">
+                        <i class="ti ti-calendar"></i>
+                    </div>
+                    <div class="st-pratica-empty-title">Nessun evento collegato</div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
 </div>
 
 {% include "partials/webcam_modal.html" %}
@@ -476,7 +557,7 @@
 <script src="{% static 'securtek/js/webcam_capture.js' %}"></script>
 <script src="{% static 'securtek/js/pratica_save_before_print.js' %}"></script>
 <script src="{% static 'securtek/js/busta_print.js' %}"></script>
-<script src="{% static 'securtek/js/privacy_print.js' %}"></script>
+<script src="{% static 'securtek/js/privacy_print.js' %}?v=20260725b"></script>
 <script src="{% static 'securtek/js/confirm_dialog.js' %}"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function () {

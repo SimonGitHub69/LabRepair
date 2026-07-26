@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic import ListView, CreateView, UpdateView, DetailView, View
-from django.db.models import Count, Prefetch, Q
+from django.db.models import Q
 from django.contrib.messages.views import SuccessMessageMixin
 
 from apps.anagrafiche.models import Anagrafica, Contatto, Indirizzo
@@ -18,7 +18,7 @@ from apps.anagrafiche.search import (
 from apps.core.list_pagination import ConfigurablePaginationMixin
 from apps.core.negozi import apply_negozio_queryset_filter, normalize_negozio_code
 from apps.pratiche.cliente_documento import is_documento_identita_scaduto
-from apps.pratiche.models import Pratica, PraticaCategoria
+from apps.pratiche.models import Pratica
 
 
 def get_safe_next_url(request):
@@ -43,18 +43,7 @@ class AnagraficaListView(LoginRequiredMixin, ConfigurablePaginationMixin, ListVi
     paginate_by = 20
 
     def get_queryset(self):
-        queryset = Anagrafica.objects.filter(is_active=True).annotate(
-            contatti_attivi=Count(
-                "contatti",
-                filter=Q(contatti__is_active=True),
-                distinct=True,
-            ),
-            indirizzi_attivi=Count(
-                "indirizzi",
-                filter=Q(indirizzi__is_active=True),
-                distinct=True,
-            ),
-        )
+        queryset = Anagrafica.objects.filter(is_active=True)
 
         q = (self.request.GET.get("q") or "").strip()
         tipo = (self.request.GET.get("tipo") or "").strip()
@@ -76,6 +65,9 @@ class AnagraficaListView(LoginRequiredMixin, ConfigurablePaginationMixin, ListVi
         query_dict = self.request.GET.copy()
         query_dict.pop("page", None)
         context["filters_query"] = query_dict.urlencode()
+        list_path = reverse("anagrafiche:anagrafica_list")
+        full_qs = self.request.GET.urlencode()
+        context["list_return_url"] = f"{list_path}?{full_qs}" if full_qs else list_path
         return context
 
 
@@ -86,10 +78,22 @@ class AnagraficaDetailView(LoginRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["contatti"] = self.object.contatti.filter(is_active=True)
-        context["indirizzi"] = self.object.indirizzi.filter(is_active=True)
-        context["pratiche_in_essere"] = apply_negozio_queryset_filter(
-            self.object.pratiche.filter(is_active=True)
+        anagrafica = self.object
+        indirizzi = list(anagrafica.indirizzi.filter(is_active=True))
+        context["indirizzo_principale"] = next(
+            (ind for ind in indirizzi if ind.principale),
+            indirizzi[0] if indirizzi else None,
+        )
+        if anagrafica.is_cliente:
+            initials = f"{(anagrafica.cognome or '')[:1]}{(anagrafica.nome or '')[:1]}"
+        else:
+            initials = (anagrafica.ragione_sociale or "")[:2]
+        context["anagrafica_initials"] = (initials or "?").upper()
+        context["documento_scaduto"] = (
+            anagrafica.is_cliente and is_documento_identita_scaduto(anagrafica)
+        )
+        pratiche = apply_negozio_queryset_filter(
+            anagrafica.pratiche.filter(is_active=True)
             .exclude(
                 stato__in=[
                     Pratica.Stato.COMPLETATA,
@@ -97,15 +101,13 @@ class AnagraficaDetailView(LoginRequiredMixin, DetailView):
                     Pratica.Stato.ARCHIVIATA,
                 ]
             )
-            .select_related("responsabile", "operatore")
-            .prefetch_related(
-                Prefetch(
-                    "categoria_collegamenti",
-                    queryset=PraticaCategoria.objects.filter(is_active=True).select_related("categoria"),
-                    to_attr="categorie_attive",
-                )
-            ),
+            .select_related("responsabile", "operatore"),
             normalize_negozio_code(self.request.session.get("negozio")),
+        )
+        context["pratiche_in_essere"] = pratiche
+        context["pratiche_in_essere_count"] = pratiche.count()
+        context["list_url"] = get_safe_next_url(self.request) or reverse(
+            "anagrafiche:anagrafica_list"
         )
         return context
 

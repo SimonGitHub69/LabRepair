@@ -113,24 +113,35 @@
         return 0;
     }
 
+    function fieldTrimmedValue(id) {
+        const mirror = document.getElementById(id);
+        const store = document.getElementById(id + "_store");
+        const fromMirror = mirror ? String(mirror.value || "").trim() : "";
+        const fromStore = store ? String(store.value || "").trim() : "";
+        return fromMirror || fromStore;
+    }
+
     function hasNomeECognome() {
-        const nome = document.getElementById("id_referente_nome");
-        const cognome = document.getElementById("id_referente_cognome");
         return Boolean(
-            nome &&
-                cognome &&
-                (nome.value || "").trim() &&
-                (cognome.value || "").trim()
+            fieldTrimmedValue("id_referente_nome") &&
+                fieldTrimmedValue("id_referente_cognome")
         );
     }
 
     function hasTelefonoOrCellulare() {
-        const telefono = document.getElementById("id_referente_telefono");
-        const cellulare = document.getElementById("id_referente_cellulare");
         return Boolean(
-            (telefono && (telefono.value || "").trim()) ||
-                (cellulare && (cellulare.value || "").trim())
+            fieldTrimmedValue("id_referente_telefono") ||
+                fieldTrimmedValue("id_referente_cellulare")
         );
+    }
+
+    function clearTelefonoCellulareValidity() {
+        ["id_referente_telefono", "id_referente_cellulare"].forEach(function (id) {
+            const field = document.getElementById(id);
+            if (field && typeof field.setCustomValidity === "function") {
+                field.setCustomValidity("");
+            }
+        });
     }
 
     function getRequiredFields() {
@@ -227,12 +238,10 @@
         }
 
         if (config.optionalIfTelefonoOrCellulare && !hasTelefonoOrCellulare()) {
-            const telefono = document.getElementById("id_referente_telefono");
-            const cellulare = document.getElementById("id_referente_cellulare");
-            if (telefono && !(telefono.value || "").trim()) {
-                target = telefono;
-            } else if (cellulare) {
-                target = cellulare;
+            if (!fieldTrimmedValue("id_referente_telefono")) {
+                target = document.getElementById("id_referente_telefono") || target;
+            } else {
+                target = document.getElementById("id_referente_cellulare") || target;
             }
         }
 
@@ -303,10 +312,16 @@
      * @returns {{ok: boolean, message?: string}}
      */
     window.labrepairValidatePraticaForm = function () {
+        const form = document.getElementById("praticaForm");
+        if (form && typeof window.labrepairSyncNoAutofillMirrors === "function") {
+            window.labrepairSyncNoAutofillMirrors(form);
+        }
+
         const senzaSpesa = document.getElementById("id_senza_spesa");
         if (senzaSpesa && typeof senzaSpesa.setCustomValidity === "function") {
             senzaSpesa.setCustomValidity("");
         }
+        clearTelefonoCellulareValidity();
 
         const missing = findFirstMissing();
         if (!missing) {

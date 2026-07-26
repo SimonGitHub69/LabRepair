@@ -9,22 +9,6 @@ from apps.pratiche.models import Pratica
 
 GS_BARCODE_MAX_EXCLUSIVE = 90000000
 
-STATO_GS_MAP = {
-    Pratica.Stato.ACCETTAZIONE: "RES",
-    Pratica.Stato.RIPARATORE: "RES",
-    Pratica.Stato.IN_CONSEGNA: "REF",
-    Pratica.Stato.EVASA: "VEN",
-    Pratica.Stato.NON_RITIRATA: "DIS",
-    Pratica.Stato.ANNULLATA: "DIS",
-    Pratica.Stato.ARCHIVIATA: "DIS",
-    Pratica.Stato.BOZZA: "DIS",
-    Pratica.Stato.APERTA: "RES",
-    Pratica.Stato.IN_LAVORAZIONE: "RES",
-    Pratica.Stato.IN_ATTESA_CLIENTE: "REF",
-    Pratica.Stato.IN_ATTESA_ESTERNA: "RES",
-    Pratica.Stato.COMPLETATA: "VEN",
-}
-
 
 @dataclass
 class GsArticoloSyncResult:
@@ -58,7 +42,8 @@ def format_gs_descrizione(pratica):
 
 
 def format_gs_stato(pratica):
-    return STATO_GS_MAP.get(pratica.stato, "RES")
+    # Usato solo in INSERT; in UPDATE lo STATO SQL non viene toccato.
+    return "RIP"
 
 
 def format_gs_prezzo(pratica):
@@ -198,6 +183,7 @@ def insert_gs_articolo(cursor, payload):
 
 
 def update_gs_articolo(cursor, codart, payload):
+    # STATO non si aggiorna in modifica: resta quello impostato in INSERT (RIP).
     cursor.execute(
         """
         UPDATE GS_ARTICOLI SET
@@ -207,7 +193,6 @@ def update_gs_articolo(cursor, codart, payload):
             CODCAT2 = ?,
             PESO = ?,
             PREZZOLISTINO = ?,
-            STATO = ?,
             CODNEGOZIO = ?,
             CODCLIENTE = ?,
             NUMDOC = ?,
@@ -223,7 +208,6 @@ def update_gs_articolo(cursor, codart, payload):
         payload["CODCAT2"],
         payload["PESO"],
         payload["PREZZOLISTINO"],
-        payload["STATO"],
         payload["CODNEGOZIO"],
         payload["CODCLIENTE"],
         payload["NUMDOC"],

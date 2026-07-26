@@ -5,6 +5,8 @@
     }
 
     const statusEl = modal.querySelector("[data-privacy-status]");
+    const warningEl = modal.querySelector("[data-privacy-warning]");
+    const warningTextEl = modal.querySelector("[data-privacy-warning-text]");
     const previewEl = modal.querySelector("[data-privacy-preview]");
     const printBtn = modal.querySelector("[data-privacy-print]");
     const downloadBtn = modal.querySelector("[data-privacy-download]");
@@ -21,6 +23,17 @@
         statusEl.textContent = message || "";
         statusEl.classList.toggle("text-danger", !!isError);
         statusEl.classList.toggle("text-secondary", !isError);
+    }
+
+    function setDocumentoWarning(message) {
+        if (!warningEl) {
+            return;
+        }
+        const text = (message || "").trim();
+        if (warningTextEl) {
+            warningTextEl.textContent = text;
+        }
+        warningEl.hidden = !text;
     }
 
     function openModal() {
@@ -43,6 +56,7 @@
             downloadBtn.hidden = true;
             downloadBtn.removeAttribute("href");
         }
+        setDocumentoWarning("");
         setStatus("Preparazione scheda…", false);
     }
 
@@ -148,6 +162,7 @@
 
     async function loadPrivacy(url) {
         openModal();
+        setDocumentoWarning("");
         setStatus("Salvataggio scheda…", false);
         if (printBtn) {
             printBtn.hidden = true;
@@ -184,6 +199,11 @@
             }
             renderPreview(pageImages);
             setStatus("", false);
+            if (payload.documento_scaduto && payload.documento_scaduto_warning) {
+                setDocumentoWarning(payload.documento_scaduto_warning);
+            } else {
+                setDocumentoWarning("");
+            }
 
             if (downloadBtn && payload.pdf_url) {
                 downloadBtn.href = payload.pdf_url;
@@ -194,6 +214,7 @@
                 printBtn.hidden = false;
             }
         } catch (error) {
+            setDocumentoWarning("");
             setStatus(error.message || "Errore durante la preparazione.", true);
         }
     }
