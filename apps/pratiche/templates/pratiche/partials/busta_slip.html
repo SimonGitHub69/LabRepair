@@ -1,4 +1,5 @@
-<div class="busta-slip">
+<div class="busta-slip busta-slip--{{ slip_part|default:'a' }}"
+     style="position: relative; top: {{ slip_gap|default:'0.00mm' }};">
     <div class="busta-header">
         <div class="busta-header-left">
             <div class="busta-line">

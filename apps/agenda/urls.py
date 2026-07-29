@@ -6,6 +6,7 @@ from apps.agenda.views import (
     ConfigurazionePCCreateView,
     ConfigurazionePCDeleteView,
     ConfigurazionePCListView,
+    ConfigurazionePCSyncStampantiView,
     ConfigurazionePCUpdateView,
     ParametriComandiVoceView,
     ParametriProgrammaView,
@@ -13,6 +14,11 @@ from apps.agenda.views import (
     EventoAgendaCreateView,
     EventoAgendaDeleteView,
     EventoAgendaUpdateView,
+    StampanteDeleteView,
+    StampanteListView,
+    StampanteRedirectView,
+    StampanteSyncView,
+    StampanteUpdateView,
 )
 
 app_name = "agenda"
@@ -25,7 +31,25 @@ urlpatterns = [
     path("comandi-vocali/", ParametriComandiVoceView.as_view(), name="comandi_voce"),
     path("parametri-pc/", ConfigurazionePCListView.as_view(), name="configurazione_pc_list"),
     path("parametri-pc/nuovo/", ConfigurazionePCCreateView.as_view(), name="configurazione_pc_create"),
+    path("parametri-pc/stampanti/", StampanteRedirectView.as_view(), name="stampante_redirect"),
+    path("parametri-pc/<int:pc_pk>/stampanti/", StampanteListView.as_view(), name="stampante_list"),
+    path("parametri-pc/<int:pc_pk>/stampanti/rileva/", StampanteSyncView.as_view(), name="stampante_sync"),
+    path(
+        "parametri-pc/<int:pc_pk>/stampanti/<int:pk>/modifica/",
+        StampanteUpdateView.as_view(),
+        name="stampante_update",
+    ),
+    path(
+        "parametri-pc/<int:pc_pk>/stampanti/<int:pk>/elimina/",
+        StampanteDeleteView.as_view(),
+        name="stampante_delete",
+    ),
     path("parametri-pc/<int:pk>/modifica/", ConfigurazionePCUpdateView.as_view(), name="configurazione_pc_update"),
+    path(
+        "parametri-pc/<int:pk>/rileva-stampanti/",
+        ConfigurazionePCSyncStampantiView.as_view(),
+        name="configurazione_pc_sync_stampanti",
+    ),
     path("parametri-pc/<int:pk>/elimina/", ConfigurazionePCDeleteView.as_view(), name="configurazione_pc_delete"),
     path("nuovo/", EventoAgendaCreateView.as_view(), name="evento_create"),
     path("<int:pk>/modifica/", EventoAgendaUpdateView.as_view(), name="evento_update"),

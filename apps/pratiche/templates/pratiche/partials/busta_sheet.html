@@ -1,4 +1,24 @@
-<div class="sheet">
-    {% include "pratiche/partials/busta_slip.html" with slip=busta show_riparatore=False %}
-    {% include "pratiche/partials/busta_slip.html" with slip=busta show_riparatore=True %}
+<style>
+    .sheet {
+        --busta-gap-superiore: {{ gap_busta_superiore_css|default:"0.00mm" }};
+        --busta-gap-inferiore: {{ gap_busta_inferiore_css|default:"0.00mm" }};
+    }
+    .busta-slip--a,
+    .busta-slip--b {
+        position: relative;
+    }
+    .busta-slip--a {
+        top: var(--busta-gap-superiore, 0mm) !important;
+    }
+    .busta-slip--b {
+        top: var(--busta-gap-inferiore, 0mm) !important;
+    }
+</style>
+<div class="sheet"
+     data-stampante="{{ stampante_busta.nome|default:'' }}"
+     data-gap-a="{{ gap_busta_superiore_css|default:'0.00mm' }}"
+     data-gap-b="{{ gap_busta_inferiore_css|default:'0.00mm' }}"
+     style="--busta-gap-superiore: {{ gap_busta_superiore_css|default:'0.00mm' }}; --busta-gap-inferiore: {{ gap_busta_inferiore_css|default:'0.00mm' }};">
+    {% include "pratiche/partials/busta_slip.html" with slip=busta show_riparatore=False slip_part="a" slip_gap=gap_busta_superiore_css %}
+    {% include "pratiche/partials/busta_slip.html" with slip=busta show_riparatore=True slip_part="b" slip_gap=gap_busta_inferiore_css %}
 </div>

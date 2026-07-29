@@ -41,17 +41,97 @@
         setStatus("Preparazione busta…", false);
     }
 
-    function buildDocument(sheetHtml, cssUrl) {
+    async function fetchCssText(cssUrl) {
+        if (!cssUrl) {
+            return "";
+        }
+
+        try {
+            const response = await fetch(cssUrl, { credentials: "same-origin" });
+            if (!response.ok) {
+                return "";
+            }
+
+            let cssText = await response.text();
+            const cssBase = cssUrl.split("?")[0].replace(/[^/]+$/, "");
+            const fontsBase = cssBase.replace(/css\/$/, "fonts/");
+            cssText = cssText.replace(/url\((["']?)\.\.\/fonts\//g, "url($1" + fontsBase);
+            return cssText;
+        } catch (error) {
+            return "";
+        }
+    }
+
+    async function buildDocument(sheetHtml, cssUrl) {
+        const cssText = await fetchCssText(cssUrl);
+        const styleBlock = cssText
+            ? "<style>" + cssText + "</style>"
+            : "<link rel='stylesheet' href='" + cssUrl + "'>";
+
         return (
             "<!DOCTYPE html><html lang='it'><head><meta charset='utf-8'>" +
             "<title>Busta riparazione</title>" +
-            "<link rel='stylesheet' href='" +
-            cssUrl +
-            "'>" +
+            styleBlock +
             "</head><body>" +
             sheetHtml +
             "</body></html>"
         );
+    }
+
+    function waitForStylesheets(doc, callback) {
+        const links = doc.querySelectorAll("link[rel='stylesheet']");
+        if (!links.length) {
+            callback();
+            return;
+        }
+
+        let pending = links.length;
+        let done = false;
+
+        function finish() {
+            pending -= 1;
+            if (pending <= 0 && !done) {
+                done = true;
+                callback();
+            }
+        }
+
+        links.forEach(function (link) {
+            if (link.sheet) {
+                finish();
+                return;
+            }
+            link.addEventListener("load", finish);
+            link.addEventListener("error", finish);
+        });
+
+        setTimeout(function () {
+            if (!done) {
+                done = true;
+                callback();
+            }
+        }, 3000);
+    }
+
+    function waitForFonts(doc, callback) {
+        const fonts = doc.fonts;
+        if (fonts && fonts.ready) {
+            fonts.ready
+                .then(function () {
+                    setTimeout(callback, 150);
+                })
+                .catch(function () {
+                    setTimeout(callback, 300);
+                });
+            return;
+        }
+        setTimeout(callback, 300);
+    }
+
+    function waitForPrintReady(doc, callback) {
+        waitForStylesheets(doc, function () {
+            waitForFonts(doc, callback);
+        });
     }
 
     function renderPreview(html) {
@@ -100,27 +180,7 @@
             }
         }
 
-        function readyPrint() {
-            var fonts = doc.fonts;
-            if (fonts && fonts.ready) {
-                fonts.ready
-                    .then(function () {
-                        setTimeout(trigger, 150);
-                    })
-                    .catch(function () {
-                        setTimeout(trigger, 300);
-                    });
-            } else {
-                setTimeout(trigger, 300);
-            }
-        }
-
-        if (doc.readyState === "complete") {
-            readyPrint();
-        } else {
-            frame.onload = readyPrint;
-            setTimeout(readyPrint, 400);
-        }
+        waitForPrintReady(doc, trigger);
     }
 
     async function loadBusta(url) {
@@ -156,7 +216,7 @@
                 titleEl.textContent = payload.title;
             }
 
-            printHtml = buildDocument(payload.sheet_html || "", payload.css_url || "");
+            printHtml = await buildDocument(payload.sheet_html || "", payload.css_url || "");
             renderPreview(printHtml);
             setStatus("", false);
             if (printBtn) {

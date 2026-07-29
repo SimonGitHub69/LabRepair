@@ -13,7 +13,7 @@
                 {% if object %}Modifica postazione PC{% else %}Nuova postazione PC{% endif %}
             </h2>
             <div class="text-secondary">
-                Nome fisico del computer, negozio predefinito e stile interfaccia
+                Nome fisico del computer, negozio predefinito, stile interfaccia e stampanti
             </div>
         </div>
     </div>
@@ -104,6 +104,50 @@
                     </div>
                 </div>
                 <div class="col-12">
+                    <div class="mb-3">
+                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                            <label class="form-label mb-0">
+                                {{ form.stampanti.label }}
+                            </label>
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-secondary"
+                                    id="pcPrinterDetectBtn"
+                                    data-agent-url="{{ stampanti_agent_url|default:'http://127.0.0.1:17346' }}">
+                                <i class="ti ti-refresh"></i>
+                                Rileva dal PC
+                            </button>
+                        </div>
+                        <div id="pcPrinterChoices"
+                             class="border rounded p-3 bg-secondary-lt"
+                             {% if not form.stampanti.field.choices %}hidden{% endif %}>
+                            <div class="text-secondary mb-2" id="pcPrinterChoicesHint">
+                                {% if form.stampanti.field.choices %}
+                                    Disponibili: {{ form.stampanti.field.choices|length }}
+                                {% endif %}
+                            </div>
+                            <div id="pcPrinterChoicesList">
+                                {% for option in form.stampanti %}
+                                    <label class="form-check mb-2">
+                                        {{ option.tag }}
+                                        <span class="form-check-label">{{ option.choice_label }}</span>
+                                    </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="alert alert-warning mb-0" id="pcPrinterEmptyAlert" {% if form.stampanti.field.choices %}hidden{% endif %}>
+                            Nessuna stampante in elenco.
+                            Su PC client avvia l'agent e premi <strong>Rileva dal PC</strong>,
+                            oppure salva dopo aver selezionato le stampanti rilevate.
+                        </div>
+                        {% if form.stampanti.help_text %}
+                            <div class="form-hint">{{ form.stampanti.help_text }}</div>
+                        {% endif %}
+                        {% if form.stampanti.errors %}
+                            <div class="invalid-feedback d-block">{{ form.stampanti.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-12">
                     <div class="mb-0">
                         <label class="form-label" for="{{ form.note.id_for_label }}">
                             {{ form.note.label }}
@@ -129,4 +173,101 @@
     </form>
 </div>
 
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+(function () {
+    const btn = document.getElementById("pcPrinterDetectBtn");
+    const box = document.getElementById("pcPrinterChoices");
+    const list = document.getElementById("pcPrinterChoicesList");
+    const hint = document.getElementById("pcPrinterChoicesHint");
+    const emptyAlert = document.getElementById("pcPrinterEmptyAlert");
+    if (!btn || !box || !list) {
+        return;
+    }
+
+    function selectedNames() {
+        return Array.from(list.querySelectorAll("input[type=checkbox]:checked")).map(function (el) {
+            return el.value;
+        });
+    }
+
+    function renderPrinters(printers, keepSelected) {
+        const selected = new Set((keepSelected || []).map(function (n) {
+            return String(n).toLowerCase();
+        }));
+        list.innerHTML = "";
+        printers.forEach(function (item) {
+            const nome = String(item.nome || item.name || item.Name || "").trim();
+            if (!nome) {
+                return;
+            }
+            const porta = String(item.porta || item.PortName || "").trim();
+            const predefinita = !!(item.predefinita || item.Default);
+            let labelText = nome;
+            if (porta) {
+                labelText += " (" + porta + ")";
+            }
+            if (predefinita) {
+                labelText += " — predefinita";
+            }
+            const wrap = document.createElement("label");
+            wrap.className = "form-check mb-2";
+            const input = document.createElement("input");
+            input.type = "checkbox";
+            input.name = "stampanti";
+            input.value = nome;
+            input.className = "form-check-input";
+            if (!keepSelected.length || selected.has(nome.toLowerCase())) {
+                input.checked = true;
+            }
+            const span = document.createElement("span");
+            span.className = "form-check-label";
+            span.textContent = labelText;
+            wrap.appendChild(input);
+            wrap.appendChild(span);
+            list.appendChild(wrap);
+        });
+        const count = list.querySelectorAll("input[type=checkbox]").length;
+        if (hint) {
+            hint.textContent = count ? ("Disponibili: " + count) : "";
+        }
+        box.hidden = count === 0;
+        if (emptyAlert) {
+            emptyAlert.hidden = count > 0;
+        }
+    }
+
+    btn.addEventListener("click", function () {
+        const agentUrl = (btn.dataset.agentUrl || "http://127.0.0.1:17346").replace(/\/$/, "");
+        const previous = selectedNames();
+        btn.disabled = true;
+        fetch(agentUrl + "/printers", { method: "GET", credentials: "omit" })
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error("agent");
+                }
+                return response.json();
+            })
+            .then(function (payload) {
+                const printers = payload && payload.printers ? payload.printers : [];
+                if (!printers.length) {
+                    throw new Error("empty");
+                }
+                renderPrinters(printers, previous);
+            })
+            .catch(function () {
+                window.alert(
+                    "Impossibile rilevare le stampanti dal PC.\n" +
+                    "Avvia LabRepair con LabRepairApp.vbs oppure installa l'agent stampanti."
+                );
+            })
+            .finally(function () {
+                btn.disabled = false;
+            });
+    });
+})();
+</script>
 {% endblock %}

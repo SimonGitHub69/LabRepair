@@ -1,6 +1,12 @@
 from django.contrib import admin
 
-from apps.core.models import Azienda, ConfigurazioneMssql, ConfigurazionePC, ConfigurazioneProgramma
+from apps.core.models import (
+    Azienda,
+    ConfigurazioneMssql,
+    ConfigurazionePC,
+    ConfigurazioneProgramma,
+    Stampante,
+)
 
 
 @admin.register(Azienda)
@@ -36,10 +42,30 @@ class ConfigurazionePCAdmin(admin.ModelAdmin):
         "descrizione",
         "negozio_default",
         "layout_stile",
+        "stampanti_count",
         "is_active",
     )
     search_fields = ("nome_pc", "descrizione")
     list_filter = ("negozio_default", "layout_stile", "is_active")
+
+    @admin.display(description="Stampanti")
+    def stampanti_count(self, obj):
+        return len(obj.stampanti_elenco)
+
+
+@admin.register(Stampante)
+class StampanteAdmin(admin.ModelAdmin):
+    list_display = (
+        "nome",
+        "configurazione_pc",
+        "descrizione",
+        "gap_busta_superiore",
+        "gap_busta_inferiore",
+        "predefinita",
+        "is_active",
+    )
+    search_fields = ("nome", "descrizione", "porta", "driver")
+    list_filter = ("configurazione_pc", "predefinita", "is_active")
 
 
 @admin.register(ConfigurazioneProgramma)

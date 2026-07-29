@@ -2,6 +2,8 @@
 
 :root {
     --busta-print-scale: 0.763; /* 0.82 - 7% */
+    --busta-gap-superiore: 0mm; /* sposta solo parte A */
+    --busta-gap-inferiore: 0mm; /* sposta solo parte B */
 }
 
 @font-face {
@@ -73,6 +75,23 @@ body {
 
 .busta-slip + .busta-slip {
     margin-top: 33.8mm;
+}
+
+/*
+ * Gap stampante: indipendenti (position:relative non sposta il fratello).
+ * Preferito a transform: più affidabile in anteprima/stampa browser.
+ */
+.busta-slip--a,
+.busta-slip--b {
+    position: relative;
+}
+
+.busta-slip--a {
+    top: var(--busta-gap-superiore, 0mm);
+}
+
+.busta-slip--b {
+    top: var(--busta-gap-inferiore, 0mm);
 }
 
 .busta-label {
@@ -174,7 +193,8 @@ body {
     margin-top: 47.6mm;
 }
 
-.busta-slip:last-child .busta-header {
+.busta-slip:last-child .busta-header,
+.busta-slip--b .busta-header {
     transform: translateY(16mm);
 }
 

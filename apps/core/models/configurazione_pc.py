@@ -31,6 +31,12 @@ class ConfigurazionePC(BaseModel):
         default=ConfigurazioneProgramma.LayoutStile.STANDARD,
         help_text="Interfaccia usata da questa postazione (sovrascrive Parametri programma).",
     )
+    stampanti = models.JSONField(
+        "Stampanti",
+        default=list,
+        blank=True,
+        help_text="Stampanti Windows associate a questa postazione.",
+    )
 
     class Meta:
         verbose_name = "Configurazione PC"
@@ -44,10 +50,19 @@ class ConfigurazionePC(BaseModel):
         return self.nome_pc
 
     def save(self, *args, **kwargs):
+        from apps.core.printers import normalize_stampanti
+
         self.nome_pc = (self.nome_pc or "").strip()
         self.descrizione = (self.descrizione or "").strip()
+        self.stampanti = normalize_stampanti(self.stampanti)
         super().save(*args, **kwargs)
 
     @property
     def layout_compatto(self):
         return self.layout_stile == ConfigurazioneProgramma.LayoutStile.COMPATTA
+
+    @property
+    def stampanti_elenco(self):
+        from apps.core.printers import normalize_stampanti
+
+        return normalize_stampanti(self.stampanti)

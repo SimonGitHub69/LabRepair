@@ -224,7 +224,7 @@ class Pratica(BaseModel):
         null=True,
         blank=True,
         unique=True,
-        help_text="Barcode assegnato in GS_ARTICOLI sul gestionale SQL.",
+        help_text="EAN assegnato in TB_PREZZICASSE sul gestionale SQL casse.",
     )
 
     class Meta:

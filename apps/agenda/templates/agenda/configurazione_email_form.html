@@ -246,6 +246,39 @@ Parametri mail e SQL
                     </div>
                 </div>
 
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ mssql_form.prz_pvn_codice.id_for_label }}">{{ mssql_form.prz_pvn_codice.label }}</label>
+                        {{ mssql_form.prz_pvn_codice }}
+                        <div class="form-hint">{{ mssql_form.prz_pvn_codice.help_text }}</div>
+                        {% if mssql_form.prz_pvn_codice.errors %}
+                            <div class="invalid-feedback d-block">{{ mssql_form.prz_pvn_codice.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ mssql_form.iva_id_cassa.id_for_label }}">{{ mssql_form.iva_id_cassa.label }}</label>
+                        {{ mssql_form.iva_id_cassa }}
+                        <div class="form-hint">{{ mssql_form.iva_id_cassa.help_text }}</div>
+                        {% if mssql_form.iva_id_cassa.errors %}
+                            <div class="invalid-feedback d-block">{{ mssql_form.iva_id_cassa.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ mssql_form.iva_aliquota_cassa.id_for_label }}">{{ mssql_form.iva_aliquota_cassa.label }}</label>
+                        {{ mssql_form.iva_aliquota_cassa }}
+                        <div class="form-hint">{{ mssql_form.iva_aliquota_cassa.help_text }}</div>
+                        {% if mssql_form.iva_aliquota_cassa.errors %}
+                            <div class="invalid-feedback d-block">{{ mssql_form.iva_aliquota_cassa.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
                 <div class="col-12">
                     <div class="mb-0">
                         <label class="form-label" for="{{ mssql_form.note.id_for_label }}">{{ mssql_form.note.label }}</label>
@@ -275,6 +308,8 @@ Parametri mail e SQL
     <i class="ti ti-info-circle me-1"></i>
     Il test usa i valori inseriti nel form, anche prima del salvataggio. Per istanze nominate usa
     <code>HOST\\SQLEXPRESS</code> senza porta. Serve un driver ODBC SQL Server 17 o 18.
+    Le riparazioni vengono sincronizzate su <code>TB_PREZZICASSE</code> (DELETE per EAN + INSERT),
+    come nella procedura 4D delle casse.
     <hr class="my-2">
     <strong>Autenticazione mista (login SQL):</strong> in SSMS → tasto destro sul server → Proprietà →
     Sicurezza → <em>Modalità di autenticazione SQL Server e Windows</em> → riavvia SQL Server →

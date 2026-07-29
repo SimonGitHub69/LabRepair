@@ -987,7 +987,7 @@ class PraticaBustaPrintView(LoginRequiredMixin, DetailView):
                     "css_url": request.build_absolute_uri(
                         static("securtek/css/busta_print.css")
                     )
-                    + "?v=20260721-40",
+                    + "?v=20260728-gap2",
                 }
             )
 
@@ -995,6 +995,7 @@ class PraticaBustaPrintView(LoginRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         from apps.core.models import Azienda
+        from apps.core.printers import busta_gap_css_vars, get_stampante_busta_for_request
         from apps.pratiche.busta import build_busta_context
 
         context = super().get_context_data(**kwargs)
@@ -1002,6 +1003,9 @@ class PraticaBustaPrintView(LoginRequiredMixin, DetailView):
         context["azienda"] = (
             Azienda.objects.filter(is_active=True).order_by("ragione_sociale").first()
         )
+        stampante = get_stampante_busta_for_request(self.request)
+        context["stampante_busta"] = stampante
+        context.update(busta_gap_css_vars(stampante))
         return context
 
 

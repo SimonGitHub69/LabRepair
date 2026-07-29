@@ -1,0 +1,125 @@
+{% extends "base/layout.html" %}
+
+{% block page_title %}
+Modifica stampante
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header d-print-none mb-3">
+    <div class="row align-items-center">
+        <div class="col">
+            <h2 class="page-title">Modifica stampante</h2>
+            <div class="text-secondary">
+                {{ object.nome }}
+                {% if postazione %} — postazione {{ postazione.nome_pc }}{% endif %}
+                {% if object.predefinita %}
+                    <span class="badge bg-blue-lt ms-1">predefinita</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <form method="post" autocomplete="off" data-block-suggestions="1">
+        {% csrf_token %}
+
+        <div class="card-body">
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">Nome stampante</label>
+                        <input type="text"
+                               class="form-control-plaintext border rounded px-2 bg-secondary-lt"
+                               value="{{ object.nome }}"
+                               readonly>
+                        {% if object.porta %}
+                            <div class="form-hint">Porta: {{ object.porta }}</div>
+                        {% endif %}
+                        {% if object.driver %}
+                            <div class="form-hint">Driver: {{ object.driver }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ form.descrizione.id_for_label }}">
+                            {{ form.descrizione.label }}
+                        </label>
+                        {{ form.descrizione }}
+                        {% if form.descrizione.help_text %}
+                            <div class="form-hint">{{ form.descrizione.help_text }}</div>
+                        {% endif %}
+                        {% if form.descrizione.errors %}
+                            <div class="invalid-feedback d-block">{{ form.descrizione.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ form.gap_busta_superiore.id_for_label }}">
+                            {{ form.gap_busta_superiore.label }}
+                        </label>
+                        <div class="input-group">
+                            {{ form.gap_busta_superiore }}
+                            <span class="input-group-text">mm</span>
+                        </div>
+                        <div class="form-hint">
+                            Sposta solo la parte <strong>A</strong> (copia superiore). La parte B resta ferma.
+                            Positivo = più in basso, negativo = più in alto.
+                        </div>
+                        {% if form.gap_busta_superiore.errors %}
+                            <div class="invalid-feedback d-block">{{ form.gap_busta_superiore.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ form.gap_busta_inferiore.id_for_label }}">
+                            {{ form.gap_busta_inferiore.label }}
+                        </label>
+                        <div class="input-group">
+                            {{ form.gap_busta_inferiore }}
+                            <span class="input-group-text">mm</span>
+                        </div>
+                        <div class="form-hint">
+                            Sposta solo la parte <strong>B</strong> (copia inferiore). La parte A resta ferma.
+                            Positivo = più in basso, negativo = più in alto.
+                        </div>
+                        {% if form.gap_busta_inferiore.errors %}
+                            <div class="invalid-feedback d-block">{{ form.gap_busta_inferiore.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="mb-0">
+                        <label class="form-label" for="{{ form.note.id_for_label }}">
+                            {{ form.note.label }}
+                        </label>
+                        {{ form.note }}
+                        {% if form.note.errors %}
+                            <div class="invalid-feedback d-block">{{ form.note.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-footer text-end">
+            <a href="{% url 'agenda:stampante_list' postazione.pk %}" class="btn btn-secondary">
+                Annulla
+            </a>
+            <button type="submit" class="btn btn-primary">
+                <i class="ti ti-device-floppy"></i>
+                Salva
+            </button>
+        </div>
+    </form>
+</div>
+
+{% endblock %}

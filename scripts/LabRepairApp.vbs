@@ -38,6 +38,13 @@ If fso.FileExists(cieAgentVbs) Then
   sh.Run "wscript.exe //nologo """ & cieAgentVbs & """", 0, False
 End If
 
+' Agent stampanti sul PC client (Brother / stampanti di cassa).
+Dim printerAgentVbs
+printerAgentVbs = fso.BuildPath(fso.GetParentFolderName(WScript.ScriptFullName), "LabRepairPrinterAgent.vbs")
+If fso.FileExists(printerAgentVbs) Then
+  sh.Run "wscript.exe //nologo """ & printerAgentVbs & """", 0, False
+End If
+
 sh.Run """" & Browser & """ " & Args, 1, False
 
 ' Crea/aggiorna collegamento Desktop "LabRepair"

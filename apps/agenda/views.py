@@ -16,12 +16,26 @@ from apps.core.forms import (
     ConfigurazioneMssqlForm,
     ConfigurazionePCForm,
     ConfigurazioneProgrammaForm,
+    StampanteForm,
 )
 from apps.core.list_pagination import ConfigurablePaginationMixin
 from apps.core.mail import parse_email_destinatari, send_smtp_email
-from apps.core.models import ConfigurazioneMssql, ConfigurazionePC, ConfigurazioneProgramma
+from apps.core.models import ConfigurazioneMssql, ConfigurazionePC, ConfigurazioneProgramma, Stampante
 from apps.core.mssql import config_from_post, test_mssql_connection
-from apps.core.pc import detect_client_pc_name
+from apps.core.pc import detect_client_pc_name, get_local_system_pc_name
+from apps.core.printers import (
+    list_installed_printer_names,
+    list_installed_printers,
+    sync_stampanti_payload,
+    sync_stampanti_for_postazione,
+    sync_stampanti_rilevate,
+)
+from apps.core.pc import (
+    detect_client_pc_name,
+    get_configurazione_pc_for_request,
+    get_local_system_pc_name,
+    get_nome_pc_from_request,
+)
 from apps.core.programma import get_mailto_preview
 from apps.core.negozi import (
     NEGOZI,
@@ -548,6 +562,225 @@ class ConfigurazionePCListView(LoginRequiredMixin, PermissionRequiredMixin, Conf
             )
         return queryset.order_by("nome_pc")
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        try:
+            context["stampanti_sistema"] = list_installed_printers(None)
+        except Exception:
+            context["stampanti_sistema"] = []
+        context["nome_pc_locale"] = get_local_system_pc_name()
+        return context
+
+
+class ConfigurazionePCSyncStampantiView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    """Aggiorna le stampanti della postazione con quelle installate sul sistema."""
+
+    permission_required = "dashboard.access_parametri_pc"
+    raise_exception = True
+
+    def post(self, request, *args, **kwargs):
+        postazione = get_object_or_404(ConfigurazionePC, pk=kwargs["pk"], is_active=True)
+        result = sync_stampanti_rilevate(
+            postazione.nome_pc,
+            user=request.user,
+            configurazione_pc=postazione,
+        )
+        nomi = result["names"]
+        postazione.stampanti = nomi
+        postazione.updated_by = request.user
+        postazione.save(update_fields=["stampanti", "updated_by", "updated_at"])
+        if nomi:
+            messages.success(
+                request,
+                f"Associate {len(nomi)} stampanti a {postazione.nome_pc} "
+                f"(tabella: +{result['created']}, aggiornate {result['updated']}).",
+            )
+        else:
+            messages.warning(
+                request,
+                f"Nessuna stampante rilevata sul sistema per {postazione.nome_pc}.",
+            )
+        return redirect("agenda:configurazione_pc_list")
+
+
+class StampanteListView(LoginRequiredMixin, PermissionRequiredMixin, ConfigurablePaginationMixin, ListView):
+    model = Stampante
+    template_name = "agenda/stampante_list.html"
+    context_object_name = "stampanti"
+    paginate_by = 50
+    permission_required = "dashboard.access_parametri_pc"
+    raise_exception = True
+
+    def dispatch(self, request, *args, **kwargs):
+        self.postazione = get_object_or_404(
+            ConfigurazionePC,
+            pk=kwargs["pc_pk"],
+            is_active=True,
+        )
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        queryset = Stampante.objects.filter(
+            is_active=True,
+            configurazione_pc=self.postazione,
+        )
+        q = (self.request.GET.get("q") or "").strip()
+        if q:
+            queryset = queryset.filter(
+                Q(nome__icontains=q)
+                | Q(descrizione__icontains=q)
+                | Q(porta__icontains=q)
+                | Q(driver__icontains=q)
+                | Q(note__icontains=q)
+            )
+        return queryset.order_by("nome")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["postazione"] = self.postazione
+        context["nome_pc_server"] = get_local_system_pc_name()
+        context["nome_pc_cliente"] = get_nome_pc_from_request(self.request) or detect_client_pc_name(
+            self.request
+        )
+        context["nome_pc_locale"] = self.postazione.nome_pc
+        context["stampanti_sistema_count"] = len(list_installed_printers(self.postazione.nome_pc))
+        return context
+
+
+class StampanteSyncView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    permission_required = "dashboard.access_parametri_pc"
+    raise_exception = True
+
+    def post(self, request, *args, **kwargs):
+        import json
+
+        postazione = get_object_or_404(ConfigurazionePC, pk=kwargs["pc_pk"], is_active=True)
+
+        printers_json = (request.POST.get("printers_json") or "").strip()
+        if printers_json:
+            try:
+                payload = json.loads(printers_json)
+            except json.JSONDecodeError:
+                messages.error(request, "Elenco stampanti non valido.")
+                return redirect("agenda:stampante_list", pc_pk=postazione.pk)
+
+            printers = payload.get("printers") if isinstance(payload, dict) else payload
+            result = sync_stampanti_payload(
+                printers,
+                user=request.user,
+                configurazione_pc=postazione,
+            )
+            postazione.stampanti = result["names"]
+            postazione.updated_by = request.user
+            postazione.save(update_fields=["stampanti", "updated_by", "updated_at"])
+            if result["total"]:
+                messages.success(
+                    request,
+                    f"Rilevate {result['total']} stampanti dal PC client per {postazione.nome_pc}: "
+                    f"{result['created']} nuove, {result['updated']} aggiornate.",
+                )
+            else:
+                messages.warning(request, "Nessuna stampante rilevata dal PC client.")
+            return redirect("agenda:stampante_list", pc_pk=postazione.pk)
+
+        result = sync_stampanti_rilevate(
+            computer_name=postazione.nome_pc,
+            user=request.user,
+            configurazione_pc=postazione,
+        )
+        postazione.stampanti = result["names"]
+        postazione.updated_by = request.user
+        postazione.save(update_fields=["stampanti", "updated_by", "updated_at"])
+        if result["total"]:
+            messages.success(
+                request,
+                f"Rilevate {result['total']} stampanti per {postazione.nome_pc}: "
+                f"{result['created']} nuove, {result['updated']} aggiornate.",
+            )
+        else:
+            messages.warning(
+                request,
+                f"Nessuna stampante rilevata per {postazione.nome_pc}. "
+                "Installa l'agent stampanti sul PC client e apri LabRepair con LabRepairApp.vbs.",
+            )
+        return redirect("agenda:stampante_list", pc_pk=postazione.pk)
+
+
+class StampanteUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
+    model = Stampante
+    form_class = StampanteForm
+    template_name = "agenda/stampante_form.html"
+    permission_required = "dashboard.access_parametri_pc"
+    raise_exception = True
+
+    def dispatch(self, request, *args, **kwargs):
+        self.postazione = get_object_or_404(
+            ConfigurazionePC,
+            pk=kwargs["pc_pk"],
+            is_active=True,
+        )
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        return Stampante.objects.filter(is_active=True, configurazione_pc=self.postazione)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["postazione"] = self.postazione
+        return context
+
+    def form_valid(self, form):
+        form.instance.updated_by = self.request.user
+        messages.success(self.request, "Stampante aggiornata correttamente.")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse("agenda:stampante_list", kwargs={"pc_pk": self.postazione.pk})
+
+
+class StampanteDeleteView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    permission_required = "dashboard.access_parametri_pc"
+    raise_exception = True
+
+    def post(self, request, *args, **kwargs):
+        postazione = get_object_or_404(ConfigurazionePC, pk=kwargs["pc_pk"], is_active=True)
+        stampante = Stampante.objects.filter(
+            pk=kwargs["pk"],
+            configurazione_pc=postazione,
+        ).first()
+        if stampante is None:
+            messages.warning(request, "Stampante non trovata.")
+            return redirect("agenda:stampante_list", pc_pk=postazione.pk)
+        if not stampante.is_active:
+            messages.info(request, "Stampante già eliminata.")
+            return redirect("agenda:stampante_list", pc_pk=postazione.pk)
+
+        stampante.soft_delete(user=request.user)
+        nomi = [
+            nome
+            for nome in postazione.stampanti_elenco
+            if nome.casefold() != stampante.nome.casefold()
+        ]
+        postazione.stampanti = nomi
+        postazione.updated_by = request.user
+        postazione.save(update_fields=["stampanti", "updated_by", "updated_at"])
+        messages.success(request, "Stampante eliminata correttamente.")
+        return redirect("agenda:stampante_list", pc_pk=postazione.pk)
+
+
+class StampanteRedirectView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    permission_required = "dashboard.access_parametri_pc"
+    raise_exception = True
+
+    def get(self, request, *args, **kwargs):
+        postazione = get_configurazione_pc_for_request(request)
+        if postazione is None:
+            postazione = ConfigurazionePC.objects.filter(is_active=True).order_by("nome_pc").first()
+        if postazione is None:
+            messages.info(request, "Configura prima una postazione PC.")
+            return redirect("agenda:configurazione_pc_list")
+        return redirect("agenda:stampante_list", pc_pk=postazione.pk)
+
 
 class ConfigurazionePCCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
     model = ConfigurazionePC
@@ -559,12 +792,19 @@ class ConfigurazionePCCreateView(LoginRequiredMixin, PermissionRequiredMixin, Cr
     def get_detected_nome_pc(self):
         return detect_client_pc_name(self.request)
 
+    def get_printer_choices(self):
+        try:
+            return list_installed_printers(None)
+        except Exception:
+            return []
+
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         detected = self.get_detected_nome_pc()
         # Readonly solo se il nome rilevato e' plausibile (non IP/frammenti).
         kwargs["nome_pc_readonly"] = bool(detected)
         kwargs["forced_nome_pc"] = detected
+        kwargs["printer_choices"] = self.get_printer_choices()
         return kwargs
 
     def get_initial(self):
@@ -579,13 +819,17 @@ class ConfigurazionePCCreateView(LoginRequiredMixin, PermissionRequiredMixin, Cr
         detected = self.get_detected_nome_pc()
         context["nome_pc_rilevato"] = detected
         context["nome_pc_auto"] = True
+        context["stampanti_rilevate"] = self.get_printer_choices()
+        context["stampanti_agent_url"] = "http://127.0.0.1:17346"
         return context
 
     def form_valid(self, form):
         form.instance.created_by = self.request.user
         form.instance.updated_by = self.request.user
+        response = super().form_valid(form)
+        sync_stampanti_for_postazione(self.object, user=self.request.user)
         messages.success(self.request, "Postazione PC creata correttamente.")
-        return super().form_valid(form)
+        return response
 
     def get_success_url(self):
         return reverse("agenda:configurazione_pc_list")
@@ -598,18 +842,34 @@ class ConfigurazionePCUpdateView(LoginRequiredMixin, PermissionRequiredMixin, Up
     permission_required = "dashboard.access_parametri_pc"
     raise_exception = True
 
+    def get_printer_choices(self):
+        # Solo stampanti locali del processo: niente WMI remoto (blocca la pagina Modifica).
+        try:
+            return list_installed_printers(None)
+        except Exception:
+            return []
+
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs["nome_pc_readonly"] = True
+        kwargs["printer_choices"] = self.get_printer_choices()
         return kwargs
 
     def get_queryset(self):
         return ConfigurazionePC.objects.filter(is_active=True)
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["stampanti_rilevate"] = self.get_printer_choices()
+        context["stampanti_agent_url"] = "http://127.0.0.1:17346"
+        return context
+
     def form_valid(self, form):
         form.instance.updated_by = self.request.user
+        response = super().form_valid(form)
+        sync_stampanti_for_postazione(self.object, user=self.request.user)
         messages.success(self.request, "Postazione PC aggiornata correttamente.")
-        return super().form_valid(form)
+        return response
 
     def get_success_url(self):
         return reverse("agenda:configurazione_pc_list")

@@ -542,9 +542,74 @@ document.addEventListener("DOMContentLoaded", function () {
 document.addEventListener("DOMContentLoaded", function () {
     const toggleButton = document.querySelector("[data-sidebar-toggle]");
     const backdrop = document.querySelector("[data-sidebar-backdrop]");
+    const sidebarNav = document.getElementById("stSidebarNav");
+    const SCROLL_KEY = "labrepair-sidebar-scroll";
 
     function closeSidebar() {
         document.body.classList.remove("st-sidebar-open");
+    }
+
+    function saveSidebarScroll() {
+        if (!sidebarNav) {
+            return;
+        }
+        try {
+            sessionStorage.setItem(SCROLL_KEY, String(sidebarNav.scrollTop));
+        } catch (error) {
+            // sessionStorage non disponibile
+        }
+    }
+
+    function restoreSidebarScroll() {
+        if (!sidebarNav) {
+            return;
+        }
+        try {
+            const saved = sessionStorage.getItem(SCROLL_KEY);
+            if (saved !== null) {
+                sidebarNav.scrollTop = parseInt(saved, 10) || 0;
+                return true;
+            }
+        } catch (error) {
+            // sessionStorage non disponibile
+        }
+        return false;
+    }
+
+    function ensureActiveVisibleIfNeeded() {
+        if (!sidebarNav || restoreSidebarScroll()) {
+            return;
+        }
+
+        const activeLink = sidebarNav.querySelector(".st-nav-link.active");
+        if (!activeLink) {
+            return;
+        }
+
+        const navRect = sidebarNav.getBoundingClientRect();
+        const linkRect = activeLink.getBoundingClientRect();
+        const topOverflow = linkRect.top - navRect.top;
+        const bottomOverflow = linkRect.bottom - navRect.bottom;
+
+        if (topOverflow < 0) {
+            sidebarNav.scrollTop += topOverflow;
+        } else if (bottomOverflow > 0) {
+            sidebarNav.scrollTop += bottomOverflow;
+        }
+        saveSidebarScroll();
+    }
+
+    if (sidebarNav) {
+        ensureActiveVisibleIfNeeded();
+
+        sidebarNav.addEventListener(
+            "scroll",
+            function () {
+                window.clearTimeout(sidebarNav._scrollSaveTimer);
+                sidebarNav._scrollSaveTimer = window.setTimeout(saveSidebarScroll, 80);
+            },
+            { passive: true }
+        );
     }
 
     if (toggleButton) {
@@ -559,11 +624,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
     document.querySelectorAll(".st-sidebar .st-nav-link").forEach(function (link) {
         link.addEventListener("click", function () {
+            saveSidebarScroll();
             if (window.matchMedia("(max-width: 991.98px)").matches) {
                 closeSidebar();
             }
         });
     });
+
+    window.addEventListener("pagehide", saveSidebarScroll);
 });
 
 document.addEventListener("DOMContentLoaded", function () {

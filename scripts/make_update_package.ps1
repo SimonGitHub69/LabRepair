@@ -26,7 +26,8 @@ $IncludeDirs = @(
     "config",
     "templates",
     "static",
-    "scripts"
+    "scripts",
+    "tools"
 )
 $IncludeFiles = @(
     "manage.py",
@@ -104,20 +105,27 @@ SUL SERVER (prima di tutto: backup database PostgreSQL)
 
 6. Verifica:
    - Login e selezione negozio
-   - Nuova anagrafica (codice fiscale e salvataggio)
-   - Menu: Documenti, Report, Parametri PC, Comandi vocali, Sistema
+   - Menu Parametri > Parametri PC: per ogni postazione usa "Gap e descrizione"
+   - Stampanti collegate al PC: rileva, descrizione e gap busta (mm)
+   - Stampa busta: gap superiore sposta solo parte A, inferiore solo parte B
+   - Menu: Documenti, Report, Comandi vocali, Sistema
    - In Admin > Gruppi: privilegi "Può accedere al menu ..."
 
-7. (Opzionale) Normalizza nomi anagrafiche storiche:
+7. Sui PC client (rilevamento stampanti locali / Brother):
+     .\scripts\install_printer_agent_client.ps1
+     Aprire LabRepair con LabRepairApp.vbs (avvia anche l'agente stampanti)
+
+8. (Opzionale) Normalizza nomi anagrafiche storiche:
      .\.venv\Scripts\python.exe manage.py normalizza_nomi_anagrafiche --dry-run
      .\.venv\Scripts\python.exe manage.py normalizza_nomi_anagrafiche
 
-8. Backup PostgreSQL schedulato (consigliato, PowerShell Amministratore):
+9. Backup PostgreSQL schedulato (consigliato, PowerShell Amministratore):
      .\scripts\install_backup_task.ps1
      # oppure orario diverso:
      .\scripts\install_backup_task.ps1 -Time "02:30" -KeepDays 21
 
 NOTA: non copiare .env dal pacchetto. Mantieni quello del server.
+NOTA: migration core 0021/0022/0023 (stampanti per Parametri PC + FK Stampante→ConfigurazionePC).
 NOTA: --reset-groups riassegna i privilegi dei gruppi Montale/Quarrata/Pistoia
       secondo il catalogo LabRepair (togli residui SECURTEK).
 "@

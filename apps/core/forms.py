@@ -1,6 +1,6 @@
 from django import forms
 
-from apps.core.models import ConfigurazioneMssql, ConfigurazionePC, ConfigurazioneProgramma
+from apps.core.models import ConfigurazioneMssql, ConfigurazionePC, ConfigurazioneProgramma, Stampante
 
 
 class ConfigurazioneMssqlForm(forms.ModelForm):
@@ -14,6 +14,9 @@ class ConfigurazioneMssqlForm(forms.ModelForm):
             "nome_database",
             "utente",
             "password",
+            "prz_pvn_codice",
+            "iva_id_cassa",
+            "iva_aliquota_cassa",
             "note",
         ]
         widgets = {
@@ -41,6 +44,17 @@ class ConfigurazioneMssqlForm(forms.ModelForm):
                     "type": "password",
                     "autocomplete": "off",
                 }
+            ),
+            "prz_pvn_codice": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "autocomplete": "off",
+                    "placeholder": "TN",
+                }
+            ),
+            "iva_id_cassa": forms.NumberInput(attrs={"class": "form-control", "min": "1"}),
+            "iva_aliquota_cassa": forms.NumberInput(
+                attrs={"class": "form-control", "step": "0.01", "min": "0"}
             ),
             "note": forms.Textarea(attrs={"class": "form-control", "rows": 3, "autocomplete": "off"}),
         }
@@ -77,6 +91,11 @@ class ConfigurazioneMssqlForm(forms.ModelForm):
                         self.add_error("password", message)
                 elif not (cleaned_data.get(field_name) or "").strip():
                     self.add_error(field_name, message)
+
+            if not cleaned_data.get("iva_id_cassa"):
+                self.add_error("iva_id_cassa", "Indica l'ID IVA casse (PRZ_IVA_ID).")
+            if cleaned_data.get("iva_aliquota_cassa") is None:
+                self.add_error("iva_aliquota_cassa", "Indica l'aliquota IVA casse.")
 
         return cleaned_data
 
@@ -317,7 +336,21 @@ class ComandiVoceForm(forms.ModelForm):
         return instance
 
 
+class AnyValueMultipleChoiceField(forms.MultipleChoiceField):
+    """Accetta valori anche se non ancora presenti nelle choices (agent client)."""
+
+    def valid_value(self, value):
+        return bool(str(value or "").strip())
+
+
 class ConfigurazionePCForm(forms.ModelForm):
+    stampanti = AnyValueMultipleChoiceField(
+        label="Stampanti",
+        required=False,
+        widget=forms.CheckboxSelectMultiple(attrs={"class": "form-check-input"}),
+        help_text="Stampanti da collegare a questa postazione (rileva dal PC client se serve).",
+    )
+
     class Meta:
         model = ConfigurazionePC
         fields = [
@@ -325,6 +358,7 @@ class ConfigurazionePCForm(forms.ModelForm):
             "descrizione",
             "negozio_default",
             "layout_stile",
+            "stampanti",
             "note",
         ]
         widgets = {
@@ -347,7 +381,9 @@ class ConfigurazionePCForm(forms.ModelForm):
             "note": forms.Textarea(attrs={"class": "form-control", "rows": 3, "autocomplete": "off"}),
         }
 
-    def __init__(self, *args, nome_pc_readonly=False, forced_nome_pc="", **kwargs):
+    def __init__(self, *args, nome_pc_readonly=False, forced_nome_pc="", printer_choices=None, **kwargs):
+        from apps.core.printers import normalize_stampanti
+
         super().__init__(*args, **kwargs)
         self.nome_pc_readonly = bool(nome_pc_readonly)
         self.forced_nome_pc = (forced_nome_pc or "").strip()
@@ -360,6 +396,43 @@ class ConfigurazionePCForm(forms.ModelForm):
             )
             if self.forced_nome_pc:
                 self.fields["nome_pc"].initial = self.forced_nome_pc
+
+        choices = []
+        seen = set()
+        for item in printer_choices or []:
+            if isinstance(item, (list, tuple)) and len(item) >= 1:
+                nome = str(item[0] or "").strip()
+                label = str(item[1] if len(item) > 1 else item[0] or "").strip() or nome
+            elif isinstance(item, dict):
+                nome = str(item.get("nome") or "").strip()
+                porta = str(item.get("porta") or "").strip()
+                predefinita = bool(item.get("predefinita"))
+                label = nome
+                if porta:
+                    label = f"{nome} ({porta})"
+                if predefinita:
+                    label = f"{label} — predefinita"
+            else:
+                nome = str(item or "").strip()
+                label = nome
+            if not nome or nome.casefold() in seen:
+                continue
+            seen.add(nome.casefold())
+            choices.append((nome, label))
+
+        saved = normalize_stampanti(getattr(self.instance, "stampanti", None))
+        for nome in saved:
+            if nome.casefold() not in seen:
+                seen.add(nome.casefold())
+                choices.append((nome, f"{nome} (non più rilevata)"))
+
+        self.fields["stampanti"].choices = choices
+        if not self.is_bound:
+            if saved:
+                self.fields["stampanti"].initial = saved
+            elif choices:
+                # Nessuna stampante salvata: proponi tutte quelle rilevate sul sistema.
+                self.fields["stampanti"].initial = [value for value, _label in choices]
 
     def clean_nome_pc(self):
         if self.nome_pc_readonly and self.forced_nome_pc:
@@ -376,3 +449,61 @@ class ConfigurazionePCForm(forms.ModelForm):
         if qs.exists():
             raise forms.ValidationError("Esiste già una postazione con questo nome PC.")
         return nome
+
+    def clean_stampanti(self):
+        from apps.core.printers import normalize_stampanti
+
+        return normalize_stampanti(self.cleaned_data.get("stampanti"))
+
+
+class StampanteForm(forms.ModelForm):
+    class Meta:
+        model = Stampante
+        fields = [
+            "descrizione",
+            "gap_busta_superiore",
+            "gap_busta_inferiore",
+            "note",
+        ]
+        widgets = {
+            "descrizione": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "autocomplete": "off",
+                    "placeholder": "Es. Stampante buste cassa 1",
+                }
+            ),
+            "gap_busta_superiore": forms.NumberInput(
+                attrs={
+                    "class": "form-control",
+                    "step": "0.01",
+                    "placeholder": "0.00",
+                }
+            ),
+            "gap_busta_inferiore": forms.NumberInput(
+                attrs={
+                    "class": "form-control",
+                    "step": "0.01",
+                    "placeholder": "0.00",
+                }
+            ),
+            "note": forms.Textarea(attrs={"class": "form-control", "rows": 3, "autocomplete": "off"}),
+        }
+
+    def clean_gap_busta_superiore(self):
+        return self._clean_gap("gap_busta_superiore")
+
+    def clean_gap_busta_inferiore(self):
+        return self._clean_gap("gap_busta_inferiore")
+
+    def _clean_gap(self, field_name):
+        from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+
+        value = self.cleaned_data.get(field_name)
+        if value is None:
+            return Decimal("0.00")
+        try:
+            quantized = Decimal(value).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        except (InvalidOperation, TypeError, ValueError) as exc:
+            raise forms.ValidationError("Inserire un numero con due decimali.") from exc
+        return quantized

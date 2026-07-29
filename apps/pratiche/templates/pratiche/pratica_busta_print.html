@@ -5,7 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Busta riparazione · {{ pratica.codice }}</title>
-    <link rel="stylesheet" href="{% static 'securtek/css/busta_print.css' %}?v=20260722-50">
+    <link rel="stylesheet" href="{% static 'securtek/css/busta_print.css' %}?v=20260728-gap2">
 </head>
 <body>
     <div class="toolbar">
@@ -22,24 +22,68 @@
     <script>
     (function () {
         var btn = document.getElementById("bustaPrintBtn");
+
         function doPrint() {
             window.print();
         }
-        if (btn) {
-            btn.addEventListener("click", doPrint);
-        }
-        // Stampa automatica solo dopo che i font locali sono pronti (niente attesa Google).
-        function readyPrint() {
+
+        function waitForFonts(callback) {
             if (document.fonts && document.fonts.ready) {
                 document.fonts.ready.then(function () {
-                    setTimeout(doPrint, 150);
+                    setTimeout(callback, 150);
                 }).catch(function () {
-                    setTimeout(doPrint, 300);
+                    setTimeout(callback, 300);
                 });
-            } else {
-                setTimeout(doPrint, 300);
+                return;
             }
+            setTimeout(callback, 300);
         }
+
+        function waitForStylesheets(callback) {
+            var links = document.querySelectorAll("link[rel='stylesheet']");
+            if (!links.length) {
+                callback();
+                return;
+            }
+
+            var pending = links.length;
+            var done = false;
+
+            function finish() {
+                pending -= 1;
+                if (pending <= 0 && !done) {
+                    done = true;
+                    callback();
+                }
+            }
+
+            links.forEach(function (link) {
+                if (link.sheet) {
+                    finish();
+                    return;
+                }
+                link.addEventListener("load", finish);
+                link.addEventListener("error", finish);
+            });
+
+            setTimeout(function () {
+                if (!done) {
+                    done = true;
+                    callback();
+                }
+            }, 3000);
+        }
+
+        function readyPrint() {
+            waitForStylesheets(function () {
+                waitForFonts(doPrint);
+            });
+        }
+
+        if (btn) {
+            btn.addEventListener("click", readyPrint);
+        }
+
         if (document.readyState === "complete") {
             readyPrint();
         } else {

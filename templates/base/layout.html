@@ -28,7 +28,7 @@
 
     <link rel="stylesheet" href="{% static 'securtek/css/variables.css' %}">
     <link rel="stylesheet" href="{% static 'securtek/css/style.css' %}?v=20260722d">
-    <link rel="stylesheet" href="{% static 'securtek/css/sidebar.css' %}">
+    <link rel="stylesheet" href="{% static 'securtek/css/sidebar.css' %}?v=20260729-nav2">
     <link rel="stylesheet" href="{% static 'securtek/css/navbar.css' %}">
     <link rel="stylesheet" href="{% static 'securtek/css/components.css' %}?v=20260725e">
     <link rel="stylesheet" href="{% static 'securtek/css/dashboard.css' %}?v=20260724d">
@@ -81,7 +81,7 @@
 <script src="{% static 'vendor/tabler/js/tabler.min.js' %}"></script>
 <script defer src="{% static 'vendor/alpinejs/cdn.min.js' %}"></script>
 <script src="{% static 'vendor/htmx/htmx.min.js' %}"></script>
-<script src="{% static 'securtek/js/app.js' %}?v=20260722d"></script>
+<script src="{% static 'securtek/js/app.js' %}?v=20260729-nav2"></script>
 {% if comandi_voce_attivi and user.is_authenticated %}
 {{ comandi_voce_mappa|json_script:"labrepair-voice-commands" }}
 {{ comandi_voce_extra|json_script:"labrepair-voice-extra" }}

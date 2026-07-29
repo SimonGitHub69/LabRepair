@@ -12,10 +12,10 @@ Parametri PC
         <div class="col">
             <h2 class="page-title">Parametri PC</h2>
             <div class="text-secondary">
-                Negozio predefinito e stile grafica per ogni postazione
+                Negozio predefinito, stile grafica e stampanti per ogni postazione
             </div>
         </div>
-        <div class="col-auto">
+        <div class="col-auto d-flex flex-wrap gap-2">
             <a href="{% url 'agenda:configurazione_pc_create' %}" class="btn btn-primary">
                 <i class="ti ti-plus"></i>
                 Nuova postazione
@@ -23,6 +23,38 @@ Parametri PC
         </div>
     </div>
 </div>
+
+{% if stampanti_sistema %}
+<div class="alert alert-info mb-3">
+    <div class="d-flex">
+        <div>
+            <i class="ti ti-printer me-2"></i>
+        </div>
+        <div>
+            <div class="fw-bold mb-1">
+                Stampanti installate sul sistema
+                {% if nome_pc_locale %}({{ nome_pc_locale }}){% endif %}:
+                {{ stampanti_sistema|length }}
+            </div>
+            <ul class="mb-0 ps-3">
+                {% for stampante in stampanti_sistema %}
+                    <li>
+                        {{ stampante.nome }}
+                        {% if stampante.porta %}<span class="text-secondary">({{ stampante.porta }})</span>{% endif %}
+                        {% if stampante.predefinita %}<span class="badge bg-blue-lt ms-1">predefinita</span>{% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+            <div class="form-hint mt-2 mb-0">
+                Collega le stampanti a ogni postazione con <strong>Modifica</strong>
+                oppure <strong>Rileva stampanti</strong> sulla riga del PC.
+                Per gap busta e descrizione apri
+                <strong>Stampanti</strong> dalla postazione.
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <div class="card mb-3">
     <div class="card-body">
@@ -56,6 +88,7 @@ Parametri PC
                     <th>Descrizione</th>
                     <th>Negozio</th>
                     <th>Grafica</th>
+                    <th>Stampanti</th>
                     <th class="text-end">Azioni</th>
                 </tr>
             </thead>
@@ -66,15 +99,45 @@ Parametri PC
                         <td>{{ pc.descrizione|default:"-" }}</td>
                         <td>{{ pc.get_negozio_default_display }}</td>
                         <td>{{ pc.get_layout_stile_display }}</td>
-                        <td class="text-end">
+                        <td>
+                            {% with stampanti=pc.stampanti_elenco %}
+                                {% if stampanti %}
+                                    <ul class="mb-2 ps-3">
+                                        {% for stampante in stampanti %}
+                                            <li>{{ stampante }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                    <a href="{% url 'agenda:stampante_list' pc.pk %}" class="btn btn-sm btn-outline-secondary">
+                                        <i class="ti ti-printer"></i>
+                                        Gap e descrizione
+                                    </a>
+                                {% else %}
+                                    <span class="text-secondary">Nessuna associata</span>
+                                {% endif %}
+                            {% endwith %}
+                        </td>
+                        <td class="text-end text-nowrap">
+                            <form method="post"
+                                  action="{% url 'agenda:configurazione_pc_sync_stampanti' pc.pk %}"
+                                  class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit"
+                                        class="btn btn-icon btn-outline-secondary"
+                                        title="Rileva stampanti"
+                                        aria-label="Rileva stampanti">
+                                    <i class="ti ti-printer"></i>
+                                </button>
+                            </form>
                             <a href="{% url 'agenda:configurazione_pc_update' pc.pk %}"
                                class="btn btn-icon btn-outline-primary"
-                               title="Modifica">
+                               title="Modifica"
+                               aria-label="Modifica">
                                 <i class="ti ti-edit"></i>
                             </a>
                             <button type="button"
                                     class="btn btn-icon btn-outline-danger js-delete-pc"
                                     title="Elimina"
+                                    aria-label="Elimina"
                                     data-delete-action="{% url 'agenda:configurazione_pc_delete' pc.pk %}"
                                     data-delete-name="{{ pc.nome_pc }}">
                                 <i class="ti ti-trash"></i>
@@ -83,7 +146,7 @@ Parametri PC
                     </tr>
                 {% empty %}
                     <tr>
-                        <td colspan="5" class="text-center text-secondary py-4">
+                        <td colspan="6" class="text-center text-secondary py-4">
                             Nessuna postazione configurata
                         </td>
                     </tr>

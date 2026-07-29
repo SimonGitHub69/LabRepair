@@ -1,4 +1,12 @@
+"""Sincronizzazione riparazioni verso TB_PREZZICASSE (casse / gestionale SQL).
+
+Allineato alla procedura 4D: DELETE per EAN + INSERT su TB_PREZZICASSE.
+"""
+
+from __future__ import annotations
+
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal
 
 from django.utils import timezone
@@ -23,12 +31,6 @@ def format_gs_utente(user):
     return f"LabRepair-{username}"[:80]
 
 
-def format_gs_cliente(pratica):
-    if pratica.cliente_id and pratica.cliente.codice_gestionale:
-        return pratica.cliente.codice_gestionale.strip().ljust(7)[:7]
-    return "       "
-
-
 def format_gs_descrizione(pratica):
     parts = []
     if pratica.tipo_oggetto_id:
@@ -41,74 +43,42 @@ def format_gs_descrizione(pratica):
     return (text or "RIPARAZIONE")[:80]
 
 
-def format_gs_stato(pratica):
-    # Usato solo in INSERT; in UPDATE lo STATO SQL non viene toccato.
-    return "RIP"
-
-
 def format_gs_prezzo(pratica):
-    """PREZZOLISTINO su GS_ARTICOLI = Prezzo al Pubblico della riparazione."""
+    """PRZ_PREZZO = Prezzo al Pubblico della riparazione."""
     return Decimal(pratica.prezzo_al or 0).quantize(Decimal("0.01"))
 
 
-def format_gs_peso(pratica):
-    return Decimal(pratica.peso_grammi or 0).quantize(Decimal("0.001"))
-
-
-TIPO_MATERIALE_GS_MAP = {
-    Pratica.TipoMetallo.ORO: "ORO",
-    Pratica.TipoMetallo.ARGENTO: "ARGENT",
-    Pratica.TipoMetallo.PLATINO: "PLATIN",
-}
-
-
-def format_gs_tipo_materiale(pratica):
-    code = TIPO_MATERIALE_GS_MAP.get(pratica.tipo_metallo, "")
-    return code.ljust(6)[:6] if code else " " * 6
-
-
-def build_gs_articolo_payload(pratica, user, barcode):
-    now = timezone.localtime()
-    return {
-        "BARCODE": barcode,
-        "CODART": (pratica.codice or "")[:20],
-        "DESCRIZIONE": format_gs_descrizione(pratica),
-        "CODCAT1": "",
-        "CODCAT2": "",
-        "CODCAT3": " " * 15,
-        "CODMARCHIO": " " * 4,
-        "TIPOMATERIALE": format_gs_tipo_materiale(pratica),
-        "PESO": format_gs_peso(pratica),
-        "PREZZOLISTINO": format_gs_prezzo(pratica),
-        "ARTICOLOAQTA": 0,
-        "STATO": format_gs_stato(pratica),
-        "CODNEGOZIO": (pratica.negozio or "")[:2],
-        "CODCLIENTE": format_gs_cliente(pratica),
-        "NUMFILIALE": 0,
-        "NUMDOC": "",
-        "DATADOC": None,
-        "TIPODOC": "",
-        "DUPLICATO": None,
-        "utentemodifica": format_gs_utente(user),
-        "datamodifica": now.replace(tzinfo=None),
-    }
+def _sql_datetime(value) -> datetime:
+    if value is None:
+        return timezone.localtime().replace(tzinfo=None)
+    if timezone.is_aware(value):
+        return timezone.localtime(value).replace(tzinfo=None)
+    return value
 
 
 def is_valid_repair_barcode(barcode):
     if barcode is None:
         return False
-    value = int(barcode)
+    try:
+        value = int(barcode)
+    except (TypeError, ValueError):
+        return False
     barcode_min = get_gs_barcode_min()
     return barcode_min <= value < GS_BARCODE_MAX_EXCLUSIVE
+
+
+def _ean_str(barcode) -> str:
+    return str(int(barcode))
 
 
 def allocate_gs_barcode(cursor):
     barcode_min = get_gs_barcode_min()
     cursor.execute(
         """
-        SELECT MAX(BARCODE)
-        FROM GS_ARTICOLI WITH (UPDLOCK, HOLDLOCK)
-        WHERE BARCODE >= ? AND BARCODE < ?
+        SELECT MAX(TRY_CONVERT(BIGINT, PRZ_EAN))
+        FROM TB_PREZZICASSE WITH (UPDLOCK, HOLDLOCK)
+        WHERE TRY_CONVERT(BIGINT, PRZ_EAN) >= ?
+          AND TRY_CONVERT(BIGINT, PRZ_EAN) < ?
         """,
         barcode_min,
         GS_BARCODE_MAX_EXCLUSIVE,
@@ -119,108 +89,159 @@ def allocate_gs_barcode(cursor):
     return max(barcode_min, int(current) + 1)
 
 
-def get_gs_barcode_by_codart(cursor, codart):
-    cursor.execute("SELECT BARCODE FROM GS_ARTICOLI WHERE CODART = ?", codart)
+def get_ean_by_codart(cursor, codart):
+    cursor.execute(
+        """
+        SELECT TOP 1 PRZ_EAN
+        FROM TB_PREZZICASSE
+        WHERE PRZ_CODART = ?
+        ORDER BY PRZ_DATAAGGIORNAMENTO DESC
+        """,
+        codart,
+    )
     row = cursor.fetchone()
-    return int(row[0]) if row else None
+    if not row or row[0] is None:
+        return None
+    try:
+        return int(str(row[0]).strip())
+    except (TypeError, ValueError):
+        return None
 
 
-def gs_articolo_exists_by_codart(cursor, codart):
-    cursor.execute("SELECT 1 FROM GS_ARTICOLI WHERE CODART = ?", codart)
+def exists_by_codart(cursor, codart):
+    cursor.execute("SELECT 1 FROM TB_PREZZICASSE WHERE PRZ_CODART = ?", codart)
     return cursor.fetchone() is not None
 
 
-def is_barcode_available(cursor, barcode):
-    cursor.execute("SELECT 1 FROM GS_ARTICOLI WHERE BARCODE = ?", barcode)
+def is_ean_available(cursor, barcode):
+    cursor.execute("SELECT 1 FROM TB_PREZZICASSE WHERE PRZ_EAN = ?", _ean_str(barcode))
     return cursor.fetchone() is None
 
 
 def resolve_gs_barcode(cursor, pratica, codart, *, for_insert=False):
-    existing = get_gs_barcode_by_codart(cursor, codart)
+    existing = get_ean_by_codart(cursor, codart)
     if is_valid_repair_barcode(existing):
         return existing
 
     if for_insert and is_valid_repair_barcode(pratica.gs_barcode):
         cached_barcode = int(pratica.gs_barcode)
-        if is_barcode_available(cursor, cached_barcode):
+        if is_ean_available(cursor, cached_barcode):
             return cached_barcode
 
     return allocate_gs_barcode(cursor)
 
 
-def insert_gs_articolo(cursor, payload):
-    cursor.execute(
-        """
-        INSERT INTO GS_ARTICOLI (
-            BARCODE, CODART, DESCRIZIONE, CODCAT1, CODCAT2, CODCAT3,
-            CODMARCHIO, TIPOMATERIALE, PESO, PREZZOLISTINO, ARTICOLOAQTA,
-            STATO, CODNEGOZIO, CODCLIENTE, NUMFILIALE, NUMDOC, DATADOC,
-            TIPODOC, DUPLICATO, utentemodifica, datamodifica
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        payload["BARCODE"],
-        payload["CODART"],
-        payload["DESCRIZIONE"],
-        payload["CODCAT1"],
-        payload["CODCAT2"],
-        payload["CODCAT3"],
-        payload["CODMARCHIO"],
-        payload["TIPOMATERIALE"],
-        payload["PESO"],
-        payload["PREZZOLISTINO"],
-        payload["ARTICOLOAQTA"],
-        payload["STATO"],
-        payload["CODNEGOZIO"],
-        payload["CODCLIENTE"],
-        payload["NUMFILIALE"],
-        payload["NUMDOC"],
-        payload["DATADOC"],
-        payload["TIPODOC"],
-        payload["DUPLICATO"],
-        payload["utentemodifica"],
-        payload["datamodifica"],
-    )
+def build_prezzi_casse_payload(pratica, user, barcode, config):
+    now = timezone.localtime()
+    created = pratica.created_at or now
+    updated = pratica.updated_at or now
+    return {
+        "PRZ_PVN_CODICE": (config.prz_pvn_codice or "TN").strip()[:10] or "TN",
+        "PRZ_EAN": _ean_str(barcode),
+        "PRZ_COR_CODICE": "MAN",
+        "PRZ_MOLTIPLICATORE_EAN": 1,
+        "PRZ_CONFEZIONE": 1,
+        "PRZ_CODART": (pratica.codice or "")[:20],
+        "PRZ_FOR_CODICE": "",
+        "PRZ_DESCR": format_gs_descrizione(pratica),
+        "PRZ_REP_CODICE": "",
+        "PRZ_LIN_CODICE": "",
+        "PRZ_CAT_CODICE": "",
+        "PRZ_PREZZOACQ": Decimal("0.00"),
+        "PRZ_PREZZO": format_gs_prezzo(pratica),
+        "PRZ_SC1": Decimal("0.00"),
+        "PRZ_INVIO_A_FORNITORE": 0,
+        "PRZ_CODARTFORN": "",
+        "PRZ_UM": "",
+        "PRZ_STATO_ARTICOLO": "",
+        "PRZ_NOTE": format_gs_utente(user)[:80],
+        "PRZ_FRAZIONABILE": 0,
+        "PRZ_VENDITAAPESO": 0,
+        "PRZ_NONSCONTABILE": 0,
+        "PRZ_PETSHOP": 0,
+        "PRZ_LOTTO_RIORDINO": "",
+        "PRZ_IVA_ID": int(config.iva_id_cassa or 0),
+        "PRZ_IVA_ALIQUOTA": Decimal(config.iva_aliquota_cassa or 0).quantize(Decimal("0.01")),
+        "PRZ_STATO": "K",
+        "PRZ_DATAINSERIMENTO": _sql_datetime(created),
+        "PRZ_DATAAGGIORNAMENTO": _sql_datetime(updated),
+        "PRZ_EAN_ATTIVO": 1,
+        "PRZ_ANNULLATO": 0,
+        "PRZ_TIPO_VENDITA": "N",
+        "PRZ_DATAUPDATESQL": _sql_datetime(now),
+    }
 
 
-def update_gs_articolo(cursor, codart, payload):
-    # STATO non si aggiorna in modifica: resta quello impostato in INSERT (RIP).
+def delete_prezzi_casse(cursor, *, ean: str, codart: str):
     cursor.execute(
         """
-        UPDATE GS_ARTICOLI SET
-            BARCODE = ?,
-            DESCRIZIONE = ?,
-            CODCAT1 = ?,
-            CODCAT2 = ?,
-            PESO = ?,
-            PREZZOLISTINO = ?,
-            CODNEGOZIO = ?,
-            CODCLIENTE = ?,
-            NUMDOC = ?,
-            DATADOC = ?,
-            TIPODOC = ?,
-            utentemodifica = ?,
-            datamodifica = ?
-        WHERE CODART = ?
+        DELETE FROM TB_PREZZICASSE
+        WHERE PRZ_EAN = ? OR PRZ_CODART = ?
         """,
-        payload["BARCODE"],
-        payload["DESCRIZIONE"],
-        payload["CODCAT1"],
-        payload["CODCAT2"],
-        payload["PESO"],
-        payload["PREZZOLISTINO"],
-        payload["CODNEGOZIO"],
-        payload["CODCLIENTE"],
-        payload["NUMDOC"],
-        payload["DATADOC"],
-        payload["TIPODOC"],
-        payload["utentemodifica"],
-        payload["datamodifica"],
+        ean,
         codart,
     )
-    return cursor.rowcount
+
+
+def insert_prezzi_casse(cursor, payload):
+    cursor.execute(
+        """
+        INSERT INTO TB_PREZZICASSE (
+            PRZ_PVN_CODICE, PRZ_EAN, PRZ_COR_CODICE, PRZ_MOLTIPLICATORE_EAN, PRZ_CONFEZIONE,
+            PRZ_CODART, PRZ_FOR_CODICE, PRZ_DESCR, PRZ_REP_CODICE, PRZ_LIN_CODICE,
+            PRZ_CAT_CODICE, PRZ_PREZZOACQ, PRZ_PREZZO, PRZ_SC1, PRZ_INVIO_A_FORNITORE,
+            PRZ_CODARTFORN, PRZ_UM, PRZ_STATO_ARTICOLO, PRZ_NOTE, PRZ_FRAZIONABILE,
+            PRZ_VENDITAAPESO, PRZ_NONSCONTABILE, PRZ_PETSHOP, PRZ_LOTTO_RIORDINO,
+            PRZ_IVA_ID, PRZ_IVA_ALIQUOTA, PRZ_STATO, PRZ_DATAINSERIMENTO, PRZ_DATAAGGIORNAMENTO,
+            PRZ_EAN_ATTIVO, PRZ_ANNULLATO, PRZ_TIPO_VENDITA, PRZ_DATAUPDATESQL
+        ) VALUES (
+            ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?,
+            ?, ?, ?, ?,
+            ?, ?, ?, ?, ?,
+            ?, ?, ?, ?
+        )
+        """,
+        payload["PRZ_PVN_CODICE"],
+        payload["PRZ_EAN"],
+        payload["PRZ_COR_CODICE"],
+        payload["PRZ_MOLTIPLICATORE_EAN"],
+        payload["PRZ_CONFEZIONE"],
+        payload["PRZ_CODART"],
+        payload["PRZ_FOR_CODICE"],
+        payload["PRZ_DESCR"],
+        payload["PRZ_REP_CODICE"],
+        payload["PRZ_LIN_CODICE"],
+        payload["PRZ_CAT_CODICE"],
+        payload["PRZ_PREZZOACQ"],
+        payload["PRZ_PREZZO"],
+        payload["PRZ_SC1"],
+        payload["PRZ_INVIO_A_FORNITORE"],
+        payload["PRZ_CODARTFORN"],
+        payload["PRZ_UM"],
+        payload["PRZ_STATO_ARTICOLO"],
+        payload["PRZ_NOTE"],
+        payload["PRZ_FRAZIONABILE"],
+        payload["PRZ_VENDITAAPESO"],
+        payload["PRZ_NONSCONTABILE"],
+        payload["PRZ_PETSHOP"],
+        payload["PRZ_LOTTO_RIORDINO"],
+        payload["PRZ_IVA_ID"],
+        payload["PRZ_IVA_ALIQUOTA"],
+        payload["PRZ_STATO"],
+        payload["PRZ_DATAINSERIMENTO"],
+        payload["PRZ_DATAAGGIORNAMENTO"],
+        payload["PRZ_EAN_ATTIVO"],
+        payload["PRZ_ANNULLATO"],
+        payload["PRZ_TIPO_VENDITA"],
+        payload["PRZ_DATAUPDATESQL"],
+    )
 
 
 def sync_pratica_to_gs_articoli(pratica, user):
+    """Sincronizza la riparazione su TB_PREZZICASSE (DELETE EAN + INSERT)."""
     config = get_mssql_config()
     if not config.attiva:
         return GsArticoloSyncResult(
@@ -234,42 +255,45 @@ def sync_pratica_to_gs_articoli(pratica, user):
             message="Collegamento MS-SQL attivo ma incompleto.",
         )
 
+    if not config.iva_id_cassa:
+        return GsArticoloSyncResult(
+            ok=False,
+            message="Configurare l'ID IVA casse in Parametri sistema (MS-SQL).",
+        )
+
     codart = (pratica.codice or "")[:20]
     if not codart:
         return GsArticoloSyncResult(
             ok=False,
-            message="Codice riparazione mancante, impossibile sincronizzare GS_ARTICOLI.",
+            message="Codice riparazione mancante, impossibile sincronizzare TB_PREZZICASSE.",
         )
 
     try:
         with open_mssql_connection(config) as connection:
             cursor = connection.cursor()
-            created = False
-
-            if gs_articolo_exists_by_codart(cursor, codart):
-                barcode = resolve_gs_barcode(cursor, pratica, codart)
-                payload = build_gs_articolo_payload(pratica, user, barcode)
-                update_gs_articolo(cursor, codart, payload)
-                message = f"Articolo GS aggiornato ({codart}, barcode {barcode})."
-            else:
-                barcode = resolve_gs_barcode(cursor, pratica, codart, for_insert=True)
-                payload = build_gs_articolo_payload(pratica, user, barcode)
-                insert_gs_articolo(cursor, payload)
-                created = True
-                message = f"Articolo GS creato ({codart}, barcode {barcode})."
-
+            created = not exists_by_codart(cursor, codart)
+            barcode = resolve_gs_barcode(
+                cursor,
+                pratica,
+                codart,
+                for_insert=created,
+            )
+            payload = build_prezzi_casse_payload(pratica, user, barcode, config)
+            delete_prezzi_casse(cursor, ean=payload["PRZ_EAN"], codart=codart)
+            insert_prezzi_casse(cursor, payload)
             connection.commit()
 
         Pratica.objects.filter(pk=pratica.pk).update(gs_barcode=barcode)
 
+        azione = "creato" if created else "aggiornato"
         return GsArticoloSyncResult(
             ok=True,
-            message=message,
+            message=f"Prezzo cassa {azione} ({codart}, EAN {barcode}).",
             barcode=barcode,
             created=created,
         )
     except Exception as exc:
         return GsArticoloSyncResult(
             ok=False,
-            message=f"Sincronizzazione GS_ARTICOLI non riuscita: {exc}",
+            message=f"Sincronizzazione TB_PREZZICASSE non riuscita: {exc}",
         )

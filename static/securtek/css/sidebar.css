@@ -62,8 +62,11 @@
 
 .st-sidebar-nav {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
+    overscroll-behavior: contain;
     padding: 0.75rem 0.75rem 1.25rem;
+    scroll-behavior: auto;
     scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
     scrollbar-width: thin;
 }
@@ -79,6 +82,7 @@
 
 .st-nav-link {
     align-items: center;
+    border-left: 3px solid transparent;
     border-radius: var(--st-radius-sm);
     color: rgba(255, 255, 255, 0.76);
     display: flex;
@@ -88,18 +92,17 @@
     margin-bottom: 0.2rem;
     padding: 0.65rem 0.85rem;
     text-decoration: none;
-    transition: background-color var(--st-transition), color var(--st-transition), transform var(--st-transition);
+    transition: background-color var(--st-transition), color var(--st-transition), border-color var(--st-transition);
 }
 
 .st-nav-link:hover {
     background: var(--st-sidebar-hover);
     color: #fff;
-    transform: translateX(2px);
 }
 
 .st-nav-link.active {
     background: var(--st-sidebar-active);
-    box-shadow: inset 3px 0 0 var(--st-accent);
+    border-left-color: var(--st-accent);
     color: #fff;
 }
 

@@ -29,11 +29,25 @@ def config_from_post(post, instance=None):
 
     password = (post.get("password") or "").strip()
     porta_raw = (post.get("porta") or "").strip()
+    iva_id_raw = (post.get("iva_id_cassa") or "").strip()
+    aliquota_raw = (post.get("iva_aliquota_cassa") or "").strip()
 
     try:
         porta = int(porta_raw) if porta_raw else instance.porta
     except ValueError:
         porta = instance.porta
+
+    try:
+        iva_id = int(iva_id_raw) if iva_id_raw else instance.iva_id_cassa
+    except ValueError:
+        iva_id = instance.iva_id_cassa
+
+    try:
+        from decimal import Decimal, InvalidOperation
+
+        iva_aliquota = Decimal(aliquota_raw) if aliquota_raw else instance.iva_aliquota_cassa
+    except (InvalidOperation, TypeError, ValueError):
+        iva_aliquota = instance.iva_aliquota_cassa
 
     return ConfigurazioneMssql(
         attiva=post.get("attiva") == "on",
@@ -43,6 +57,9 @@ def config_from_post(post, instance=None):
         nome_database=(post.get("nome_database") or "").strip() or instance.nome_database,
         utente=(post.get("utente") or "").strip() or instance.utente,
         password=password or instance.password,
+        prz_pvn_codice=(post.get("prz_pvn_codice") or "").strip() or instance.prz_pvn_codice or "TN",
+        iva_id_cassa=iva_id,
+        iva_aliquota_cassa=iva_aliquota,
         note=(post.get("note") or "").strip() or instance.note,
     )
 

@@ -14,7 +14,7 @@
         <div class="st-brand-subtitle">LabRepair</div>
     </div>
 
-    <nav class="st-sidebar-nav">
+    <nav class="st-sidebar-nav" id="stSidebarNav">
 
         <a class="st-nav-link {% if request.path == '/' %}active{% endif %}" href="/">
             <i class="ti ti-home"></i>
@@ -38,13 +38,13 @@
             <span>Riparatori</span>
         </a>
 
-        <a class="st-nav-link {% if request.path|slice:':8' == '/agenda/' and request.path != '/agenda/parametri-mail/' and request.path != '/agenda/parametri-programma/' and request.path != '/agenda/comandi-vocali/' and request.path|slice:':18' != '/agenda/parametri-pc' %}active{% endif %}" href="/agenda/">
+        <a class="st-nav-link {% if request.path|slice:':8' == '/agenda/' and request.path|slice:':22' != '/agenda/parametri-mail/' and request.path|slice:':27' != '/agenda/parametri-programma/' and request.path|slice:':23' != '/agenda/comandi-vocali/' and request.path|slice:':18' != '/agenda/parametri-pc' %}active{% endif %}" href="/agenda/">
             <i class="ti ti-calendar"></i>
             <span>Agenda</span>
         </a>
 
         {% if perms.dashboard.access_documenti %}
-        <a class="st-nav-link {% if request.path == '/documenti/' %}active{% endif %}" href="/documenti/">
+        <a class="st-nav-link {% if request.path|slice:':11' == '/documenti/' %}active{% endif %}" href="/documenti/">
             <i class="ti ti-file-text"></i>
             <span>Documenti</span>
         </a>
@@ -62,7 +62,7 @@
         {% if perms.anagrafiche.import_clienti_csv %}
         <div class="st-nav-section">Strumenti</div>
 
-        <a class="st-nav-link {% if request.path == '/anagrafiche/importa-csv/' %}active{% endif %}" href="{% url 'anagrafiche:import_clienti_csv' %}">
+        <a class="st-nav-link {% if request.path|slice:':25' == '/anagrafiche/importa-csv/' %}active{% endif %}" href="{% url 'anagrafiche:import_clienti_csv' %}">
             <i class="ti ti-file-import"></i>
             <span>Importa clienti CSV</span>
         </a>
@@ -88,20 +88,20 @@
         {% endif %}
 
         {% if perms.agenda.access_parametri_mail_sql %}
-        <a class="st-nav-link {% if request.path == '/agenda/parametri-mail/' %}active{% endif %}" href="/agenda/parametri-mail/">
+        <a class="st-nav-link {% if request.path|slice:':22' == '/agenda/parametri-mail/' %}active{% endif %}" href="/agenda/parametri-mail/">
             <i class="ti ti-mail-cog"></i>
             <span>Parametri mail e SQL</span>
         </a>
         {% endif %}
 
         {% if perms.core.access_parametri_programma %}
-        <a class="st-nav-link {% if request.path == '/agenda/parametri-programma/' %}active{% endif %}" href="{% url 'agenda:configurazione_programma' %}">
+        <a class="st-nav-link {% if request.path|slice:':27' == '/agenda/parametri-programma/' %}active{% endif %}" href="{% url 'agenda:configurazione_programma' %}">
             <i class="ti ti-adjustments"></i>
             <span>Parametri programma</span>
         </a>
         {% endif %}
         {% if perms.dashboard.access_comandi_vocali %}
-        <a class="st-nav-link {% if request.path == '/agenda/comandi-vocali/' %}active{% endif %}" href="{% url 'agenda:comandi_voce' %}">
+        <a class="st-nav-link {% if request.path|slice:':23' == '/agenda/comandi-vocali/' %}active{% endif %}" href="{% url 'agenda:comandi_voce' %}">
             <i class="ti ti-microphone"></i>
             <span>Comandi vocali</span>
         </a>
@@ -115,12 +115,25 @@
         </a>
 
         {% if perms.dashboard.access_sistema %}
-        <a class="st-nav-link {% if request.path == '/sistema/' %}active{% endif %}" href="/sistema/">
+        <a class="st-nav-link {% if request.path|slice:':9' == '/sistema/' and request.path|slice:':17' != '/sistema/aziende/' %}active{% endif %}" href="/sistema/">
             <i class="ti ti-settings"></i>
             <span>Sistema</span>
         </a>
         {% endif %}
 
     </nav>
+    <script>
+    (function () {
+        try {
+            var saved = sessionStorage.getItem("labrepair-sidebar-scroll");
+            var nav = document.getElementById("stSidebarNav");
+            if (nav && saved !== null) {
+                nav.scrollTop = parseInt(saved, 10) || 0;
+            }
+        } catch (error) {
+            // sessionStorage non disponibile
+        }
+    })();
+    </script>
 
 </aside>

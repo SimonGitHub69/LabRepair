@@ -473,7 +473,7 @@ class SistemaView(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
             },
             {
                 "label": "Parametri PC",
-                "description": "Negozio e grafica per ogni postazione.",
+                "description": "Negozio, grafica e stampanti per ogni postazione.",
                 "url": reverse("agenda:configurazione_pc_list"),
                 "icon": "ti-device-desktop",
             },
