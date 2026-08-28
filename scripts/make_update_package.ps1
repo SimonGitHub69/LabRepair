@@ -107,6 +107,8 @@ SUL SERVER (prima di tutto: backup database PostgreSQL)
    - Login e selezione negozio
    - Menu Parametri > Parametri PC: per ogni postazione usa "Gap e descrizione"
    - Stampanti collegate al PC: rileva, descrizione e gap busta (mm)
+   - Parametri sistema > MS-SQL: ID_IVA_CASSA (default 10) e sync su TB_PREZZICASSE
+   - Salva riparazione: messaggio sync casse (EAN / IVA)
    - Stampa busta: gap superiore sposta solo parte A, inferiore solo parte B
    - Menu: Documenti, Report, Comandi vocali, Sistema
    - In Admin > Gruppi: privilegi "Può accedere al menu ..."
@@ -125,7 +127,8 @@ SUL SERVER (prima di tutto: backup database PostgreSQL)
      .\scripts\install_backup_task.ps1 -Time "02:30" -KeepDays 21
 
 NOTA: non copiare .env dal pacchetto. Mantieni quello del server.
-NOTA: migration core 0021/0022/0023 (stampanti per Parametri PC + FK Stampante→ConfigurazionePC).
+NOTA: migration core 0021-0026 (stampanti per PC + TB_PREZZICASSE / ID_IVA_CASSA).
+NOTA: le riparazioni non scrivono più GS_ARTICOLI: usano TB_PREZZICASSE (DELETE+INSERT).
 NOTA: --reset-groups riassegna i privilegi dei gruppi Montale/Quarrata/Pistoia
       secondo il catalogo LabRepair (togli residui SECURTEK).
 "@

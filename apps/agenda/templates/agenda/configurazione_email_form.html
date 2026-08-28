@@ -30,7 +30,6 @@ Parametri mail e SQL
     </div>
     <form method="post">
         {% csrf_token %}
-        <input type="hidden" name="action" value="mail">
 
         <div class="card-body">
             {% if email_form.non_field_errors %}
@@ -132,6 +131,20 @@ Parametri mail e SQL
                     </div>
                 </div>
 
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label" for="mailTestDestinatario">Destinatario prova</label>
+                        <input type="email"
+                               class="form-control"
+                               id="mailTestDestinatario"
+                               name="mail_test_destinatario"
+                               value="{{ mail_test_destinatario }}"
+                               placeholder="es. tua@email.it"
+                               autocomplete="off">
+                        <div class="form-hint">Usato solo dal tasto Test Invio Mail.</div>
+                    </div>
+                </div>
+
                 <div class="col-12">
                     <div class="mb-0">
                         <label class="form-label" for="{{ email_form.note.id_for_label }}">{{ email_form.note.label }}</label>
@@ -144,8 +157,12 @@ Parametri mail e SQL
             </div>
         </div>
 
-        <div class="card-footer text-end">
-            <button type="submit" class="btn btn-primary">
+        <div class="card-footer d-flex flex-wrap justify-content-between gap-2">
+            <button type="submit" name="action" value="test_mail" class="btn btn-outline-primary">
+                <i class="ti ti-send"></i>
+                Test Invio Mail
+            </button>
+            <button type="submit" name="action" value="mail" class="btn btn-primary">
                 <i class="ti ti-device-floppy"></i>
                 Salva parametri mail
             </button>

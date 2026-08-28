@@ -147,12 +147,8 @@ def get_available_odbc_drivers():
     return [driver for driver in ODBC_DRIVERS if driver in installed_drivers]
 
 
-@contextmanager
-def open_mssql_connection(config=None, timeout=2):
-    config = config or get_mssql_config()
-    if not config.attiva or not config.is_configured:
-        raise RuntimeError("Collegamento MS-SQL non attivo o incompleto.")
-
+def _open_mssql_raw(config, timeout):
+    """Apre la prima connessione pyodbc funzionante (senza context manager)."""
     try:
         import pyodbc
     except ImportError as exc:
@@ -166,20 +162,27 @@ def open_mssql_connection(config=None, timeout=2):
     for driver in drivers_to_try:
         try:
             connection_string = build_odbc_connection_string(config, driver)
-            connection = pyodbc.connect(connection_string, timeout=timeout)
-            try:
-                yield connection
-            finally:
-                connection.close()
-            return
+            return pyodbc.connect(connection_string, timeout=timeout)
         except pyodbc.Error as exc:
             errors.append((driver, str(exc)))
-            # Stesso problema di rete/server: inutile riprovare gli altri driver.
             if is_mssql_network_error(str(exc)):
                 break
 
     driver, error_text = errors[0]
     raise RuntimeError(format_mssql_error(driver, error_text))
+
+
+@contextmanager
+def open_mssql_connection(config=None, timeout=2):
+    config = config or get_mssql_config()
+    if not config.attiva or not config.is_configured:
+        raise RuntimeError("Collegamento MS-SQL non attivo o incompleto.")
+
+    connection = _open_mssql_raw(config, timeout)
+    try:
+        yield connection
+    finally:
+        connection.close()
 
 
 def test_mssql_connection(config=None, timeout=5):

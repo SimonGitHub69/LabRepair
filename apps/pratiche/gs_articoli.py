@@ -17,6 +17,21 @@ from apps.pratiche.models import Pratica
 
 GS_BARCODE_MAX_EXCLUSIVE = 90000000
 
+# Lunghezze colonne TB_PREZZICASSE (INFORMATION_SCHEMA).
+PRZ_PVN_LEN = 2
+PRZ_EAN_LEN = 14
+PRZ_COR_LEN = 5
+PRZ_CODART_LEN = 13
+PRZ_FOR_LEN = 15
+PRZ_DESCR_LEN = 50
+PRZ_REP_LEN = 5
+PRZ_LIN_LEN = 5
+PRZ_CAT_LEN = 5
+PRZ_CODARTFORN_LEN = 50
+PRZ_UM_LEN = 5
+PRZ_STATO_ARTICOLO_LEN = 50
+PRZ_LOTTO_LEN = 5
+
 
 @dataclass
 class GsArticoloSyncResult:
@@ -26,9 +41,13 @@ class GsArticoloSyncResult:
     created: bool = False
 
 
+def _clip(value, max_len: int) -> str:
+    return str(value or "").strip()[:max_len]
+
+
 def format_gs_utente(user):
     username = getattr(user, "username", "") or "sistema"
-    return f"LabRepair-{username}"[:80]
+    return f"LabRepair-{username}"
 
 
 def format_gs_descrizione(pratica):
@@ -40,7 +59,7 @@ def format_gs_descrizione(pratica):
     if not parts and pratica.titolo:
         parts.append(pratica.titolo.strip())
     text = " - ".join(part for part in parts if part)
-    return (text or "RIPARAZIONE")[:80]
+    return _clip(text or "RIPARAZIONE", PRZ_DESCR_LEN)
 
 
 def format_gs_prezzo(pratica):
@@ -68,7 +87,7 @@ def is_valid_repair_barcode(barcode):
 
 
 def _ean_str(barcode) -> str:
-    return str(int(barcode))
+    return _clip(str(int(barcode)), PRZ_EAN_LEN)
 
 
 def allocate_gs_barcode(cursor):
@@ -131,37 +150,51 @@ def resolve_gs_barcode(cursor, pratica, codart, *, for_insert=False):
     return allocate_gs_barcode(cursor)
 
 
-def build_prezzi_casse_payload(pratica, user, barcode, config):
+def resolve_iva_cassa(cursor, config):
+    """Usa la config LabRepair (default 10 / 22), altrimenti l'IVA piu' frequente su TB_PREZZICASSE."""
+    if config.iva_id_cassa:
+        return (
+            int(config.iva_id_cassa),
+            Decimal(config.iva_aliquota_cassa or 22).quantize(Decimal("0.01")),
+        )
+
+    # Default operativo casse (configurabile in Parametri sistema).
+    return 10, Decimal("22.00")
+
+
+def build_prezzi_casse_payload(pratica, user, barcode, config, *, iva_id=None, iva_aliquota=None):
     now = timezone.localtime()
     created = pratica.created_at or now
     updated = pratica.updated_at or now
     return {
-        "PRZ_PVN_CODICE": (config.prz_pvn_codice or "TN").strip()[:10] or "TN",
+        "PRZ_PVN_CODICE": _clip(config.prz_pvn_codice or "TN", PRZ_PVN_LEN) or "TN",
         "PRZ_EAN": _ean_str(barcode),
-        "PRZ_COR_CODICE": "MAN",
+        "PRZ_COR_CODICE": _clip("MAN", PRZ_COR_LEN),
         "PRZ_MOLTIPLICATORE_EAN": 1,
         "PRZ_CONFEZIONE": 1,
-        "PRZ_CODART": (pratica.codice or "")[:20],
-        "PRZ_FOR_CODICE": "",
+        "PRZ_CODART": _clip(pratica.codice, PRZ_CODART_LEN),
+        "PRZ_FOR_CODICE": _clip("", PRZ_FOR_LEN),
         "PRZ_DESCR": format_gs_descrizione(pratica),
-        "PRZ_REP_CODICE": "",
-        "PRZ_LIN_CODICE": "",
-        "PRZ_CAT_CODICE": "",
+        "PRZ_REP_CODICE": _clip("", PRZ_REP_LEN),
+        "PRZ_LIN_CODICE": _clip("", PRZ_LIN_LEN),
+        "PRZ_CAT_CODICE": _clip("", PRZ_CAT_LEN),
         "PRZ_PREZZOACQ": Decimal("0.00"),
         "PRZ_PREZZO": format_gs_prezzo(pratica),
         "PRZ_SC1": Decimal("0.00"),
         "PRZ_INVIO_A_FORNITORE": 0,
-        "PRZ_CODARTFORN": "",
-        "PRZ_UM": "",
-        "PRZ_STATO_ARTICOLO": "",
-        "PRZ_NOTE": format_gs_utente(user)[:80],
+        "PRZ_CODARTFORN": _clip("", PRZ_CODARTFORN_LEN),
+        "PRZ_UM": _clip("", PRZ_UM_LEN),
+        "PRZ_STATO_ARTICOLO": _clip("", PRZ_STATO_ARTICOLO_LEN),
+        "PRZ_NOTE": format_gs_utente(user),
         "PRZ_FRAZIONABILE": 0,
         "PRZ_VENDITAAPESO": 0,
         "PRZ_NONSCONTABILE": 0,
         "PRZ_PETSHOP": 0,
-        "PRZ_LOTTO_RIORDINO": "",
-        "PRZ_IVA_ID": int(config.iva_id_cassa or 0),
-        "PRZ_IVA_ALIQUOTA": Decimal(config.iva_aliquota_cassa or 0).quantize(Decimal("0.01")),
+        "PRZ_LOTTO_RIORDINO": _clip("", PRZ_LOTTO_LEN),
+        "PRZ_IVA_ID": int(iva_id if iva_id is not None else (config.iva_id_cassa or 10)),
+        "PRZ_IVA_ALIQUOTA": Decimal(
+            iva_aliquota if iva_aliquota is not None else (config.iva_aliquota_cassa or 22)
+        ).quantize(Decimal("0.01")),
         "PRZ_STATO": "K",
         "PRZ_DATAINSERIMENTO": _sql_datetime(created),
         "PRZ_DATAAGGIORNAMENTO": _sql_datetime(updated),
@@ -255,13 +288,7 @@ def sync_pratica_to_gs_articoli(pratica, user):
             message="Collegamento MS-SQL attivo ma incompleto.",
         )
 
-    if not config.iva_id_cassa:
-        return GsArticoloSyncResult(
-            ok=False,
-            message="Configurare l'ID IVA casse in Parametri sistema (MS-SQL).",
-        )
-
-    codart = (pratica.codice or "")[:20]
+    codart = _clip(pratica.codice, PRZ_CODART_LEN)
     if not codart:
         return GsArticoloSyncResult(
             ok=False,
@@ -271,6 +298,7 @@ def sync_pratica_to_gs_articoli(pratica, user):
     try:
         with open_mssql_connection(config) as connection:
             cursor = connection.cursor()
+            iva_id, iva_aliquota = resolve_iva_cassa(cursor, config)
             created = not exists_by_codart(cursor, codart)
             barcode = resolve_gs_barcode(
                 cursor,
@@ -278,7 +306,14 @@ def sync_pratica_to_gs_articoli(pratica, user):
                 codart,
                 for_insert=created,
             )
-            payload = build_prezzi_casse_payload(pratica, user, barcode, config)
+            payload = build_prezzi_casse_payload(
+                pratica,
+                user,
+                barcode,
+                config,
+                iva_id=iva_id,
+                iva_aliquota=iva_aliquota,
+            )
             delete_prezzi_casse(cursor, ean=payload["PRZ_EAN"], codart=codart)
             insert_prezzi_casse(cursor, payload)
             connection.commit()
@@ -288,7 +323,7 @@ def sync_pratica_to_gs_articoli(pratica, user):
         azione = "creato" if created else "aggiornato"
         return GsArticoloSyncResult(
             ok=True,
-            message=f"Prezzo cassa {azione} ({codart}, EAN {barcode}).",
+            message=f"Prezzo cassa {azione} ({codart}, EAN {barcode}, IVA {iva_id}).",
             barcode=barcode,
             created=created,
         )

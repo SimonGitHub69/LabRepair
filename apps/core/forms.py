@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django import forms
 
 from apps.core.models import ConfigurazioneMssql, ConfigurazionePC, ConfigurazioneProgramma, Stampante
@@ -52,7 +54,9 @@ class ConfigurazioneMssqlForm(forms.ModelForm):
                     "placeholder": "TN",
                 }
             ),
-            "iva_id_cassa": forms.NumberInput(attrs={"class": "form-control", "min": "1"}),
+            "iva_id_cassa": forms.NumberInput(
+                attrs={"class": "form-control", "min": "1", "placeholder": "10"}
+            ),
             "iva_aliquota_cassa": forms.NumberInput(
                 attrs={"class": "form-control", "step": "0.01", "min": "0"}
             ),
@@ -92,10 +96,10 @@ class ConfigurazioneMssqlForm(forms.ModelForm):
                 elif not (cleaned_data.get(field_name) or "").strip():
                     self.add_error(field_name, message)
 
-            if not cleaned_data.get("iva_id_cassa"):
-                self.add_error("iva_id_cassa", "Indica l'ID IVA casse (PRZ_IVA_ID).")
-            if cleaned_data.get("iva_aliquota_cassa") is None:
-                self.add_error("iva_aliquota_cassa", "Indica l'aliquota IVA casse.")
+        if cleaned_data.get("iva_id_cassa") in (None, ""):
+            cleaned_data["iva_id_cassa"] = 10
+        if cleaned_data.get("iva_aliquota_cassa") is None:
+            cleaned_data["iva_aliquota_cassa"] = Decimal("22.00")
 
         return cleaned_data
 

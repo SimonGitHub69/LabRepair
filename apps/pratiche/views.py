@@ -574,32 +574,25 @@ def documento_scaduto_json_response(request, cliente, return_url=""):
 
 
 def notify_gs_articolo_sync(request, pratica):
-    """Sincronizza GS in background così Salva non resta bloccato sul redirect."""
-    from threading import Thread
+    """Sincronizza la riparazione su TB_PREZZICASSE e mostra l'esito all'utente."""
+    import logging
 
-    pratica_id = pratica.pk
-    user_id = getattr(request.user, "pk", None)
+    logger = logging.getLogger(__name__)
+    try:
+        result = sync_pratica_to_gs_articoli(pratica, request.user)
+    except Exception as exc:
+        logger.exception("Sync TB_PREZZICASSE fallita per pratica %s", getattr(pratica, "pk", None))
+        messages.warning(request, f"Sincronizzazione casse non riuscita: {exc}")
+        return None
 
-    def _run():
-        from django.contrib.auth import get_user_model
-        from django.db import close_old_connections
+    if not result.ok:
+        logger.warning("Sync TB_PREZZICASSE: %s", result.message)
+        messages.warning(request, result.message)
+        return result
 
-        close_old_connections()
-        try:
-            pratica_obj = Pratica.objects.filter(pk=pratica_id, is_active=True).first()
-            if not pratica_obj:
-                return
-            user = None
-            if user_id:
-                user = get_user_model().objects.filter(pk=user_id).first()
-            sync_pratica_to_gs_articoli(pratica_obj, user)
-        except Exception:
-            pass
-        finally:
-            close_old_connections()
-
-    Thread(target=_run, daemon=True, name=f"gs-sync-{pratica_id}").start()
-    return None
+    if result.message and "disattivato" not in result.message.lower():
+        messages.info(request, result.message)
+    return result
 
 
 class PraticaListView(LoginRequiredMixin, ConfigurablePaginationMixin, ListView):

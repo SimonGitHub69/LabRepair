@@ -1,0 +1,6 @@
+35 objects imported automatically (use -v 2 for details).
+
+foto_count 5
+foto-oggetto-20260713-005648.jpg
+pratica 14 PT26-0011 orecchini 0.000 ORECCHINI DA SISTEMARE  
+fotos [(5, 'D:\\Progetti\\LabRepair\\media\\pratiche\\da29e0a9-d979-4f5e-8ce6-c1530a150fef\\foto\\foto-oggetto-20260714-182544.jpg')]

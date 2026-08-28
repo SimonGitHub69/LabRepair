@@ -1,0 +1,19 @@
+35 objects imported automatically (use -v 2 for details).
+
+pratica 14 PT26-0011
+line 10.0 599.1 -> 559.0 599.1 w 0.09999974817037582
+line 410.0 741.1 -> 559.0 741.1 w 0.09999974817037582
+line 410.0 661.1 -> 559.0 661.1 w 0.09999974817037582
+rect (8.0, 191.9, 585.0, 450.1)
+rect (8.0, 600.1, 220.0, 648.1)
+rect (8.0, 668.1, 445.0, 715.1)
+text 726.4 'PISTOIA 15/07/26 03:33:21' (37.0, 726.4, 148.6, 736.4)
+text 726.4 'Data' (12.0, 726.4, 31.0, 736.4)
+text 674.3 'degli stessi. La presente vale anche' (445.8, 674.3, 557.1, 682.1)
+text 690.3 'Per accettazione' (453.9, 690.3, 517.1, 699.3)
+text 610.3 'Firma' (474.6, 610.3, 496.4, 619.3)
+imgblock (28.3, 12.9, 173.3, 36.2)
+imgblock (28.3, 259.2, 283.3, 402.6)
+imgblock (431.8, 62.3, 555.0, 92.3)
+text 670.1 'Il sottoscritto/a dichiara che gli oggetti sopra indicati NON sono di illecita p' (28.3, 670.1, 434.9, 683.1)
+text 684.1 'in possesso di tutti i diritti atti alla riparazione/modifica degli stessi.' (28.3, 684.1, 306.6, 697.2)

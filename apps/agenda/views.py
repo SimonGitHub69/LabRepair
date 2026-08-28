@@ -19,7 +19,7 @@ from apps.core.forms import (
     StampanteForm,
 )
 from apps.core.list_pagination import ConfigurablePaginationMixin
-from apps.core.mail import parse_email_destinatari, send_smtp_email
+from apps.core.mail import config_email_from_post, parse_email_destinatari, send_smtp_email
 from apps.core.models import ConfigurazioneMssql, ConfigurazionePC, ConfigurazioneProgramma, Stampante
 from apps.core.mssql import config_from_post, test_mssql_connection
 from apps.core.pc import detect_client_pc_name, get_local_system_pc_name
@@ -368,14 +368,21 @@ class ParametriSistemaView(LoginRequiredMixin, PermissionRequiredMixin, View):
     permission_required = "agenda.access_parametri_mail_sql"
     raise_exception = True
 
-    def get_context(self, email_form=None, mssql_form=None):
+    def get_context(self, email_form=None, mssql_form=None, mail_test_destinatario=""):
+        smtp = ConfigurazioneNotificaEmail.get_solo()
+        default_dest = (mail_test_destinatario or "").strip()
+        if not default_dest:
+            if getattr(self.request.user, "email", ""):
+                default_dest = self.request.user.email
+            else:
+                destinatari = parse_email_destinatari(smtp.destinatari_default)
+                default_dest = destinatari[0] if destinatari else (smtp.mittente or "")
         return {
-            "email_form": email_form or ConfigurazioneNotificaEmailForm(
-                instance=ConfigurazioneNotificaEmail.get_solo()
-            ),
+            "email_form": email_form or ConfigurazioneNotificaEmailForm(instance=smtp),
             "mssql_form": mssql_form or ConfigurazioneMssqlForm(
                 instance=ConfigurazioneMssql.get_solo()
             ),
+            "mail_test_destinatario": default_dest,
         }
 
     def get(self, request):
@@ -383,6 +390,41 @@ class ParametriSistemaView(LoginRequiredMixin, PermissionRequiredMixin, View):
 
     def post(self, request):
         action = (request.POST.get("action") or "mail").strip()
+
+        if action == "test_mail":
+            instance = ConfigurazioneNotificaEmail.get_solo()
+            form = ConfigurazioneNotificaEmailForm(request.POST, instance=instance)
+            destinatario = (request.POST.get("mail_test_destinatario") or "").strip()
+            if not destinatario:
+                destinatari = parse_email_destinatari(request.POST.get("destinatari_default"))
+                if not destinatari:
+                    destinatari = parse_email_destinatari(instance.destinatari_default)
+                destinatario = destinatari[0] if destinatari else (
+                    (request.POST.get("mittente") or "").strip() or instance.mittente or ""
+                )
+
+            config = config_email_from_post(request.POST, instance)
+            result = send_smtp_email(
+                config=config,
+                destinatari=parse_email_destinatari(destinatario),
+                subject="LabRepair — mail di prova",
+                body=(
+                    "Questa è una mail di prova inviata da LabRepair.\n\n"
+                    "Se la ricevi, i Parametri mail (SMTP) sono configurati correttamente.\n"
+                ),
+            )
+            if result.ok:
+                messages.success(request, result.message)
+            else:
+                messages.error(request, result.message)
+            return render(
+                request,
+                self.template_name,
+                self.get_context(
+                    email_form=form,
+                    mail_test_destinatario=destinatario,
+                ),
+            )
 
         if action == "test_mssql":
             instance = ConfigurazioneMssql.get_solo()

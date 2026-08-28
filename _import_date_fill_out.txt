@@ -1,0 +1,6 @@
+35 objects imported automatically (use -v 2 for details).
+
+Importazione completata: 14 creati, 1 aggiornati, 4676 giÓ presenti, 4 duplicati nel CSV, 0 righe non valide (su 4695 righe).
+GIANNONI 2012-01-21 2022-01-20
+missing rilascio 7
+EXIT:0

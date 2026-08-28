@@ -1,0 +1,24 @@
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    from apps.core.pc import is_valid_pc_name, get_local_system_pc_name; print('local', get_local_system_pc_name()); print('PC-MONTALE', is_valid_pc_name('PC-MONTALE')); print('192', is_valid_pc_name('192')); print('192.168.1.1', is_valid_pc_name('192.168.1.1'))
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Progetti\LabRepair\apps\core\pc.py", line 8, in <module>
+    from apps.core.models.configurazione_pc import ConfigurazionePC
+  File "D:\Progetti\LabRepair\apps\core\models\__init__.py", line 1, in <module>
+    from .base import BaseModel
+  File "D:\Progetti\LabRepair\apps\core\models\base.py", line 8, in <module>
+    class BaseModel(models.Model):
+    ...<66 lines>...
+            self.save(update_fields=["is_active", "deleted_at", "deleted_by", "updated_at"])
+  File "D:\Progetti\LabRepair\apps\core\models\base.py", line 26, in BaseModel
+    settings.AUTH_USER_MODEL,
+    ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Progetti\LabRepair\.venv\Lib\site-packages\django\conf\__init__.py", line 75, in __getattr__
+    self._setup(name)
+    ~~~~~~~~~~~^^^^^^
+  File "D:\Progetti\LabRepair\.venv\Lib\site-packages\django\conf\__init__.py", line 55, in _setup
+    raise ImproperlyConfigured(
+    ...<4 lines>...
+    )
+django.core.exceptions.ImproperlyConfigured: Requested setting AUTH_USER_MODEL, but settings are not configured. You must either define the environment variable DJANGO_SETTINGS_MODULE or call settings.configure() before accessing settings.
+ok IT15

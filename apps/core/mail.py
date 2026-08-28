@@ -17,6 +17,37 @@ def parse_email_destinatari(raw):
     return [part for part in parts if part and "@" in part]
 
 
+def config_email_from_post(post, instance=None):
+    """Costruisce una config SMTP dai valori del form (anche non salvati)."""
+    from apps.agenda.models import ConfigurazioneNotificaEmail
+
+    instance = instance or ConfigurazioneNotificaEmail.get_solo()
+    if not post:
+        return instance
+
+    porta_raw = (post.get("porta") or "").strip()
+    try:
+        porta = int(porta_raw) if porta_raw else instance.porta
+    except ValueError:
+        porta = instance.porta
+
+    password = (post.get("password") or "").strip() or instance.password
+
+    return ConfigurazioneNotificaEmail(
+        attiva=True,
+        host=(post.get("host") or "").strip() or instance.host,
+        porta=porta or 587,
+        usa_tls=post.get("usa_tls") == "on",
+        usa_ssl=post.get("usa_ssl") == "on",
+        username=(post.get("username") or "").strip() or instance.username,
+        password=password,
+        mittente=(post.get("mittente") or "").strip() or instance.mittente,
+        destinatari_default=(post.get("destinatari_default") or "").strip()
+        or instance.destinatari_default,
+        giorni_preavviso=instance.giorni_preavviso,
+    )
+
+
 def send_smtp_email(*, config, destinatari, subject, body):
     destinatari = [addr for addr in (destinatari or []) if addr]
     if not destinatari:

@@ -1,0 +1,15 @@
+page size Rect(0.0, 0.0, 595.3200073242188, 841.9200439453125)
+line 10.0 599.0 -> 559.0 599.0 w 0.09999974817037582
+rect (173.9, 681.3, 277.4, 681.8)
+rect (361.8, 681.3, 443.9, 681.8)
+line 410.0 741.0 -> 559.0 741.0 w 0.09999974817037582
+line 410.0 661.0 -> 559.0 661.0 w 0.09999974817037582
+text 726.3 'PISTOIA 15/07/26 03:33:21' (37.0, 726.3, 148.6, 736.3)
+text 726.3 'Data' (12.0, 726.3, 31.0, 736.3)
+text 746.3 'Trattamento dei dati personali' (228.6, 746.3, 342.4, 755.2)
+text 674.2 'Il sottoscritto/a dichiara che gli oggetti sopra indicati NON sono di illecita p' (12.0, 674.2, 557.1, 682.0)
+text 682.3 "come ricevuta a saldo delle somma riportata alla voce 'prezzo oomplessivo'" (12.0, 682.3, 251.1, 690.1)
+text 690.3 'Per accettazione' (453.9, 690.3, 517.1, 699.2)
+text 610.3 'Firma' (474.6, 610.3, 496.4, 619.2)
+text 604.2 'Al prezzo complessivo di 0' (12.1, 604.2, 100.1, 612.0)
+text 634.2 'ModalitÓ di Pagamento' (12.0, 634.2, 88.2, 642.0)

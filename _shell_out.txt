@@ -1,0 +1,4 @@
+35 objects imported automatically (use -v 2 for details).
+
+/anagrafiche/importa-csv/
+ok Simulazione completata: 1 creati, 0 aggiornati, 0 giÓ presenti, 0 duplicati nel CSV, 0 righe non valide (su 1 righe).

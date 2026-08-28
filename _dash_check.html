@@ -1,0 +1,731 @@
+
+<!doctype html>
+<html lang="it">
+
+<head>
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Dashboard</title>
+    <link rel="icon" href="/static/securtek/img/favicon.svg" type="image/svg+xml">
+
+    <script>
+        (function () {
+            try {
+                const savedTheme = localStorage.getItem("labrepair-theme") || localStorage.getItem("securtek-theme");
+                const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+                const theme = savedTheme || (prefersDark ? "dark" : "light");
+                document.documentElement.setAttribute("data-bs-theme", theme);
+            } catch (error) {
+                document.documentElement.setAttribute("data-bs-theme", "light");
+            }
+        })();
+    </script>
+
+    <link rel="stylesheet" href="/static/vendor/tabler/css/tabler.min.css">
+    <link rel="stylesheet" href="/static/vendor/tabler-icons/tabler-icons.min.css">
+
+    <link rel="stylesheet" href="/static/securtek/css/variables.css">
+    <link rel="stylesheet" href="/static/securtek/css/style.css">
+    <link rel="stylesheet" href="/static/securtek/css/sidebar.css">
+    <link rel="stylesheet" href="/static/securtek/css/navbar.css">
+    <link rel="stylesheet" href="/static/securtek/css/components.css">
+    <link rel="stylesheet" href="/static/securtek/css/dashboard.css">
+
+    
+
+</head>
+
+<body
+    data-webcam-hotkey-scatto="F2"
+    data-webcam-hotkey-usa="F3"
+    data-webcam-hotkey-nuovo-scatto="F4">
+
+<div class="st-sidebar-backdrop" data-sidebar-backdrop></div>
+
+<div class="page">
+
+    
+
+<aside class="st-sidebar">
+
+    <div class="st-sidebar-brand">
+        <img
+            class="st-logo"
+            src="/static/securtek/img/labrepair-logo.png"
+            alt="LabRepair"
+            onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+        <div class="st-brand-mark" style="display:none;">
+            <i class="ti ti-tool"></i>
+        </div>
+        <div class="st-brand-subtitle">LabRepair</div>
+    </div>
+
+    <nav class="st-sidebar-nav">
+
+        <a class="st-nav-link active" href="/">
+            <i class="ti ti-home"></i>
+            <span>Dashboard</span>
+        </a>
+
+        <div class="st-nav-section">Gestione</div>
+
+        <a class="st-nav-link " href="/pratiche/">
+            <i class="ti ti-folder"></i>
+            <span>Riparazioni</span>
+        </a>
+
+        <a class="st-nav-link " href="/anagrafiche/">
+            <i class="ti ti-building"></i>
+            <span>Anagrafiche</span>
+        </a>
+
+        <a class="st-nav-link " href="/pratiche/studi-tecnici/">
+            <i class="ti ti-briefcase"></i>
+            <span>Riparatori</span>
+        </a>
+
+        <a class="st-nav-link " href="/agenda/">
+            <i class="ti ti-calendar"></i>
+            <span>Agenda</span>
+        </a>
+
+        <a class="st-nav-link " href="/documenti/">
+            <i class="ti ti-file-text"></i>
+            <span>Documenti</span>
+        </a>
+
+        <div class="st-nav-section">Analisi</div>
+
+        <a class="st-nav-link" href="#">
+            <i class="ti ti-chart-bar"></i>
+            <span>Report</span>
+        </a>
+
+        
+
+        <div class="st-nav-section">Parametri</div>
+
+        <a class="st-nav-link " href="/pratiche/operatori/">
+            <i class="ti ti-users"></i>
+            <span>Operatori</span>
+        </a>
+
+        <a class="st-nav-link " href="/pratiche/tipi-oggetto/">
+            <i class="ti ti-diamond"></i>
+            <span>Tipi di oggetto</span>
+        </a>
+
+        
+
+        
+
+        <div class="st-nav-section">Sistema</div>
+
+        <a class="st-nav-link " href="/sistema/aziende/">
+            <i class="ti ti-building-store"></i>
+            <span>Aziende</span>
+        </a>
+
+        <a class="st-nav-link " href="/sistema/">
+            <i class="ti ti-settings"></i>
+            <span>Sistema</span>
+        </a>
+
+    </nav>
+
+</aside>
+
+
+    <div class="page-wrapper">
+
+        <header class="navbar st-navbar navbar-expand-lg">
+
+    <div class="container-fluid gap-2">
+
+        <button
+            type="button"
+            class="btn btn-icon btn-outline-secondary st-sidebar-toggle"
+            data-sidebar-toggle
+            aria-label="Apri menu"
+            title="Menu">
+            <i class="ti ti-menu-2"></i>
+        </button>
+
+        <div class="d-flex align-items-center min-w-0">
+            <h1 class="st-navbar navbar-title text-truncate">
+                
+                    Dashboard
+                
+            </h1>
+        </div>
+
+        <div class="d-flex align-items-center ms-auto gap-2 gap-md-3">
+
+            <form class="d-none d-lg-block" method="get" action="/anagrafiche/">
+                <input
+                    type="text"
+                    name="q"
+                    value=""
+                    class="form-control"
+                    placeholder="Cerca anagrafiche...">
+            </form>
+
+            
+            <span class="badge bg-azure-lt text-azure st-negozio-badge d-none d-md-inline-flex">
+                PT · Pistoia
+            </span>
+            
+
+            <button type="button" class="btn btn-icon btn-outline-secondary" aria-label="Notifiche" title="Notifiche">
+                <i class="ti ti-bell"></i>
+            </button>
+
+            <button
+                type="button"
+                class="btn btn-icon btn-outline-secondary"
+                data-theme-toggle
+                aria-label="Attiva tema scuro"
+                title="Attiva tema scuro">
+                <i class="ti ti-moon" data-theme-toggle-icon></i>
+            </button>
+
+            <div class="dropdown">
+                <a href="#"
+                   class="d-flex align-items-center text-decoration-none"
+                   data-bs-toggle="dropdown">
+
+                    <div class="avatar avatar-sm bg-primary text-white">
+                        _
+                    </div>
+
+                    <div class="ms-2 text-start d-none d-md-block">
+                        <div class="st-navbar-user-name">
+                            _dashcheck
+                        </div>
+                        <div class="st-navbar-user-role">
+                            Amministratore
+                        </div>
+                    </div>
+                </a>
+
+                <div class="dropdown-menu dropdown-menu-end">
+                    <a class="dropdown-item" href="#">Profilo</a>
+                    <a class="dropdown-item" href="#">Impostazioni</a>
+                    <div class="dropdown-divider"></div>
+                    <a class="dropdown-item text-danger" href="/logout/">Logout</a>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+</header>
+
+
+        <div class="page-body">
+
+            <div class="container-xl">
+
+                
+
+
+                
+
+<div class="lr-dashboard">
+    <div class="lr-header d-print-none">
+        <div>
+            <h2 class="page-title mb-1">LabRepair</h2>
+            <div class="text-secondary">Cruscotto operativo riparazioni</div>
+        </div>
+        <div class="lr-header-actions">
+            <a href="/pratiche/nuova/" class="btn btn-primary">
+                <i class="ti ti-tool"></i>
+                Nuova riparazione
+            </a>
+            <a href="/anagrafiche/nuova/" class="btn btn-outline-secondary">
+                <i class="ti ti-user-plus"></i>
+                Nuovo cliente
+            </a>
+            <a href="/agenda/" class="btn btn-outline-secondary">
+                <i class="ti ti-calendar"></i>
+                Agenda
+            </a>
+        </div>
+    </div>
+
+    <div class="lr-kpi-grid">
+        <a href="/pratiche/" class="lr-kpi">
+            <div class="lr-kpi-top">
+                <div class="lr-kpi-label">Aperte</div>
+                <div class="lr-kpi-icon bg-primary-lt text-primary"><i class="ti ti-clipboard-list"></i></div>
+            </div>
+            <div class="lr-kpi-value">16</div>
+            <div class="lr-kpi-note">Schede non chiuse</div>
+        </a>
+
+        <a href="/pratiche/?stato=riparatore" class="lr-kpi">
+            <div class="lr-kpi-top">
+                <div class="lr-kpi-label">In laboratorio</div>
+                <div class="lr-kpi-icon bg-cyan-lt text-cyan"><i class="ti ti-tools"></i></div>
+            </div>
+            <div class="lr-kpi-value">9</div>
+            <div class="lr-kpi-note">Accettate o dal riparatore</div>
+        </a>
+
+        <a href="/pratiche/?stato=in_consegna" class="lr-kpi">
+            <div class="lr-kpi-top">
+                <div class="lr-kpi-label">Da consegnare</div>
+                <div class="lr-kpi-icon bg-green-lt text-green"><i class="ti ti-package-export"></i></div>
+            </div>
+            <div class="lr-kpi-value">6</div>
+            <div class="lr-kpi-note">Pronte per il cliente</div>
+        </a>
+
+        <a href="/pratiche/?attenzione=non_ritirate" class="lr-kpi">
+            <div class="lr-kpi-top">
+                <div class="lr-kpi-label">Scadute</div>
+                <div class="lr-kpi-icon bg-red-lt text-red"><i class="ti ti-alert-triangle"></i></div>
+            </div>
+            <div class="lr-kpi-value">6</div>
+            <div class="lr-kpi-note">Consegna oltre data</div>
+        </a>
+
+        <a href="/pratiche/" class="lr-kpi">
+            <div class="lr-kpi-top">
+                <div class="lr-kpi-label">Valore aperto</div>
+                <div class="lr-kpi-icon bg-yellow-lt text-yellow"><i class="ti ti-cash"></i></div>
+            </div>
+            <div class="lr-kpi-value lr-money">780</div>
+            <div class="lr-kpi-note">Totale prezzi schede aperte</div>
+        </a>
+    </div>
+
+    <div class="lr-main-grid">
+        <div class="card">
+            <div class="card-header lr-section-title">
+                <h3 class="card-title">Ultime riparazioni</h3>
+                <a href="/pratiche/" class="btn btn-outline-secondary btn-sm">
+                    <i class="ti ti-list"></i>
+                    Elenco
+                </a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-vcenter card-table">
+                    <thead>
+                        <tr>
+                            <th>Numero</th>
+                            <th>Cliente e oggetto</th>
+                            <th>Stato</th>
+                            <th>Consegna</th>
+                            <th class="text-end">Prezzo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+                            <tr>
+                                <td class="text-secondary">P26-0016</td>
+                                <td>
+                                    <a href="/pratiche/19/" class="text-reset lr-table-title">
+                                        Giannoni Marco
+                                    </a>
+                                    <div class="lr-muted-line">
+                                        anello
+                                        
+                                    </div>
+                                </td>
+                                <td><span class="badge bg-blue-lt">Riparatore</span></td>
+                                <td>
+                                    
+                                        <span class="text-danger fw-bold">
+                                            18/07/2026
+                                        </span>
+                                    
+                                </td>
+                                <td class="text-end lr-money">0,00</td>
+                            </tr>
+                        
+                            <tr>
+                                <td class="text-secondary">P26-0015</td>
+                                <td>
+                                    <a href="/pratiche/18/" class="text-reset lr-table-title">
+                                        Rossi Luca
+                                    </a>
+                                    <div class="lr-muted-line">
+                                        catena
+                                        
+                                    </div>
+                                </td>
+                                <td><span class="badge bg-blue-lt">Accettazione</span></td>
+                                <td>
+                                    
+                                        <span class="">
+                                            20/07/2026
+                                        </span>
+                                    
+                                </td>
+                                <td class="text-end lr-money">0,00</td>
+                            </tr>
+                        
+                            <tr>
+                                <td class="text-secondary">P26-0014</td>
+                                <td>
+                                    <a href="/pratiche/17/" class="text-reset lr-table-title">
+                                        balleri giorgio
+                                    </a>
+                                    <div class="lr-muted-line">
+                                        catena
+                                         · Andrea
+                                    </div>
+                                </td>
+                                <td><span class="badge bg-blue-lt">Accettazione</span></td>
+                                <td>
+                                    
+                                        <span class="">
+                                            25/07/2026
+                                        </span>
+                                    
+                                </td>
+                                <td class="text-end lr-money">0,00</td>
+                            </tr>
+                        
+                            <tr>
+                                <td class="text-secondary">P26-0013</td>
+                                <td>
+                                    <a href="/pratiche/16/" class="text-reset lr-table-title">
+                                        DAMI PARISA
+                                    </a>
+                                    <div class="lr-muted-line">
+                                        girocollo
+                                         · Leandro
+                                    </div>
+                                </td>
+                                <td><span class="badge bg-blue-lt">Riparatore</span></td>
+                                <td>
+                                    
+                                        <span class="text-danger fw-bold">
+                                            16/07/2026
+                                        </span>
+                                    
+                                </td>
+                                <td class="text-end lr-money">215,00</td>
+                            </tr>
+                        
+                            <tr>
+                                <td class="text-secondary">PT26-0012</td>
+                                <td>
+                                    <a href="/pratiche/15/" class="text-reset lr-table-title">
+                                        BISCARDI PASQUALE
+                                    </a>
+                                    <div class="lr-muted-line">
+                                        spilla
+                                        
+                                    </div>
+                                </td>
+                                <td><span class="badge bg-blue-lt">Accettazione</span></td>
+                                <td>
+                                    
+                                        <span class="">
+                                            25/07/2026
+                                        </span>
+                                    
+                                </td>
+                                <td class="text-end lr-money">0,00</td>
+                            </tr>
+                        
+                            <tr>
+                                <td class="text-secondary">PT26-0011</td>
+                                <td>
+                                    <a href="/pratiche/14/" class="text-reset lr-table-title">
+                                        INTRAGUGLIELMO GIUSEPPE
+                                    </a>
+                                    <div class="lr-muted-line">
+                                        orecchini
+                                        
+                                    </div>
+                                </td>
+                                <td><span class="badge bg-blue-lt">Accettazione</span></td>
+                                <td>
+                                    
+                                        <span class="">
+                                            25/07/2026
+                                        </span>
+                                    
+                                </td>
+                                <td class="text-end lr-money">0,00</td>
+                            </tr>
+                        
+                            <tr>
+                                <td class="text-secondary">PT26-0010</td>
+                                <td>
+                                    <a href="/pratiche/13/" class="text-reset lr-table-title">
+                                        FEDI UBALDO
+                                    </a>
+                                    <div class="lr-muted-line">
+                                        orologio
+                                        
+                                    </div>
+                                </td>
+                                <td><span class="badge bg-blue-lt">Accettazione</span></td>
+                                <td>
+                                    
+                                        <span class="text-danger fw-bold">
+                                            17/07/2026
+                                        </span>
+                                    
+                                </td>
+                                <td class="text-end lr-money">0,00</td>
+                            </tr>
+                        
+                            <tr>
+                                <td class="text-secondary">PT26-0009</td>
+                                <td>
+                                    <a href="/pratiche/12/" class="text-reset lr-table-title">
+                                        BENINI GIOVANNI
+                                    </a>
+                                    <div class="lr-muted-line">
+                                        ciondolo
+                                         · Andrea
+                                    </div>
+                                </td>
+                                <td><span class="badge bg-blue-lt">Accettazione</span></td>
+                                <td>
+                                    
+                                        <span class="">
+                                            01/02/7026
+                                        </span>
+                                    
+                                </td>
+                                <td class="text-end lr-money">0,00</td>
+                            </tr>
+                        
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="d-grid gap-3">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Stati riparazioni</h3>
+                </div>
+                <div class="card-body">
+                    
+                        <div class="lr-status-list">
+                            
+                                <div>
+                                    <div class="lr-status-row mb-1">
+                                        <span>Accettazione</span>
+                                        <span class="fw-bold">7</span>
+                                    </div>
+                                    <div class="lr-status-bar">
+                                        <div class="lr-status-fill" style="width: 44%"></div>
+                                    </div>
+                                </div>
+                            
+                                <div>
+                                    <div class="lr-status-row mb-1">
+                                        <span>In consegna</span>
+                                        <span class="fw-bold">6</span>
+                                    </div>
+                                    <div class="lr-status-bar">
+                                        <div class="lr-status-fill" style="width: 38%"></div>
+                                    </div>
+                                </div>
+                            
+                                <div>
+                                    <div class="lr-status-row mb-1">
+                                        <span>Non ritirata</span>
+                                        <span class="fw-bold">1</span>
+                                    </div>
+                                    <div class="lr-status-bar">
+                                        <div class="lr-status-fill" style="width: 6%"></div>
+                                    </div>
+                                </div>
+                            
+                                <div>
+                                    <div class="lr-status-row mb-1">
+                                        <span>Riparatore</span>
+                                        <span class="fw-bold">2</span>
+                                    </div>
+                                    <div class="lr-status-bar">
+                                        <div class="lr-status-fill" style="width: 12%"></div>
+                                    </div>
+                                </div>
+                            
+                        </div>
+                    
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header lr-section-title">
+                    <h3 class="card-title">Consegne vicine</h3>
+                    <a href="/agenda/" class="btn btn-outline-secondary btn-sm">
+                        <i class="ti ti-calendar"></i>
+                    </a>
+                </div>
+                <div class="list-group list-group-flush">
+                    
+                        <a href="/pratiche/7/" class="list-group-item list-group-item-action">
+                            <div class="d-flex justify-content-between gap-3">
+                                <div>
+                                    <div class="fw-bold">PT26-0004</div>
+                                    <div class="lr-muted-line">GIANNONI GIULIA</div>
+                                </div>
+                                <div class="text-end">
+                                    <div class="text-danger fw-bold">
+                                        12/07/2026
+                                    </div>
+                                    <div class="lr-muted-line">Non ritirata</div>
+                                </div>
+                            </div>
+                        </a>
+                    
+                        <a href="/pratiche/8/" class="list-group-item list-group-item-action">
+                            <div class="d-flex justify-content-between gap-3">
+                                <div>
+                                    <div class="fw-bold">PT26-0005</div>
+                                    <div class="lr-muted-line">GIANNONI GIULIA</div>
+                                </div>
+                                <div class="text-end">
+                                    <div class="text-danger fw-bold">
+                                        15/07/2026
+                                    </div>
+                                    <div class="lr-muted-line">In consegna</div>
+                                </div>
+                            </div>
+                        </a>
+                    
+                        <a href="/pratiche/10/" class="list-group-item list-group-item-action">
+                            <div class="d-flex justify-content-between gap-3">
+                                <div>
+                                    <div class="fw-bold">PT26-0007</div>
+                                    <div class="lr-muted-line">adorisio giuseppina</div>
+                                </div>
+                                <div class="text-end">
+                                    <div class="text-danger fw-bold">
+                                        16/07/2026
+                                    </div>
+                                    <div class="lr-muted-line">Accettazione</div>
+                                </div>
+                            </div>
+                        </a>
+                    
+                        <a href="/pratiche/16/" class="list-group-item list-group-item-action">
+                            <div class="d-flex justify-content-between gap-3">
+                                <div>
+                                    <div class="fw-bold">P26-0013</div>
+                                    <div class="lr-muted-line">DAMI PARISA</div>
+                                </div>
+                                <div class="text-end">
+                                    <div class="text-danger fw-bold">
+                                        16/07/2026
+                                    </div>
+                                    <div class="lr-muted-line">Riparatore</div>
+                                </div>
+                            </div>
+                        </a>
+                    
+                        <a href="/pratiche/13/" class="list-group-item list-group-item-action">
+                            <div class="d-flex justify-content-between gap-3">
+                                <div>
+                                    <div class="fw-bold">PT26-0010</div>
+                                    <div class="lr-muted-line">FEDI UBALDO</div>
+                                </div>
+                                <div class="text-end">
+                                    <div class="text-danger fw-bold">
+                                        17/07/2026
+                                    </div>
+                                    <div class="lr-muted-line">Accettazione</div>
+                                </div>
+                            </div>
+                        </a>
+                    
+                        <a href="/pratiche/19/" class="list-group-item list-group-item-action">
+                            <div class="d-flex justify-content-between gap-3">
+                                <div>
+                                    <div class="fw-bold">P26-0016</div>
+                                    <div class="lr-muted-line">Giannoni Marco</div>
+                                </div>
+                                <div class="text-end">
+                                    <div class="text-danger fw-bold">
+                                        18/07/2026
+                                    </div>
+                                    <div class="lr-muted-line">Riparatore</div>
+                                </div>
+                            </div>
+                        </a>
+                    
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Anagrafiche recenti</h3>
+                </div>
+                <div class="list-group list-group-flush">
+                    
+                        <a href="/anagrafiche/4710/" class="list-group-item list-group-item-action">
+                            <div class="fw-bold">DE MASI CLAUDIA</div>
+                            <div class="lr-muted-line">Email non indicata</div>
+                        </a>
+                    
+                        <a href="/anagrafiche/4709/" class="list-group-item list-group-item-action">
+                            <div class="fw-bold">NISTRI ALESSANDRA</div>
+                            <div class="lr-muted-line">Email non indicata</div>
+                        </a>
+                    
+                        <a href="/anagrafiche/4708/" class="list-group-item list-group-item-action">
+                            <div class="fw-bold">BERTI FRANCESCA</div>
+                            <div class="lr-muted-line">Email non indicata</div>
+                        </a>
+                    
+                        <a href="/anagrafiche/4707/" class="list-group-item list-group-item-action">
+                            <div class="fw-bold">antonietti antonella</div>
+                            <div class="lr-muted-line">Email non indicata</div>
+                        </a>
+                    
+                        <a href="/anagrafiche/4706/" class="list-group-item list-group-item-action">
+                            <div class="fw-bold">LO MUTO MICHELE</div>
+                            <div class="lr-muted-line">Email non indicata</div>
+                        </a>
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+            </div>
+
+        </div>
+
+        <footer class="footer footer-transparent">
+
+    <div class="container-xl">
+        <div class="text-center text-secondary small">
+            LabRepair · Green Soft © 2026
+        </div>
+    </div>
+
+</footer>
+
+
+    </div>
+
+</div>
+
+<script src="/static/vendor/tabler/js/tabler.min.js"></script>
+<script defer src="/static/vendor/alpinejs/cdn.min.js"></script>
+<script src="/static/vendor/htmx/htmx.min.js"></script>
+<script src="/static/securtek/js/app.js"></script>
+
+
+
+</body>
+</html>
