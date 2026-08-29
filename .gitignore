@@ -53,3 +53,6 @@ tools/cie_reader/vendor/CIE.MRTD.SDK/obj/
 
 # NSSM binary (scaricato da install_service.ps1)
 tools/nssm/
+
+# Pacchetto installazione troppo grande per GitHub (>100 MB)
+installazione/LabRepair_files.zip
