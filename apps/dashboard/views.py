@@ -319,6 +319,12 @@ class DashboardView(LoginRequiredMixin, TemplateView):
         return context
 
 
+class ReportView(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
+    template_name = "dashboard/report.html"
+    permission_required = "dashboard.access_report"
+    raise_exception = True
+
+
 class DocumentiView(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
     template_name = "dashboard/documenti.html"
     permission_required = "dashboard.access_documenti"

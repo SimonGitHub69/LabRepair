@@ -53,7 +53,7 @@
         {% if perms.dashboard.access_report %}
         <div class="st-nav-section">Analisi</div>
 
-        <a class="st-nav-link" href="#">
+        <a class="st-nav-link {% if request.path|slice:':8' == '/report/' %}active{% endif %}" href="{% url 'dashboard:report' %}">
             <i class="ti ti-chart-bar"></i>
             <span>Report</span>
         </a>

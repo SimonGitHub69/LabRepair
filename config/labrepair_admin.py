@@ -50,7 +50,7 @@ ADMIN_MENU_SECTIONS = (
         "name": "Analisi",
         "app_label": "labrepair_analisi",
         "models": (
-            ("__link__", "Report", "#", "dashboard.access_report"),
+            ("__link__", "Report", "dashboard:report", "dashboard.access_report"),
         ),
     },
     {

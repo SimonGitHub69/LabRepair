@@ -6,6 +6,7 @@ from .views import (
     AziendaUpdateView,
     DashboardView,
     DocumentiView,
+    ReportView,
     SistemaView,
     WebcamView,
 )
@@ -14,6 +15,7 @@ app_name = "dashboard"
 
 urlpatterns = [
     path("", DashboardView.as_view(), name="index"),
+    path("report/", ReportView.as_view(), name="report"),
     path("documenti/", DocumentiView.as_view(), name="documenti"),
     path("sistema/", SistemaView.as_view(), name="sistema"),
     path("sistema/webcam/", WebcamView.as_view(), name="webcam"),
