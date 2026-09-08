@@ -1,0 +1,35 @@
+<div class="st-com-riepilogo" data-com-riepilogo hidden>
+    <div class="st-com-riepilogo-heading">
+        <span class="st-com-riepilogo-badge">Riepilogo per data</span>
+        {% if comunicazioni %}
+            <span class="text-secondary small">{{ comunicazioni|length }} comunicazion{{ comunicazioni|length|pluralize:"e,i" }}</span>
+        {% endif %}
+    </div>
+    {% if comunicazioni_riepilogo %}
+        <div class="st-com-riepilogo-days">
+            {% for group in comunicazioni_riepilogo %}
+                <details class="st-com-riepilogo-day" data-com-day open>
+                    <summary class="st-com-riepilogo-day-head">
+                        <strong>{{ group.data|date:"d/m/Y" }}</strong>
+                        <span class="badge bg-secondary-lt text-secondary">{{ group.count }}</span>
+                    </summary>
+                    <ul class="st-com-riepilogo-list">
+                        {% for comunicazione in group.items %}
+                            <li>
+                                {% if comunicazioni_formato_data != "solo_data" %}
+                                    <span class="st-com-riepilogo-time">{{ comunicazione.data_ora|date:"H:i" }}</span>
+                                {% endif %}
+                                <span class="st-com-riepilogo-text">{{ comunicazione.descrizione|truncatechars:120 }}</span>
+                                {% if comunicazione.allegato %}
+                                    <i class="ti ti-paperclip text-secondary" title="{{ comunicazione.allegato_nome }}"></i>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </details>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="text-secondary small">Nessuna comunicazione registrata.</div>
+    {% endif %}
+</div>

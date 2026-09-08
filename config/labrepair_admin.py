@@ -103,6 +103,7 @@ ADMIN_MENU_SECTIONS = (
         "models": (
             ("__link__", "Aziende", "dashboard:azienda_list"),
             ("__link__", "Sistema", "dashboard:sistema", "dashboard.access_sistema"),
+            ("__link__", "Novità", "dashboard:novita", "dashboard.access_sistema"),
         ),
     },
     {

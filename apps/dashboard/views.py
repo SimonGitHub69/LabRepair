@@ -16,6 +16,7 @@ from apps.anagrafiche.models import Anagrafica
 from apps.core.list_pagination import ConfigurablePaginationMixin
 from apps.core.models import Azienda, ConfigurazioneMssql
 from apps.core.mssql import get_mssql_config
+from apps.core.version import get_changelog_entries, get_latest_changelog, get_version
 from apps.core.negozi import apply_negozio_queryset_filter, normalize_negozio_code
 from apps.dashboard.forms import AziendaForm
 from apps.agenda.models import EventoAgenda
@@ -405,7 +406,18 @@ class SistemaView(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         media_root = str(getattr(settings, "MEDIA_ROOT", ""))
 
+        latest = get_latest_changelog()
+        version_value = get_version()
+        if latest and latest.get("date"):
+            version_value = f"{version_value} · {latest['date']}"
+
         context["system_status"] = [
+            {
+                "label": "Versione",
+                "value": version_value,
+                "url": reverse("dashboard:novita"),
+                "icon": "ti-versions",
+            },
             {
                 "label": "Ambiente",
                 "value": "Sviluppo" if settings.DEBUG else "Produzione",
@@ -453,6 +465,12 @@ class SistemaView(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
             {"label": "Aziende", "value": Azienda.objects.filter(is_active=True).count()},
         ]
         context["system_links"] = [
+            {
+                "label": "Novità",
+                "description": "Versione corrente e cronologia delle modifiche.",
+                "url": reverse("dashboard:novita"),
+                "icon": "ti-history",
+            },
             {
                 "label": "Aziende",
                 "description": "Dati aziendali e logo.",
@@ -507,6 +525,18 @@ class SistemaView(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
         if not config.is_configured:
             return "Da configurare"
         return config.server_display
+
+
+class NovitaView(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
+    template_name = "dashboard/novita.html"
+    permission_required = "dashboard.access_sistema"
+    raise_exception = True
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["app_version"] = get_version()
+        context["changelog_entries"] = get_changelog_entries()
+        return context
 
 
 class WebcamView(LoginRequiredMixin, TemplateView):

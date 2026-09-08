@@ -1,0 +1,58 @@
+{# Lista note: data in evidenza + descrizione leggibile. #}
+{% if comunicazioni %}
+<div class="st-com-note-list" data-com-note-list>
+    {% for comunicazione in comunicazioni %}
+    <article class="st-com-note-card">
+        <header class="st-com-note-head">
+            {% if comunicazioni_formato_data != "nascosto" %}
+            <div class="st-com-note-date" title="{% if comunicazioni_formato_data == 'solo_data' %}Data comunicazione{% else %}Data e ora comunicazione{% endif %}">
+                <i class="ti ti-calendar-event" aria-hidden="true"></i>
+                <time datetime="{{ comunicazione.data_ora|date:'c' }}">
+                    {% if comunicazioni_formato_data == "solo_data" %}
+                        {{ comunicazione.data_ora|date:"d/m/Y" }}
+                    {% else %}
+                        <span class="st-com-note-date-day">{{ comunicazione.data_ora|date:"d/m/Y" }}</span>
+                        <span class="st-com-note-date-time">{{ comunicazione.data_ora|date:"H:i" }}</span>
+                    {% endif %}
+                </time>
+            </div>
+            {% else %}
+            <div class="st-com-note-date st-com-note-date--muted">
+                <i class="ti ti-notes" aria-hidden="true"></i>
+                <span>Nota</span>
+            </div>
+            {% endif %}
+            <div class="st-com-note-actions">
+                <a href="{% url 'pratiche:comunicazione_update' pratica.pk comunicazione.pk %}?next={{ com_next_url|urlencode }}"
+                   class="btn btn-outline-secondary btn-sm">
+                    <i class="ti ti-edit"></i>
+                    Modifica
+                </a>
+                <form method="post"
+                      action="{% url 'pratiche:comunicazione_delete' pratica.pk comunicazione.pk %}"
+                      data-comunicazione-delete
+                      class="d-inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ com_next_url }}">
+                    <button type="submit" class="btn btn-outline-danger btn-sm" title="Elimina">
+                        <i class="ti ti-trash"></i>
+                        Elimina
+                    </button>
+                </form>
+            </div>
+        </header>
+        <div class="st-com-note-body">
+            <p class="st-com-note-text">{{ comunicazione.descrizione }}</p>
+            {% if comunicazione.allegato %}
+            <a href="{% url 'pratiche:comunicazione_preview' pratica.pk comunicazione.pk %}"
+               target="_blank"
+               class="st-com-note-attach">
+                <i class="ti ti-paperclip"></i>
+                {{ comunicazione.allegato_nome }}
+            </a>
+            {% endif %}
+        </div>
+    </article>
+    {% endfor %}
+</div>
+{% endif %}

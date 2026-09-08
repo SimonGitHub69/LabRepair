@@ -2,6 +2,7 @@ body {
     background-color: var(--st-bg);
     color: var(--tblr-body-color, #1f2937);
     font-family: var(--st-font);
+    font-size: var(--st-font-size, 0.9375rem);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
@@ -13,19 +14,49 @@ body {
 }
 
 .page-body {
-    padding: 1.25rem 0 2rem;
+    /* Annulla il margin Tabler (--tblr-page-padding-y ≈ 1.5rem) che raddoppiava lo spazio sotto la navbar. */
+    margin-bottom: 0;
+    margin-top: 0;
+    padding: var(--st-page-pad-y) 0 1.15rem;
+}
+
+/* Contenuto a tutta larghezza utile: niente “corridoi” laterali da container-xl. */
+.st-page-container,
+.page-body > .container-xl,
+.page-body > .container-fluid,
+.footer > .container-xl,
+.footer > .container-fluid {
+    max-width: none;
+    padding-left: var(--st-page-pad-x);
+    padding-right: var(--st-page-pad-x);
+    width: 100%;
+}
+
+/* Evita doppio restringimento sulle pagine che riusano container-xl dentro il layout. */
+.st-page-container .container-xl {
+    max-width: none;
+    padding-left: 0;
+    padding-right: 0;
+    width: 100%;
 }
 
 .page-header {
-    margin-bottom: 1.25rem;
+    margin-bottom: 0.65rem;
+}
+
+.page-header.mb-3,
+.card.mb-3,
+.alert.mb-3,
+.st-attenzione-grid.mb-3 {
+    margin-bottom: 0.65rem !important;
 }
 
 .page-title {
-    font-size: 1.5rem;
+    font-size: 1.35rem;
     font-weight: 700;
     letter-spacing: -0.02em;
     line-height: 1.2;
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.15rem;
 }
 
 .card {
@@ -38,17 +69,17 @@ body {
 .card-header {
     background: transparent;
     border-bottom: 1px solid var(--st-border);
-    padding: 1rem 1.25rem;
+    padding: 0.65rem 0.85rem;
 }
 
 .card-title {
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 600;
     margin: 0;
 }
 
 .card-body {
-    padding: 1.25rem;
+    padding: 0.75rem 0.85rem;
 }
 
 .card-table thead th {
@@ -63,6 +94,14 @@ body {
 
 .card-table tbody td {
     vertical-align: middle;
+}
+
+.table {
+    font-size: 0.9rem;
+}
+
+.table.table-vcenter > :not(caption) > * > * {
+    padding: 0.45rem 0.65rem;
 }
 
 .table.table-vcenter:not(.st-no-zebra) > tbody > tr:nth-of-type(even) > * {
@@ -85,14 +124,16 @@ body {
     color: var(--tblr-body-color);
     font-size: 0.8125rem;
     font-weight: 600;
-    margin-bottom: 0.35rem;
+    margin-bottom: 0.25rem;
 }
 
 .form-control,
 .form-select {
     border-color: var(--st-border);
     border-radius: var(--st-radius-sm);
-    min-height: 2.375rem;
+    font-size: 0.9rem;
+    min-height: 2.15rem;
+    padding: 0.35rem 0.65rem;
     transition: border-color var(--st-transition), box-shadow var(--st-transition);
 }
 
@@ -103,20 +144,20 @@ body {
 }
 
 textarea.form-control {
-    min-height: 6.5rem;
+    min-height: 5.5rem;
     resize: vertical;
 }
 
 /* Campi anti-autofill: sembrano input, ma sono textarea (Chrome non suggerisce indirizzi). */
 textarea.form-control.st-input-like {
-    min-height: 2.375rem;
-    height: 2.375rem;
+    min-height: 2.15rem;
+    height: 2.15rem;
     resize: none;
     overflow: hidden;
     white-space: nowrap;
-    line-height: 1.5;
-    padding-top: 0.5rem;
-    padding-bottom: 0.5rem;
+    line-height: 1.4;
+    padding-top: 0.35rem;
+    padding-bottom: 0.35rem;
 }
 
 input[type="date"],
@@ -169,12 +210,14 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 .form-hint {
     color: var(--st-text-muted);
     font-size: 0.75rem;
-    margin-top: 0.25rem;
+    margin-top: 0.2rem;
 }
 
 .btn {
     border-radius: var(--st-radius-sm);
+    font-size: 0.875rem;
     font-weight: 600;
+    padding: 0.4rem 0.75rem;
     transition: transform var(--st-transition), box-shadow var(--st-transition), background-color var(--st-transition);
 }
 
@@ -196,13 +239,15 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
     border-radius: 999px;
     font-weight: 600;
     letter-spacing: 0.01em;
-    padding: 0.35em 0.65em;
+    padding: 0.3em 0.55em;
 }
 
 .alert {
     border: none;
     border-radius: var(--st-radius-sm);
     box-shadow: var(--st-shadow-sm);
+    margin-bottom: 0.65rem;
+    padding: 0.65rem 0.85rem;
 }
 
 .list-group-item {
@@ -215,12 +260,12 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 
 .footer {
     border-top: 1px solid var(--st-border);
-    margin-top: 1rem;
-    padding: 1rem 0;
+    margin-top: 0.5rem;
+    padding: 0.55rem 0;
 }
 
 .st-filter-card .card-body {
-    padding: 1rem 1.25rem;
+    padding: 0.65rem 0.85rem;
 }
 
 .st-table-title {
@@ -244,12 +289,26 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 
 .st-empty {
     color: var(--st-text-muted);
-    padding: 2rem 1rem;
+    padding: 1.25rem 0.75rem;
     text-align: center;
+}
+
+.row.g-3 {
+    --tblr-gutter-x: 0.75rem;
+    --tblr-gutter-y: 0.75rem;
+}
+
+.row.g-2 {
+    --tblr-gutter-x: 0.5rem;
+    --tblr-gutter-y: 0.5rem;
 }
 
 @media (max-width: 991.98px) {
     .page-wrapper {
         margin-left: 0;
+    }
+
+    :root {
+        --st-page-pad-x: 0.65rem;
     }
 }

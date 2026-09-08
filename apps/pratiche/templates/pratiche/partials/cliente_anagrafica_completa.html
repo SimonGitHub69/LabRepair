@@ -64,25 +64,105 @@
                         <div class="text-secondary small">Residenza</div>
                         <div class="fw-semibold" data-anagrafica-field="residenza">-</div>
                     </div>
-                    <div class="col-md-6 col-lg-4">
-                        <div class="text-secondary small">Documento</div>
-                        <div class="fw-semibold" data-anagrafica-field="documento_tipo">-</div>
-                    </div>
-                    <div class="col-md-6 col-lg-4">
-                        <div class="text-secondary small">Numero</div>
-                        <div class="fw-semibold" data-anagrafica-field="documento_numero">-</div>
-                    </div>
-                    <div class="col-md-6 col-lg-4">
-                        <div class="text-secondary small">Rilasciato da</div>
-                        <div class="fw-semibold" data-anagrafica-field="documento_rilasciato_da">-</div>
-                    </div>
-                    <div class="col-md-6 col-lg-4">
-                        <div class="text-secondary small">Data rilascio</div>
-                        <div class="fw-semibold" data-anagrafica-field="documento_data_rilascio">-</div>
-                    </div>
-                    <div class="col-md-6 col-lg-4">
-                        <div class="text-secondary small">Data scadenza</div>
-                        <div class="fw-semibold" data-anagrafica-field="documento_data_scadenza">-</div>
+
+                    <div class="col-12" data-cliente-documento-panel>
+                        <div class="card st-cliente-documento-card mb-0">
+                            <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                <h5 class="card-title mb-0">
+                                    <i class="ti ti-id-badge-2 me-1 text-primary"></i>
+                                    Documento di identità
+                                </h5>
+                                <div class="card-actions d-flex align-items-center gap-2">
+                                    <span class="badge bg-secondary-lt" data-documento-badge hidden>Valido</span>
+                                    <button type="button"
+                                            class="btn btn-sm btn-primary"
+                                            data-documento-save
+                                            disabled>
+                                        <i class="ti ti-device-floppy"></i>
+                                        Salva documento
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-warning mb-3" data-documento-alert hidden></div>
+                                <div class="st-anagrafica-facts st-cliente-documento-facts">
+                                    <div class="st-anagrafica-fact">
+                                        <label class="st-anagrafica-fact-label" for="id_doc_documento_tipo">Tipo</label>
+                                        <input type="text"
+                                               class="form-control form-control-sm"
+                                               id="id_doc_documento_tipo"
+                                               name="documento_tipo"
+                                               form="clienteDocumentoForm"
+                                               autocomplete="off"
+                                               disabled>
+                                    </div>
+                                    <div class="st-anagrafica-fact">
+                                        <label class="st-anagrafica-fact-label" for="id_doc_documento_numero">Numero</label>
+                                        <input type="text"
+                                               class="form-control form-control-sm is-mono"
+                                               id="id_doc_documento_numero"
+                                               name="documento_numero"
+                                               form="clienteDocumentoForm"
+                                               autocomplete="off"
+                                               disabled>
+                                    </div>
+                                    <div class="st-anagrafica-fact st-anagrafica-fact-wide">
+                                        <label class="st-anagrafica-fact-label" for="id_doc_documento_rilasciato_da">Rilasciato da</label>
+                                        <input type="text"
+                                               class="form-control form-control-sm"
+                                               id="id_doc_documento_rilasciato_da"
+                                               name="documento_rilasciato_da"
+                                               form="clienteDocumentoForm"
+                                               autocomplete="off"
+                                               disabled>
+                                    </div>
+                                    <div class="st-anagrafica-fact">
+                                        <label class="st-anagrafica-fact-label" for="id_doc_documento_data_rilascio">Data rilascio</label>
+                                        <input type="date"
+                                               class="form-control form-control-sm"
+                                               id="id_doc_documento_data_rilascio"
+                                               name="documento_data_rilascio"
+                                               form="clienteDocumentoForm"
+                                               autocomplete="off"
+                                               disabled>
+                                    </div>
+                                    <div class="st-anagrafica-fact">
+                                        <label class="st-anagrafica-fact-label" for="id_doc_documento_data_scadenza">Data scadenza</label>
+                                        <input type="date"
+                                               class="form-control form-control-sm"
+                                               id="id_doc_documento_data_scadenza"
+                                               name="documento_data_scadenza"
+                                               form="clienteDocumentoForm"
+                                               autocomplete="off"
+                                               disabled>
+                                    </div>
+                                    <div class="st-anagrafica-fact">
+                                        <span class="st-anagrafica-fact-label">Stampa privacy</span>
+                                        <div class="d-flex gap-3 align-items-center mt-1" data-documento-stampa-privacy>
+                                            <label class="form-check mb-0">
+                                                <input class="form-check-input"
+                                                       type="radio"
+                                                       name="stampa_privacy"
+                                                       form="clienteDocumentoForm"
+                                                       value="True"
+                                                       disabled>
+                                                <span class="form-check-label">Si</span>
+                                            </label>
+                                            <label class="form-check mb-0">
+                                                <input class="form-check-input"
+                                                       type="radio"
+                                                       name="stampa_privacy"
+                                                       form="clienteDocumentoForm"
+                                                       value="False"
+                                                       checked
+                                                       disabled>
+                                                <span class="form-check-label">No</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

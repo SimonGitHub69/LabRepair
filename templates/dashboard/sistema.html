@@ -11,6 +11,21 @@
 <div class="row row-cards">
     {% for item in system_status %}
         <div class="col-sm-6 col-lg-3">
+            {% if item.url %}
+            <a class="card card-link h-100" href="{{ item.url }}">
+                <div class="card-body">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="avatar bg-primary-lt">
+                            <i class="ti {{ item.icon }}"></i>
+                        </span>
+                        <div class="text-truncate">
+                            <div class="text-secondary small">{{ item.label }}</div>
+                            <div class="fw-semibold text-truncate" title="{{ item.value }}">{{ item.value }}</div>
+                        </div>
+                    </div>
+                </div>
+            </a>
+            {% else %}
             <div class="card">
                 <div class="card-body">
                     <div class="d-flex align-items-center gap-3">
@@ -24,6 +39,7 @@
                     </div>
                 </div>
             </div>
+            {% endif %}
         </div>
     {% endfor %}
 </div>

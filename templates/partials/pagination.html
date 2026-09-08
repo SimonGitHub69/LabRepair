@@ -128,6 +128,9 @@
         var url = new URL(window.location.href);
         url.searchParams.set("page_size", select.value);
         url.searchParams.set("page", "1");
+        if (typeof window.markLabRepairLeavingPage === "function") {
+            window.markLabRepairLeavingPage();
+        }
         window.location.href = url.toString();
     });
 })();

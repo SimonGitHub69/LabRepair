@@ -131,6 +131,9 @@
         if (!url) {
             return false;
         }
+        if (typeof window.markLabRepairLeavingPage === "function") {
+            window.markLabRepairLeavingPage();
+        }
         window.location.href = url;
         return true;
     }
@@ -138,6 +141,9 @@
     function clickIfPresent(selector) {
         var el = document.querySelector(selector);
         if (el && el.tagName === "A" && el.getAttribute("href")) {
+            if (typeof window.markLabRepairLeavingPage === "function") {
+                window.markLabRepairLeavingPage();
+            }
             window.location.href = el.getAttribute("href");
             return true;
         }

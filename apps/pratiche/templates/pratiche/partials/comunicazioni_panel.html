@@ -1,126 +1,74 @@
 <div class="card mt-3" id="comunicazioni">
     <div class="card-header">
-        <h3 class="card-title mb-0">Comunicazioni{% if comunicazioni %} <span class="text-secondary fw-normal">({{ comunicazioni|length }})</span>{% endif %}</h3>
+        <h3 class="card-title mb-0">Note e Comunicazioni{% if comunicazioni %} <span class="text-secondary fw-normal">({{ comunicazioni|length }})</span>{% endif %}</h3>
         <div class="card-actions">
             <button type="button"
-                    class="btn btn-icon btn-sm btn-outline-secondary st-collapse-toggle"
+                    class="btn btn-sm btn-outline-secondary st-collapse-toggle"
                     data-collapse-target="practice-communications-panel"
                     data-collapse-key="communications"
+                    data-collapse-default="open"
+                    data-collapse-mode="summary"
                     aria-controls="practice-communications-panel"
                     aria-expanded="true"
-                    title="Comprimi sezione">
+                    title="Mostra riepilogo per data">
                 <i class="ti ti-chevron-down"></i>
+                <span class="d-none d-sm-inline" data-collapse-label>Chiudi</span>
             </button>
         </div>
     </div>
     <div class="card-body st-collapsible-section" id="practice-communications-panel">
-        <form method="post"
-              action="{% url 'pratiche:comunicazione_create' pratica.pk %}"
-              enctype="multipart/form-data"
-              class="mb-4">
-            {% csrf_token %}
-            <input type="hidden" name="next" value="{% url 'pratiche:pratica_update' pratica.pk %}#comunicazioni">
-            <div class="row g-3 align-items-start">
-                {% if comunicazioni_formato_data != "nascosto" %}
-                <div class="col-md-3">
-                    <label class="form-label" for="{{ comunicazione_form.data_ora.id_for_label }}">
-                        {{ comunicazione_form.data_ora.label }}
-                    </label>
-                    {{ comunicazione_form.data_ora }}
-                </div>
-                {% endif %}
-                <div class="col-md-{% if comunicazioni_formato_data != 'nascosto' and comunicazioni_mostra_allegato %}5{% elif comunicazioni_formato_data != 'nascosto' or comunicazioni_mostra_allegato %}9{% else %}12{% endif %}">
-                    <label class="form-label" for="{{ comunicazione_form.descrizione.id_for_label }}">
-                        {{ comunicazione_form.descrizione.label }}
-                    </label>
-                    {{ comunicazione_form.descrizione }}
-                </div>
-                {% if comunicazioni_mostra_allegato %}
-                <div class="col-md-4">
-                    <label class="form-label" for="{{ comunicazione_form.allegato.id_for_label }}">
-                        Mail o allegato
-                    </label>
-                    <div class="st-drop-zone">
-                        {{ comunicazione_form.allegato }}
-                    </div>
-                </div>
-                {% endif %}
-                <div class="col-12 text-end">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="ti ti-device-floppy"></i>
-                        Registra comunicazione
-                    </button>
-                </div>
-            </div>
-        </form>
+        <div data-com-full>
+            {% url 'pratiche:pratica_update' pratica.pk as pratica_update_url %}
+            {% with com_next_url=pratica_update_url|add:"#comunicazioni" %}
+                {% include "pratiche/partials/comunicazioni_note_cards.html" %}
+            {% endwith %}
 
-        {% if comunicazioni %}
-            <div class="table-responsive">
-                <table class="table table-vcenter mb-0 st-comunicazioni-table">
-                    <thead>
-                        <tr>
-                            <th>
-                                {% if comunicazioni_formato_data == "solo_data" %}
-                                    Data
-                                {% else %}
-                                    Data e ora
-                                {% endif %}
-                            </th>
-                            <th>Descrizione</th>
-                            <th>Allegato</th>
-                            <th class="text-end">Azioni</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for comunicazione in comunicazioni %}
-                            <tr>
-                                <td class="text-secondary text-nowrap">
-                                    {% if comunicazioni_formato_data == "solo_data" %}
-                                        {{ comunicazione.data_ora|date:"d/m/Y" }}
-                                    {% else %}
-                                        {{ comunicazione.data_ora|date:"d/m/Y H:i" }}
-                                    {% endif %}
-                                </td>
-                                <td class="st-comunicazioni-descrizione">{{ comunicazione.descrizione|linebreaksbr }}</td>
-                                <td>
-                                    {% if comunicazione.allegato %}
-                                        <a href="{% url 'pratiche:comunicazione_preview' pratica.pk comunicazione.pk %}"
-                                           target="_blank"
-                                           class="btn btn-outline-primary btn-sm">
-                                            <i class="ti ti-eye"></i>
-                                            {{ comunicazione.allegato_nome }}
-                                        </a>
-                                    {% else %}
-                                        <span class="text-secondary">-</span>
-                                    {% endif %}
-                                </td>
-                                <td class="text-end text-nowrap">
-                                    <div class="st-table-azioni">
-                                        <a href="{% url 'pratiche:comunicazione_update' pratica.pk comunicazione.pk %}?next={% url 'pratiche:pratica_update' pratica.pk %}%23comunicazioni"
-                                           class="btn btn-icon btn-outline-primary"
-                                           title="Modifica comunicazione">
-                                            <i class="ti ti-edit"></i>
-                                        </a>
-                                        <form method="post"
-                                              action="{% url 'pratiche:comunicazione_delete' pratica.pk comunicazione.pk %}"
-                                              data-comunicazione-delete>
-                                            {% csrf_token %}
-                                            <input type="hidden" name="next" value="{% url 'pratiche:pratica_update' pratica.pk %}#comunicazioni">
-                                            <button type="submit"
-                                                    class="btn btn-icon btn-outline-danger"
-                                                    title="Elimina comunicazione">
-                                                <i class="ti ti-trash"></i>
-                                            </button>
-                                        </form>
-                                    </div>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div class="{% if comunicazioni %}mt-3 pt-3 border-top{% endif %}">
+                {% if comunicazioni %}
+                    <h4 class="st-com-new-title">Nuova nota / comunicazione</h4>
+                {% endif %}
+                <form method="post"
+                      action="{% url 'pratiche:comunicazione_create' pratica.pk %}"
+                      enctype="multipart/form-data"
+                      class="st-com-new-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{% url 'pratiche:pratica_update' pratica.pk %}#comunicazioni">
+                    <div class="row g-3">
+                        {% if comunicazioni_formato_data != "nascosto" %}
+                        <div class="col-md-4">
+                            <label class="form-label" for="{{ comunicazione_form.data_ora.id_for_label }}">
+                                {{ comunicazione_form.data_ora.label }}
+                            </label>
+                            {{ comunicazione_form.data_ora }}
+                        </div>
+                        {% endif %}
+                        <div class="col-12">
+                            <label class="form-label" for="{{ comunicazione_form.descrizione.id_for_label }}">
+                                {{ comunicazione_form.descrizione.label }}
+                            </label>
+                            {{ comunicazione_form.descrizione }}
+                        </div>
+                        {% if comunicazioni_mostra_allegato %}
+                        <div class="col-md-6">
+                            <label class="form-label" for="{{ comunicazione_form.allegato.id_for_label }}">
+                                Mail o allegato
+                            </label>
+                            <div class="st-drop-zone">
+                                {{ comunicazione_form.allegato }}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="ti ti-device-floppy"></i>
+                            Salva Comunicazione
+                        </button>
+                    </div>
+                </form>
             </div>
-        {% else %}
-            <div class="text-secondary">Nessuna comunicazione registrata.</div>
-        {% endif %}
+        </div>
+
+        {% include "pratiche/partials/comunicazioni_riepilogo.html" %}
     </div>
 </div>

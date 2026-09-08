@@ -1,0 +1,11 @@
+{% if form.stato_come_radio %}
+<div class="col-12">
+    <div class="st-stato-priorita">
+        {% include "pratiche/partials/form_field_stato.html" with field=form.stato form=form col="st-stato-priorita__stato" %}
+        {% include "pratiche/partials/form_field.html" with field=form.priorita col="st-stato-priorita__priorita" %}
+    </div>
+</div>
+{% else %}
+    {% include "pratiche/partials/form_field_stato.html" with field=form.stato form=form col=stato_col %}
+    {% include "pratiche/partials/form_field.html" with field=form.priorita col=priorita_col %}
+{% endif %}

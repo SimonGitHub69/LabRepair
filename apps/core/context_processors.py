@@ -3,6 +3,11 @@ from django.conf import settings
 from apps.core.negozi import negozio_label, normalize_negozio_code
 from apps.core.pc import get_configurazione_pc_for_request, get_nome_pc_from_request
 from apps.core.programma import get_configurazione_programma, get_layout_stile
+from apps.core.version import get_version
+
+
+def app_info(request):
+    return {"app_version": get_version()}
 
 
 def current_negozio(request):
@@ -32,6 +37,12 @@ def programma_settings(request):
             "cie_reader_on_server": getattr(settings, "CIE_READER_ON_SERVER", True),
             "current_pc_name": "",
             "current_pc_label": "",
+            "busta_stampa_senza_anteprima": False,
+            "pratica_stato_radio": False,
+            "pratica_tasto_salva": "",
+            "pratica_tasto_annulla": "",
+            "pratica_tasto_stampa_busta": "",
+            "pratica_tasto_stampa_privacy": "",
         }
 
     cfg = get_configurazione_programma()
@@ -54,4 +65,14 @@ def programma_settings(request):
         "cie_reader_on_server": getattr(settings, "CIE_READER_ON_SERVER", True),
         "current_pc_name": nome_pc,
         "current_pc_label": str(cfg_pc) if cfg_pc else nome_pc,
+        "busta_stampa_senza_anteprima": bool(
+            getattr(cfg_pc, "busta_stampa_senza_anteprima", False)
+        ),
+        "pratica_stato_radio": bool(getattr(cfg_pc, "pratica_stato_radio", False)),
+        "pratica_tasto_salva": getattr(cfg_pc, "pratica_tasto_salva", "") or "",
+        "pratica_tasto_annulla": getattr(cfg_pc, "pratica_tasto_annulla", "") or "",
+        "pratica_tasto_stampa_busta": getattr(cfg_pc, "pratica_tasto_stampa_busta", "")
+        or "",
+        "pratica_tasto_stampa_privacy": getattr(cfg_pc, "pratica_tasto_stampa_privacy", "")
+        or "",
     }

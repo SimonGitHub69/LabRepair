@@ -1,0 +1,25 @@
+<div class="{{ col|default:'col-md-6' }}" data-textarea-expand-col>
+    <div class="mb-3 st-textarea-expandable" data-textarea-expand>
+        <div class="st-textarea-expand-header">
+            <label class="form-label mb-0" for="{{ field.id_for_label }}">
+                {{ field.label }}{% if field.field.required %}<span class="text-danger"> *</span>{% endif %}
+            </label>
+            <button type="button"
+                    class="btn btn-sm btn-outline-secondary st-textarea-expand-btn"
+                    data-textarea-expand-btn
+                    aria-expanded="false"
+                    title="Allarga {{ field.label }}"
+                    aria-label="Allarga {{ field.label }}">
+                <i class="ti ti-arrows-maximize" data-textarea-expand-icon></i>
+                <span data-textarea-expand-label>Allarga</span>
+            </button>
+        </div>
+        {{ field }}
+        {% if field.help_text %}
+            <div class="form-hint">{{ field.help_text }}</div>
+        {% endif %}
+        {% if field.errors %}
+            <div class="invalid-feedback d-block">{{ field.errors|join:", " }}</div>
+        {% endif %}
+    </div>
+</div>

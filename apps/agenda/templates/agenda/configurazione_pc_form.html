@@ -13,7 +13,7 @@
                 {% if object %}Modifica postazione PC{% else %}Nuova postazione PC{% endif %}
             </h2>
             <div class="text-secondary">
-                Nome fisico del computer, negozio predefinito, stile interfaccia e stampanti
+                Nome fisico del computer, negozio, stile, stampa busta, scorciatoie e stampanti
             </div>
         </div>
     </div>
@@ -101,6 +101,81 @@
                         {% if form.layout_stile.errors %}
                             <div class="invalid-feedback d-block">{{ form.layout_stile.errors|join:", " }}</div>
                         {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-check">
+                            {{ form.busta_stampa_senza_anteprima }}
+                            <span class="form-check-label">{{ form.busta_stampa_senza_anteprima.label }}</span>
+                        </label>
+                        {% if form.busta_stampa_senza_anteprima.help_text %}
+                            <div class="form-hint">{{ form.busta_stampa_senza_anteprima.help_text }}</div>
+                        {% endif %}
+                        {% if form.busta_stampa_senza_anteprima.errors %}
+                            <div class="invalid-feedback d-block">{{ form.busta_stampa_senza_anteprima.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-check">
+                            {{ form.pratica_stato_radio }}
+                            <span class="form-check-label">{{ form.pratica_stato_radio.label }}</span>
+                        </label>
+                        {% if form.pratica_stato_radio.help_text %}
+                            <div class="form-hint">{{ form.pratica_stato_radio.help_text }}</div>
+                        {% endif %}
+                        {% if form.pratica_stato_radio.errors %}
+                            <div class="invalid-feedback d-block">{{ form.pratica_stato_radio.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="mb-3">
+                        <div class="form-label mb-2">Scorciatoie maschera riparazione</div>
+                        <div class="form-hint mb-3">
+                            Tasti rapidi per Salva, Annulla, Stampa busta e Stampa Privacy.
+                            Ogni scorciatoia deve essere diversa.
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label" for="{{ form.pratica_tasto_salva.id_for_label }}">
+                                    {{ form.pratica_tasto_salva.label }}
+                                </label>
+                                {{ form.pratica_tasto_salva }}
+                                {% if form.pratica_tasto_salva.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.pratica_tasto_salva.errors|join:", " }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label" for="{{ form.pratica_tasto_annulla.id_for_label }}">
+                                    {{ form.pratica_tasto_annulla.label }}
+                                </label>
+                                {{ form.pratica_tasto_annulla }}
+                                {% if form.pratica_tasto_annulla.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.pratica_tasto_annulla.errors|join:", " }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label" for="{{ form.pratica_tasto_stampa_busta.id_for_label }}">
+                                    {{ form.pratica_tasto_stampa_busta.label }}
+                                </label>
+                                {{ form.pratica_tasto_stampa_busta }}
+                                {% if form.pratica_tasto_stampa_busta.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.pratica_tasto_stampa_busta.errors|join:", " }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label" for="{{ form.pratica_tasto_stampa_privacy.id_for_label }}">
+                                    {{ form.pratica_tasto_stampa_privacy.label }}
+                                </label>
+                                {{ form.pratica_tasto_stampa_privacy }}
+                                {% if form.pratica_tasto_stampa_privacy.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.pratica_tasto_stampa_privacy.errors|join:", " }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="col-12">

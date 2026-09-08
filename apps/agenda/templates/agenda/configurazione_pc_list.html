@@ -12,7 +12,7 @@ Parametri PC
         <div class="col">
             <h2 class="page-title">Parametri PC</h2>
             <div class="text-secondary">
-                Negozio predefinito, stile grafica e stampanti per ogni postazione
+                Negozio predefinito, stile grafica, stampa busta e stampanti per ogni postazione
             </div>
         </div>
         <div class="col-auto d-flex flex-wrap gap-2">
@@ -88,6 +88,7 @@ Parametri PC
                     <th>Descrizione</th>
                     <th>Negozio</th>
                     <th>Grafica</th>
+                    <th>Busta</th>
                     <th>Stampanti</th>
                     <th class="text-end">Azioni</th>
                 </tr>
@@ -99,6 +100,13 @@ Parametri PC
                         <td>{{ pc.descrizione|default:"-" }}</td>
                         <td>{{ pc.get_negozio_default_display }}</td>
                         <td>{{ pc.get_layout_stile_display }}</td>
+                        <td>
+                            {% if pc.busta_stampa_senza_anteprima %}
+                                <span class="badge bg-azure-lt text-azure">Stampa diretta</span>
+                            {% else %}
+                                <span class="text-secondary">Con anteprima</span>
+                            {% endif %}
+                        </td>
                         <td>
                             {% with stampanti=pc.stampanti_elenco %}
                                 {% if stampanti %}
@@ -146,7 +154,7 @@ Parametri PC
                     </tr>
                 {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center text-secondary py-4">
+                        <td colspan="7" class="text-center text-secondary py-4">
                             Nessuna postazione configurata
                         </td>
                     </tr>

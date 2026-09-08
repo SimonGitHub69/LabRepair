@@ -35,11 +35,42 @@ if ($LASTEXITCODE -ne 0) {
 
 $MssqlReq = Join-Path $Root "requirements-mssql.txt"
 if (Test-Path $MssqlReq) {
-    Write-Host "Tentativo installazione pyodbc (opzionale, sync MSSQL)..."
-    & $Python -m pip install -r $MssqlReq
-    if ($LASTEXITCODE -ne 0) {
-        Write-Warning "pyodbc non installato (normale su Python 3.14 senza Visual C++ Build Tools)."
-        Write-Warning "LabRepair funziona comunque; sync MSSQL/Gestionale resta disabilitato."
+    Write-Host "Verifica pyodbc (sync MSSQL / gestionale)..."
+    & $Python -c "import pyodbc; print('pyodbc', pyodbc.version)" 2>$null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "pyodbc gia' disponibile: sync MSSQL utilizzabile."
+    } else {
+        Write-Host "Tentativo installazione pyodbc..."
+        # 1) Solo wheel precompilata (niente compilazione).
+        & $Python -m pip install --only-binary=:all: -r $MssqlReq
+        if ($LASTEXITCODE -ne 0) {
+            # 2) Compilazione con Visual C++ Build Tools se presenti.
+            $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
+            $vcvars = $null
+            if (Test-Path $vswhere) {
+                $vsPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath 2>$null
+                if ($vsPath) {
+                    $candidate = Join-Path $vsPath "VC\Auxiliary\Build\vcvars64.bat"
+                    if (Test-Path $candidate) { $vcvars = $candidate }
+                }
+            }
+            if ($vcvars) {
+                Write-Host "Build Tools trovati: ricompilo pyodbc con vcvars64..."
+                $pipCmd = "`"$Python`" -m pip install -r `"$MssqlReq`""
+                cmd.exe /c "`"$vcvars`" && $pipCmd"
+            } else {
+                & $Python -m pip install -r $MssqlReq
+            }
+        }
+        & $Python -c "import pyodbc; print('pyodbc', pyodbc.version)" 2>$null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "pyodbc non installato."
+            Write-Warning "Su Python 3.14 serve Visual C++ Build Tools oppure una wheel precompilata."
+            Write-Warning "LabRepair funziona comunque; sync MSSQL/Gestionale resta disabilitato."
+            Write-Warning "Build Tools: https://visualstudio.microsoft.com/visual-cpp-build-tools/"
+        } else {
+            Write-Host "pyodbc installato correttamente."
+        }
     }
 }
 

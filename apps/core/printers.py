@@ -333,8 +333,9 @@ def sync_stampanti_for_postazione(postazione, user=None) -> dict:
 
 def get_stampante_busta_for_request(request):
     """
-    Stampante da usare per i gap busta: preferisce quelle collegate al PC
-    corrente (predefinita se presente), altrimenti la predefinita di sistema.
+    Stampante da usare per i gap busta: preferisce quella marcata
+    «Stampante buste» sulla postazione corrente, poi la predefinita,
+    altrimenti la prima collegata / di sistema.
     """
     from django.db.models import Q
 
@@ -344,13 +345,22 @@ def get_stampante_busta_for_request(request):
     base = Stampante.objects.filter(is_active=True)
     cfg = get_configurazione_pc_for_request(request) if request is not None else None
 
+    def _pick(candidates):
+        if not candidates:
+            return None
+        for stampante in candidates:
+            if stampante.stampante_buste:
+                return stampante
+        for stampante in candidates:
+            if stampante.predefinita:
+                return stampante
+        return candidates[0]
+
     if cfg:
         linked = list(base.filter(configurazione_pc=cfg).order_by("nome"))
-        if linked:
-            for stampante in linked:
-                if stampante.predefinita:
-                    return stampante
-            return linked[0]
+        chosen = _pick(linked)
+        if chosen:
+            return chosen
 
         names = cfg.stampanti_elenco
         if names:
@@ -358,16 +368,32 @@ def get_stampante_busta_for_request(request):
             for nome in names:
                 name_filter |= Q(nome__iexact=nome)
             linked = list(base.filter(name_filter).order_by("nome"))
-            if linked:
-                for stampante in linked:
-                    if stampante.predefinita:
-                        return stampante
-                return linked[0]
+            chosen = _pick(linked)
+            if chosen:
+                return chosen
 
+    preferred_buste = base.filter(stampante_buste=True).order_by("nome").first()
+    if preferred_buste:
+        return preferred_buste
     preferred = base.filter(predefinita=True).order_by("nome").first()
     if preferred:
         return preferred
     return base.order_by("nome").first()
+
+
+def get_stampante_buste_flaggata_for_request(request):
+    """
+    Solo la stampante con flag «Stampante buste» sulla postazione corrente.
+    Usata come destinazione di stampa (agent locale).
+    """
+    from apps.core.models.stampante import Stampante
+    from apps.core.pc import get_configurazione_pc_for_request
+
+    cfg = get_configurazione_pc_for_request(request) if request is not None else None
+    qs = Stampante.objects.filter(is_active=True, stampante_buste=True)
+    if cfg is not None:
+        qs = qs.filter(configurazione_pc=cfg)
+    return qs.order_by("nome").first()
 
 
 def busta_gap_css_vars(stampante) -> dict:

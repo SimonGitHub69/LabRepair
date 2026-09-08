@@ -122,6 +122,15 @@
         {% endif %}
 
     </nav>
+    {% if app_version %}
+    <div class="st-sidebar-version">
+        {% if perms.dashboard.access_sistema %}
+        <a href="{% url 'dashboard:novita' %}" title="Novità e cronologia modifiche">v{{ app_version }}</a>
+        {% else %}
+        <span title="Versione LabRepair">v{{ app_version }}</span>
+        {% endif %}
+    </div>
+    {% endif %}
     <script>
     (function () {
         try {

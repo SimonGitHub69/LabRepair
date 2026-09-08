@@ -8,8 +8,59 @@
     <link rel="icon" href="{% static 'securtek/img/favicon.svg' %}" type="image/svg+xml">
     {# CSS leggeri: niente Tabler completo (rallentava il logout sulla LAN) #}
     <link rel="stylesheet" href="{% static 'securtek/css/variables.css' %}">
-    <link rel="stylesheet" href="{% static 'securtek/css/login.css' %}">
-    <link rel="stylesheet" href="{% static 'vendor/tabler-icons/tabler-icons.min.css' %}">
+    <link rel="stylesheet" href="{% static 'securtek/css/login.css' %}?v={{ app_version }}-pw">
+    <link rel="stylesheet" href="{% static 'vendor/tabler-icons/tabler-icons.min.css' %}?v={{ app_version }}">
+    <style>
+        @font-face {
+            font-family: "tabler-icons";
+            font-style: normal;
+            font-weight: 400;
+            font-display: block;
+            src: url("{% static 'vendor/tabler-icons/fonts/tabler-icons.woff2' %}") format("woff2"),
+                 url("{% static 'vendor/tabler-icons/fonts/tabler-icons.woff' %}") format("woff");
+        }
+        .st-login-page .st-password-field {
+            position: relative;
+        }
+        .st-login-page .st-password-field .form-control {
+            padding-right: 2.75rem;
+        }
+        .st-login-page button.st-password-toggle {
+            appearance: none;
+            -webkit-appearance: none;
+            align-items: center;
+            background: transparent;
+            border: 0;
+            border-radius: 6px;
+            box-shadow: none;
+            color: #8a94a6;
+            cursor: pointer;
+            display: flex;
+            font: inherit;
+            height: 2.25rem;
+            justify-content: center;
+            line-height: 1;
+            margin: 0;
+            padding: 0;
+            position: absolute;
+            right: 0.2rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 2.25rem;
+        }
+        .st-login-page button.st-password-toggle .ti {
+            font-size: 1.15rem;
+            line-height: 1;
+        }
+        .st-login-page button.st-password-toggle:hover,
+        .st-login-page button.st-password-toggle:focus-visible {
+            color: #206bc4;
+        }
+        .st-login-page button.st-password-toggle:focus-visible {
+            outline: 2px solid rgba(32, 107, 196, 0.35);
+            outline-offset: 0;
+        }
+    </style>
 </head>
 <body class="st-login-page">
     <div class="page page-center">
@@ -49,7 +100,17 @@
 
                         <div class="mb-3">
                             <label class="form-label" for="{{ form.password.id_for_label }}">Password</label>
-                            {{ form.password }}
+                            <div class="st-password-field">
+                                {{ form.password }}
+                                <button type="button"
+                                        class="st-password-toggle"
+                                        data-password-toggle
+                                        aria-label="Mostra password"
+                                        aria-pressed="false"
+                                        title="Mostra password">
+                                    <i class="ti ti-eye" data-password-toggle-icon></i>
+                                </button>
+                            </div>
                             {% if form.password.errors %}
                                 <div class="invalid-feedback d-block">{{ form.password.errors|join:", " }}</div>
                             {% endif %}
@@ -64,7 +125,32 @@
                     </form>
                 </div>
             </div>
+            {% if app_version %}
+            <div class="st-login-version">LabRepair {{ app_version }}</div>
+            {% endif %}
         </div>
     </div>
+    <script>
+        (function () {
+            var toggle = document.querySelector("[data-password-toggle]");
+            var icon = document.querySelector("[data-password-toggle-icon]");
+            var input = document.getElementById("{{ form.password.id_for_label }}");
+            if (!toggle || !input) {
+                return;
+            }
+            toggle.addEventListener("click", function () {
+                var visible = input.type === "text";
+                input.type = visible ? "password" : "text";
+                var label = visible ? "Mostra password" : "Nascondi password";
+                toggle.setAttribute("aria-label", label);
+                toggle.setAttribute("title", label);
+                toggle.setAttribute("aria-pressed", visible ? "false" : "true");
+                if (icon) {
+                    icon.classList.toggle("ti-eye", visible);
+                    icon.classList.toggle("ti-eye-off", !visible);
+                }
+            });
+        })();
+    </script>
 </body>
 </html>

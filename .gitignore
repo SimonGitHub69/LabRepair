@@ -56,3 +56,5 @@ tools/nssm/
 
 # Pacchetto installazione troppo grande per GitHub (>100 MB)
 installazione/LabRepair_files.zip
+installazione/LabRepair_client_windows_*.zip
+installazione/LabRepair_client_windows_*.exe

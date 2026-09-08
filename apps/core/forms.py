@@ -362,6 +362,12 @@ class ConfigurazionePCForm(forms.ModelForm):
             "descrizione",
             "negozio_default",
             "layout_stile",
+            "busta_stampa_senza_anteprima",
+            "pratica_stato_radio",
+            "pratica_tasto_salva",
+            "pratica_tasto_annulla",
+            "pratica_tasto_stampa_busta",
+            "pratica_tasto_stampa_privacy",
             "stampanti",
             "note",
         ]
@@ -382,6 +388,14 @@ class ConfigurazionePCForm(forms.ModelForm):
             ),
             "negozio_default": forms.Select(attrs={"class": "form-select"}),
             "layout_stile": forms.RadioSelect(attrs={"class": "form-check-input"}),
+            "busta_stampa_senza_anteprima": forms.CheckboxInput(
+                attrs={"class": "form-check-input"}
+            ),
+            "pratica_stato_radio": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "pratica_tasto_salva": forms.Select(attrs={"class": "form-select"}),
+            "pratica_tasto_annulla": forms.Select(attrs={"class": "form-select"}),
+            "pratica_tasto_stampa_busta": forms.Select(attrs={"class": "form-select"}),
+            "pratica_tasto_stampa_privacy": forms.Select(attrs={"class": "form-select"}),
             "note": forms.Textarea(attrs={"class": "form-control", "rows": 3, "autocomplete": "off"}),
         }
 
@@ -459,12 +473,35 @@ class ConfigurazionePCForm(forms.ModelForm):
 
         return normalize_stampanti(self.cleaned_data.get("stampanti"))
 
+    def clean(self):
+        cleaned_data = super().clean()
+        tasti = {
+            "pratica_tasto_salva": cleaned_data.get("pratica_tasto_salva") or "",
+            "pratica_tasto_annulla": cleaned_data.get("pratica_tasto_annulla") or "",
+            "pratica_tasto_stampa_busta": cleaned_data.get("pratica_tasto_stampa_busta") or "",
+            "pratica_tasto_stampa_privacy": cleaned_data.get("pratica_tasto_stampa_privacy")
+            or "",
+        }
+        assegnati = [(nome, valore) for nome, valore in tasti.items() if valore]
+        valori = [valore for _, valore in assegnati]
+        if len(valori) != len(set(valori)):
+            duplicati = {valore for valore in valori if valori.count(valore) > 1}
+            messaggio = (
+                "Ogni scorciatoia della maschera riparazione deve essere univoca. "
+                f"Duplicati: {', '.join(sorted(duplicati))}."
+            )
+            for nome, valore in assegnati:
+                if valore in duplicati:
+                    self.add_error(nome, messaggio)
+        return cleaned_data
+
 
 class StampanteForm(forms.ModelForm):
     class Meta:
         model = Stampante
         fields = [
             "descrizione",
+            "stampante_buste",
             "gap_busta_superiore",
             "gap_busta_inferiore",
             "note",
@@ -477,6 +514,7 @@ class StampanteForm(forms.ModelForm):
                     "placeholder": "Es. Stampante buste cassa 1",
                 }
             ),
+            "stampante_buste": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "gap_busta_superiore": forms.NumberInput(
                 attrs={
                     "class": "form-control",

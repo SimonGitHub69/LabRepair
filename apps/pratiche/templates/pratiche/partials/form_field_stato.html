@@ -1,0 +1,26 @@
+<div class="{% if form.stato_come_radio %}{{ col|default:'col-12' }}{% else %}{{ col|default:'col-md-6' }}{% endif %}">
+    <div class="mb-3">
+        <label class="form-label{% if form.stato_come_radio %} d-block mb-1{% endif %}"
+               {% if not form.stato_come_radio %}for="{{ field.id_for_label }}"{% endif %}>
+            {{ field.label }}{% if field.field.required %}<span class="text-danger"> *</span>{% endif %}
+        </label>
+        {% if form.stato_come_radio %}
+            <div class="st-stato-radio-group" role="radiogroup" aria-label="{{ field.label }}">
+                {% for option in field %}
+                    <label class="st-stato-radio-option">
+                        {{ option.tag }}
+                        <span class="st-stato-radio-text">{{ option.choice_label }}</span>
+                    </label>
+                {% endfor %}
+            </div>
+        {% else %}
+            {{ field }}
+        {% endif %}
+        {% if field.help_text %}
+            <div class="form-hint">{{ field.help_text }}</div>
+        {% endif %}
+        {% if field.errors %}
+            <div class="invalid-feedback d-block">{{ field.errors|join:", " }}</div>
+        {% endif %}
+    </div>
+</div>

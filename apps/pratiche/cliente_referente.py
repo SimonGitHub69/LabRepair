@@ -1,6 +1,7 @@
 from django.urls import reverse
 
 from apps.anagrafiche.models import Anagrafica, Contatto, Indirizzo
+from apps.pratiche.cliente_documento import is_documento_identita_scaduto
 
 
 def _pick_contatto(anagrafica, tipo):
@@ -16,6 +17,12 @@ def _format_date(value):
     if not value:
         return ""
     return value.strftime("%d/%m/%Y")
+
+
+def _format_date_iso(value):
+    if not value:
+        return ""
+    return value.isoformat()
 
 
 def _get_residenza(anagrafica):
@@ -78,6 +85,7 @@ def get_referente_from_cliente(anagrafica):
     cellulare = anagrafica.cellulare or _pick_contatto(anagrafica, Contatto.TipoContatto.CELLULARE)
     email = anagrafica.email or _pick_contatto(anagrafica, Contatto.TipoContatto.EMAIL)
     indirizzo = _format_indirizzo(_get_residenza(anagrafica))
+    documento_scaduto = is_documento_identita_scaduto(anagrafica)
 
     return {
         "nome": anagrafica.nome or "",
@@ -103,6 +111,10 @@ def get_referente_from_cliente(anagrafica):
             "documento_rilasciato_da": anagrafica.documento_rilasciato_da or "",
             "documento_data_rilascio": _format_date(anagrafica.documento_data_rilascio),
             "documento_data_scadenza": _format_date(anagrafica.documento_data_scadenza),
+            "documento_data_rilascio_iso": _format_date_iso(anagrafica.documento_data_rilascio),
+            "documento_data_scadenza_iso": _format_date_iso(anagrafica.documento_data_scadenza),
+            "stampa_privacy": bool(anagrafica.stampa_privacy),
+            "documento_scaduto": documento_scaduto,
             "residenza": indirizzo["label"],
             "residenza_via": indirizzo["via"],
             "residenza_cap": indirizzo["cap"],
@@ -113,6 +125,10 @@ def get_referente_from_cliente(anagrafica):
                 kwargs={"pk": anagrafica.pk},
             )
             + "?tipo=cliente&prezioso=1",
+            "documento_update_url": reverse(
+                "anagrafiche:documento_update",
+                kwargs={"pk": anagrafica.pk},
+            ),
         },
     }
 

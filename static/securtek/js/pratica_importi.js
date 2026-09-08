@@ -94,6 +94,92 @@
         });
     }
 
+    function setImportiDettaglioVisible(visible) {
+        const detail = document.getElementById("praticaImportiDettaglio");
+        const toggle = document.querySelector("[data-importi-dettaglio-toggle]");
+        if (!detail || !toggle) {
+            return;
+        }
+
+        detail.hidden = !visible;
+        toggle.setAttribute("aria-expanded", visible ? "true" : "false");
+        toggle.title = visible ? "Nascondi dettaglio costi" : "Mostra dettaglio costi";
+        toggle.classList.toggle("is-active", visible);
+
+        const icon = toggle.querySelector("[data-importi-dettaglio-icon]");
+        if (icon) {
+            icon.classList.toggle("ti-eye", !visible);
+            icon.classList.toggle("ti-eye-off", visible);
+        }
+    }
+
+    window.labrepairRevealImportiDettaglio = function () {
+        setImportiDettaglioVisible(true);
+    };
+
+    function detailHasVisibleErrors(detail) {
+        if (!detail) {
+            return false;
+        }
+        return !!detail.querySelector(
+            ".invalid-feedback.d-block, .is-invalid, .form-control.is-invalid"
+        );
+    }
+
+    function initImportiDettaglioToggle() {
+        const detail = document.getElementById("praticaImportiDettaglio");
+        const toggle = document.querySelector("[data-importi-dettaglio-toggle]");
+        if (!detail || !toggle) {
+            return;
+        }
+
+        // Di default nascosto; apri solo se ci sono errori server sul dettaglio.
+        setImportiDettaglioVisible(detailHasVisibleErrors(detail));
+
+        toggle.addEventListener("click", function () {
+            setImportiDettaglioVisible(detail.hidden);
+        });
+    }
+
+    function bindSelectOnFocus(field) {
+        if (!field || field.dataset.selectOnFocusBound === "1") {
+            return;
+        }
+        field.dataset.selectOnFocusBound = "1";
+
+        field.addEventListener("focus", function () {
+            // Seleziona tutto al focus: digitando sostituisci il valore (es. 50,00 → 5).
+            const el = field;
+            requestAnimationFrame(function () {
+                try {
+                    el.select();
+                } catch (error) {
+                    // ignore
+                }
+            });
+            // Chrome/Edge annullano la selezione al mouseup dopo click-focus.
+            function onMouseUp(event) {
+                event.preventDefault();
+                el.removeEventListener("mouseup", onMouseUp);
+            }
+            el.addEventListener("mouseup", onMouseUp);
+        });
+    }
+
+    function initSelectOnFocusAmountFields() {
+        [
+            "id_peso_grammi",
+            "id_costo_lavorazione",
+            "id_costo_materiale",
+            "id_oro_aggiunto",
+            "id_prezzo_unita",
+            "id_prezzo_al",
+            "id_prezzo_pagato",
+        ].forEach(function (id) {
+            bindSelectOnFocus(document.getElementById(id));
+        });
+    }
+
     function initPraticaImporti() {
         const tipoOggettoField = document.getElementById("id_tipo_oggetto");
 
@@ -103,6 +189,8 @@
         bindCostoTotaleField(document.getElementById("id_prezzo_unita"));
         bindSenzaSpesaClear();
         updateCostoTotale();
+        initImportiDettaglioToggle();
+        initSelectOnFocusAmountFields();
 
         if (tipoOggettoField) {
             tipoOggettoField.addEventListener("change", updatePrezzoUnitaLabel);

@@ -31,7 +31,7 @@
 
     const PESO_REQUIRED = {
         id: "id_peso_grammi",
-        message: "Inserisci il peso per gli oggetti preziosi.",
+        message: "Inserisci il peso quando è indicato il tipo di metallo.",
     };
 
     const CENTRO_REQUIRED = {
@@ -67,6 +67,11 @@
     function isPrezioso() {
         const tipologia = document.getElementById("id_tipologia");
         return Boolean(tipologia && tipologia.value === "prezioso");
+    }
+
+    function hasTipoMetallo() {
+        const metallo = document.getElementById("id_tipo_metallo");
+        return Boolean(metallo && String(metallo.value || "").trim());
     }
 
     function isAssistenzaRiparatore() {
@@ -146,7 +151,7 @@
 
     function getRequiredFields() {
         const fields = REQUIRED_FIELDS.slice();
-        if (isPrezioso()) {
+        if (isPrezioso() && hasTipoMetallo()) {
             fields.splice(4, 0, PESO_REQUIRED);
         }
         if (isAssistenzaRiparatore()) {
@@ -199,7 +204,7 @@
         }
 
         if (config.id === "id_peso_grammi") {
-            if (!isPrezioso()) {
+            if (!isPrezioso() || !hasTipoMetallo()) {
                 return true;
             }
             const raw = (field.value || "").trim().replace(",", ".");
@@ -247,6 +252,16 @@
 
         if (!target) {
             return;
+        }
+
+        const importiDettaglio = document.getElementById("praticaImportiDettaglio");
+        if (
+            importiDettaglio &&
+            importiDettaglio.hidden &&
+            importiDettaglio.contains(target) &&
+            typeof window.labrepairRevealImportiDettaglio === "function"
+        ) {
+            window.labrepairRevealImportiDettaglio();
         }
 
         target.focus({ preventScroll: false });

@@ -20,12 +20,13 @@ def documento_scaduto_message(cliente):
     if scadenza_label:
         return (
             f"Il documento di identità di {nome} è scaduto il {scadenza_label}. "
-            "Aggiorna la scheda anagrafica con un documento in corso di validità "
-            "prima di proseguire con la riparazione preziosa."
+            "Aggiorna i dati nella sezione «Documento di identità» e premi "
+            "«Salva documento» prima di proseguire con la riparazione preziosa."
         )
     return (
         f"Il documento di identità di {nome} risulta scaduto. "
-        "Aggiorna la scheda anagrafica prima di proseguire con la riparazione preziosa."
+        "Aggiorna i dati nella sezione «Documento di identità» prima di proseguire "
+        "con la riparazione preziosa."
     )
 
 

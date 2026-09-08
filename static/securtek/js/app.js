@@ -57,10 +57,62 @@ function initCurrentYearDateFields() {
 
 function initCollapsibleSections() {
     function setSectionCollapsed(button, section, collapsed, persist) {
-        section.hidden = collapsed;
+        const summaryMode = button.dataset.collapseMode === "summary";
+        const full = section.querySelector("[data-com-full]");
+        const summary = section.querySelector("[data-com-riepilogo]");
+
+        if (summaryMode && (full || summary)) {
+            // Note e Comunicazioni: Chiudi → riepilogo; Espandi → vista completa aperta.
+            section.hidden = false;
+            section.removeAttribute("hidden");
+            section.classList.toggle("is-riepilogo", collapsed);
+
+            if (full) {
+                if (collapsed) {
+                    full.setAttribute("hidden", "");
+                    full.hidden = true;
+                } else {
+                    // Espandi: forza tutta la sezione aperta (form + elenco completo).
+                    full.hidden = false;
+                    full.removeAttribute("hidden");
+                    full.style.removeProperty("display");
+                }
+            }
+            if (summary) {
+                if (collapsed) {
+                    summary.hidden = false;
+                    summary.removeAttribute("hidden");
+                    summary.querySelectorAll("details[data-com-day]").forEach(function (day) {
+                        day.open = true;
+                    });
+                } else {
+                    summary.hidden = true;
+                    summary.setAttribute("hidden", "");
+                }
+            }
+        } else {
+            section.hidden = collapsed;
+            section.classList.remove("is-riepilogo");
+        }
+
         button.classList.toggle("is-collapsed", collapsed);
         button.setAttribute("aria-expanded", collapsed ? "false" : "true");
-        button.title = collapsed ? "Espandi sezione" : "Comprimi sezione";
+        button.title = collapsed
+            ? summaryMode
+                ? "Apri elenco completo"
+                : "Espandi sezione"
+            : summaryMode
+              ? "Mostra riepilogo per data"
+              : "Comprimi sezione";
+
+        const label = button.querySelector("[data-collapse-label]");
+        if (label) {
+            label.textContent = collapsed
+                ? summaryMode
+                    ? "Espandi"
+                    : "Apri"
+                : "Chiudi";
+        }
 
         if (persist && button.dataset.storageKey) {
             localStorage.setItem(button.dataset.storageKey, collapsed ? "1" : "0");
@@ -85,26 +137,36 @@ function initCollapsibleSections() {
         ].join(":");
 
         button.dataset.collapseReady = "1";
-        setSectionCollapsed(
-            button,
-            section,
-            localStorage.getItem(button.dataset.storageKey) === "1",
-            false
-        );
+
+        // data-collapse-default="open" → sempre aperta all'ingresso (es. Note e Comunicazioni).
+        let collapsed = localStorage.getItem(button.dataset.storageKey) === "1";
+        if (button.dataset.collapseDefault === "open") {
+            collapsed = false;
+        } else if (button.dataset.collapseDefault === "collapsed") {
+            collapsed = true;
+        }
+
+        setSectionCollapsed(button, section, collapsed, false);
 
         button.addEventListener("click", function () {
-            setSectionCollapsed(button, section, !section.hidden, true);
+            // Usa aria-expanded come stato affidabile (vista completa vs riepilogo).
+            const currentlyCollapsed = button.getAttribute("aria-expanded") === "false";
+            setSectionCollapsed(button, section, !currentlyCollapsed, true);
         });
     });
 
     if (window.location.hash === "#comunicazioni") {
-        const panel = document.getElementById("practice-communications-panel");
+        const panel =
+            document.getElementById("practice-communications-panel") ||
+            document.getElementById("practice-communications-section");
         const toggle = document.querySelector(
             '[data-collapse-target="practice-communications-panel"], [data-collapse-target="practice-communications-section"]'
         );
         if (panel && toggle) {
             setSectionCollapsed(toggle, panel, false, true);
-            document.getElementById("comunicazioni")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            (
+                document.getElementById("comunicazioni") || panel.closest(".card")
+            )?.scrollIntoView({ behavior: "smooth", block: "start" });
         }
     }
 }
@@ -441,12 +503,12 @@ function initLogoutOnClose() {
     let sent = false;
 
     document.addEventListener("click", function (event) {
-        const link = event.target.closest("a[href]");
+        const link = event.target.closest("a[href], a[data-st-nav-href]");
         if (!link) {
             return;
         }
 
-        const href = link.getAttribute("href");
+        const href = link.getAttribute("href") || link.dataset.stNavHref || "";
         if (!href || href.charAt(0) === "#" || link.target === "_blank") {
             return;
         }
@@ -478,6 +540,21 @@ function initLogoutOnClose() {
             markLabRepairLeavingPage();
         }
     }, true);
+
+    // Cambio "Righe" (10/20/50/100): navigazione via JS, non passa dai click sui link.
+    document.addEventListener(
+        "change",
+        function (event) {
+            const select = event.target && event.target.closest
+                ? event.target.closest("[data-page-size-select]")
+                : null;
+            if (!select) {
+                return;
+            }
+            markLabRepairLeavingPage();
+        },
+        true
+    );
 
     window.addEventListener("pageshow", function (event) {
         labrepairLeavingPage = false;
@@ -624,12 +701,18 @@ document.addEventListener("DOMContentLoaded", function () {
 
     document.querySelectorAll(".st-sidebar .st-nav-link").forEach(function (link) {
         link.addEventListener("click", function () {
+            if (typeof window.markLabRepairLeavingPage === "function") {
+                window.markLabRepairLeavingPage();
+            }
             saveSidebarScroll();
             if (window.matchMedia("(max-width: 991.98px)").matches) {
                 closeSidebar();
             }
         });
     });
+
+    // Non rimuovere href al hover: in modalita' App faceva scattare "Uscire dall'app?"
+    // sui click del menu. Il palloncino URL non compare comunque nella finestra --app.
 
     window.addEventListener("pagehide", saveSidebarScroll);
 });

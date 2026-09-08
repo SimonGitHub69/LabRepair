@@ -43,6 +43,14 @@ class Stampante(BaseModel):
     porta = models.CharField("Porta", max_length=200, blank=True)
     driver = models.CharField("Driver", max_length=200, blank=True)
     predefinita = models.BooleanField("Predefinita di sistema", default=False)
+    stampante_buste = models.BooleanField(
+        "Stampante buste",
+        default=False,
+        help_text=(
+            "Se attivo, questa stampante viene usata per la stampa buste "
+            "di questa postazione (gap e selezione)."
+        ),
+    )
 
     class Meta:
         verbose_name = "Stampante"
@@ -71,3 +79,13 @@ class Stampante(BaseModel):
         if self.gap_busta_inferiore is None:
             self.gap_busta_inferiore = Decimal("0.00")
         super().save(*args, **kwargs)
+        if self.stampante_buste and self.configurazione_pc_id and self.is_active:
+            (
+                Stampante.objects.filter(
+                    configurazione_pc_id=self.configurazione_pc_id,
+                    is_active=True,
+                    stampante_buste=True,
+                )
+                .exclude(pk=self.pk)
+                .update(stampante_buste=False)
+            )

@@ -25,15 +25,17 @@
             {% if object %}
             <a href="{% url 'pratiche:pratica_busta_print' object.pk %}"
                class="btn btn-outline-secondary"
-               data-busta-open>
+               data-busta-open
+               {% if pratica_tasto_stampa_busta %}title="Scorciatoia: {{ pratica_tasto_stampa_busta }}"{% endif %}>
                 <i class="ti ti-printer"></i>
-                Stampa busta
+                Stampa busta{% if pratica_tasto_stampa_busta %} <span class="text-secondary">({{ pratica_tasto_stampa_busta }})</span>{% endif %}
             </a>
             <a href="{% url 'pratiche:pratica_privacy_print' object.pk %}"
                class="btn btn-outline-secondary"
-               data-privacy-open>
+               data-privacy-open
+               {% if pratica_tasto_stampa_privacy %}title="Scorciatoia: {{ pratica_tasto_stampa_privacy }}"{% endif %}>
                 <i class="ti ti-file-type-pdf"></i>
-                Stampa Privacy
+                Stampa Privacy{% if pratica_tasto_stampa_privacy %} <span class="text-secondary">({{ pratica_tasto_stampa_privacy }})</span>{% endif %}
             </a>
             {% endif %}
 
@@ -99,8 +101,7 @@
                                 </div>
                             </div>
                             {% include "pratiche/partials/form_field.html" with field=form.data_apertura col="col-6 col-md-4 col-xl-3" %}
-                            {% include "pratiche/partials/form_field.html" with field=form.stato col="col-6 col-md-4 col-xl-3" %}
-                            {% include "pratiche/partials/form_field.html" with field=form.priorita col="col-6 col-md-4 col-xl-3" %}
+                            {% include "pratiche/partials/form_stato_priorita.html" with stato_col="col-12 col-md-8 col-xl-6" priorita_col="col-6 col-md-4 col-xl-3" %}
                         {% else %}
                             {% include "pratiche/partials/form_field.html" with field=form.operatore col="col-md-6 col-lg-4" %}
                             {% include "pratiche/partials/cliente_search_field.html" with form=form col="col-12" referente_url_template=cliente_referente_url_template %}
@@ -121,8 +122,7 @@
                                 </div>
                             </div>
                             {% include "pratiche/partials/form_field.html" with field=form.data_apertura col="col-md-6 col-lg-4" %}
-                            {% include "pratiche/partials/form_field.html" with field=form.stato col="col-md-6 col-lg-4" %}
-                            {% include "pratiche/partials/form_field.html" with field=form.priorita col="col-md-6 col-lg-4" %}
+                            {% include "pratiche/partials/form_stato_priorita.html" with stato_col="col-12 col-lg-8" priorita_col="col-md-6 col-lg-4" %}
                         {% endif %}
                     </div>
                 </div>
@@ -133,7 +133,7 @@
                     <div class="st-form-section-icon icon-purple">
                         <i class="ti ti-diamond"></i>
                     </div>
-                    <h3 class="card-title mb-0">Oggetto{% if layout_stile == 'compatta' %} e note{% endif %}</h3>
+                    <h3 class="card-title mb-0">Oggetto</h3>
                 </div>
                 <div class="card-body">
                     <div class="row">
@@ -141,20 +141,21 @@
                             {% include "pratiche/partials/form_field.html" with field=form.tipo_oggetto col="col-6 col-md-4" %}
                             {% include "pratiche/partials/form_field.html" with field=form.tipologia col="col-6 col-md-4" %}
                             {% include "pratiche/partials/form_field.html" with field=form.data_scadenza col="col-6 col-md-4" %}
-                            {% include "pratiche/partials/form_field.html" with field=form.peso_grammi col="col-6 col-md-4" %}
                             {% include "pratiche/partials/form_field.html" with field=form.tipo_metallo col="col-6 col-md-4" %}
-                            {% include "pratiche/partials/form_field.html" with field=form.descrizione col="col-12 col-xl-8" %}
-                            {% include "pratiche/partials/form_field.html" with field=form.note col="col-12 col-xl-4" %}
+                            {% include "pratiche/partials/form_field.html" with field=form.peso_grammi col="col-6 col-md-4" %}
+                            {# Chiude la riga di peso/metallo: evita che Descrizione si infili a fianco lasciando un buco. #}
+                            <div class="w-100"></div>
+                            {% include "pratiche/partials/form_textarea_expandable.html" with field=form.descrizione col="col-12" %}
                             <div class="col-12">
                                 {% include "pratiche/partials/pratica_foto_field.html" with pratica_foto=pratica_foto allow_delete=True %}
                             </div>
                         {% else %}
                             {% include "pratiche/partials/form_field.html" with field=form.tipo_oggetto col="col-md-6" %}
-                            {% include "pratiche/partials/form_field.html" with field=form.descrizione col="col-12" %}
+                            {% include "pratiche/partials/form_textarea_expandable.html" with field=form.descrizione col="col-12" %}
                             {% include "pratiche/partials/form_field.html" with field=form.data_scadenza col="col-md-6" %}
                             {% include "pratiche/partials/form_field.html" with field=form.tipologia col="col-md-6" %}
-                            {% include "pratiche/partials/form_field.html" with field=form.peso_grammi col="col-md-4" %}
                             {% include "pratiche/partials/form_field.html" with field=form.tipo_metallo col="col-md-4" %}
+                            {% include "pratiche/partials/form_field.html" with field=form.peso_grammi col="col-md-4" %}
                             <div class="col-12">
                                 {% include "pratiche/partials/pratica_foto_field.html" with pratica_foto=pratica_foto allow_delete=True %}
                             </div>
@@ -162,22 +163,6 @@
                     </div>
                 </div>
             </div>
-
-            {% if layout_stile != 'compatta' %}
-            <div class="card st-form-section">
-                <div class="card-header">
-                    <div class="st-form-section-icon icon-green">
-                        <i class="ti ti-notes"></i>
-                    </div>
-                    <h3 class="card-title mb-0">Note</h3>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        {% include "pratiche/partials/form_field.html" with field=form.note col="col-12" %}
-                    </div>
-                </div>
-            </div>
-            {% endif %}
         </div>
 
         <div class="col-lg-5 d-grid {% if layout_stile == 'compatta' %}gap-2{% else %}gap-3{% endif %}">
@@ -193,64 +178,78 @@
                     <div class="row">
                         {% include "pratiche/partials/form_field.html" with field=form.data_riparatore col="col-6" %}
                         {% include "pratiche/partials/form_field.html" with field=form.data_rientro col="col-6" %}
-                        {% include "pratiche/partials/form_field.html" with field=form.data_vendita col="col-12" %}
+                        {% include "pratiche/partials/form_field.html" with field=form.data_vendita col="col-6" %}
                     </div>
                 </div>
             </div>
 
-            <div class="card st-form-section">
+            <div class="card st-form-section" data-importi-section>
                 <div class="card-header">
                     <div class="st-form-section-icon">
                         <i class="ti ti-cash"></i>
                     </div>
                     <h3 class="card-title mb-0">Importi</h3>
+                    <div class="card-actions">
+                        <button type="button"
+                                class="btn btn-icon btn-sm btn-outline-secondary"
+                                data-importi-dettaglio-toggle
+                                aria-controls="praticaImportiDettaglio"
+                                aria-expanded="false"
+                                title="Mostra dettaglio costi">
+                            <i class="ti ti-eye" data-importi-dettaglio-icon></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body">
-                    <div class="row">
-                        {% include "pratiche/partials/form_field.html" with field=form.costo_lavorazione col="col-6" %}
-                        {% include "pratiche/partials/form_field.html" with field=form.costo_materiale col="col-6" %}
-                        <div class="col-6">
-                            <div class="mb-3">
-                                <label class="form-label" for="{{ form.oro_aggiunto.id_for_label }}" id="pesoAggiuntoLabel">
-                                    {{ form.oro_aggiunto.label }}
-                                </label>
-                                {{ form.oro_aggiunto }}
-                                {% if form.oro_aggiunto.errors %}
-                                    <div class="invalid-feedback d-block">{{ form.oro_aggiunto.errors|join:", " }}</div>
-                                {% endif %}
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div class="mb-3">
-                                <label class="form-label" for="{{ form.prezzo_unita.id_for_label }}" id="prezzoUnitaLabel">
-                                    {{ form.prezzo_unita.label }}
-                                </label>
-                                {{ form.prezzo_unita }}
-                                {% if form.prezzo_unita.errors %}
-                                    <div class="invalid-feedback d-block">{{ form.prezzo_unita.errors|join:", " }}</div>
-                                {% endif %}
-                            </div>
-                        </div>
-                        <div class="col-12 st-costo-totale-field">
-                            <div class="mb-3 st-compact-totale">
-                                <label class="form-label" for="costoTotaleDisplay">Costo totale</label>
-                                <input type="text"
-                                       id="costoTotaleDisplay"
-                                       class="form-control st-costo-totale-display"
-                                       value="0.00"
-                                       readonly
-                                       tabindex="-1"
-                                       aria-readonly="true"
-                                       title="Calcolato: lavorazione + materiale + (peso aggiunto × prezzo al gr/ct).">
-                                <div class="form-check mt-1">
-                                    {{ form.senza_spesa }}
-                                    <label class="form-check-label" for="{{ form.senza_spesa.id_for_label }}">
-                                        {{ form.senza_spesa.label }}
-                                    </label>
+                    <div class="row g-2 st-importi-grid">
+                        <div class="col-12 st-importi-dettaglio" id="praticaImportiDettaglio" hidden>
+                            <div class="row g-2">
+                                {% include "pratiche/partials/form_field.html" with field=form.costo_lavorazione col="col-6" %}
+                                {% include "pratiche/partials/form_field.html" with field=form.costo_materiale col="col-6" %}
+                                <div class="col-6">
+                                    <div class="mb-0">
+                                        <label class="form-label" for="{{ form.oro_aggiunto.id_for_label }}" id="pesoAggiuntoLabel">
+                                            {{ form.oro_aggiunto.label }}
+                                        </label>
+                                        {{ form.oro_aggiunto }}
+                                        {% if form.oro_aggiunto.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.oro_aggiunto.errors|join:", " }}</div>
+                                        {% endif %}
+                                    </div>
                                 </div>
-                                {% if form.senza_spesa.errors %}
-                                    <div class="invalid-feedback d-block">{{ form.senza_spesa.errors|join:", " }}</div>
-                                {% endif %}
+                                <div class="col-6">
+                                    <div class="mb-0">
+                                        <label class="form-label" for="{{ form.prezzo_unita.id_for_label }}" id="prezzoUnitaLabel">
+                                            {{ form.prezzo_unita.label }}
+                                        </label>
+                                        {{ form.prezzo_unita }}
+                                        {% if form.prezzo_unita.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.prezzo_unita.errors|join:", " }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-6 st-costo-totale-field">
+                                    <div class="mb-0 st-compact-totale">
+                                        <label class="form-label" for="costoTotaleDisplay">Costo totale</label>
+                                        <input type="text"
+                                               id="costoTotaleDisplay"
+                                               class="form-control st-costo-totale-display"
+                                               value="0.00"
+                                               readonly
+                                               tabindex="-1"
+                                               aria-readonly="true"
+                                               title="Calcolato: lavorazione + materiale + (peso aggiunto × prezzo al gr/ct).">
+                                        <div class="form-check mt-1 mb-0">
+                                            {{ form.senza_spesa }}
+                                            <label class="form-check-label" for="{{ form.senza_spesa.id_for_label }}">
+                                                {{ form.senza_spesa.label }}
+                                            </label>
+                                        </div>
+                                        {% if form.senza_spesa.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.senza_spesa.errors|join:", " }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         {% include "pratiche/partials/form_field.html" with field=form.prezzo_al col="col-6" %}
@@ -275,60 +274,74 @@
                 </div>
             </div>
 
-            <div class="card st-form-section">
+            <div class="card st-form-section" data-importi-section>
                 <div class="card-header">
                     <div class="st-form-section-icon">
                         <i class="ti ti-cash"></i>
                     </div>
                     <h3 class="card-title mb-0">Importi</h3>
+                    <div class="card-actions">
+                        <button type="button"
+                                class="btn btn-icon btn-sm btn-outline-secondary"
+                                data-importi-dettaglio-toggle
+                                aria-controls="praticaImportiDettaglio"
+                                aria-expanded="false"
+                                title="Mostra dettaglio costi">
+                            <i class="ti ti-eye" data-importi-dettaglio-icon></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body">
-                    <div class="row">
-                        {% include "pratiche/partials/form_field.html" with field=form.costo_lavorazione col="col-md-6" %}
-                        {% include "pratiche/partials/form_field.html" with field=form.costo_materiale col="col-md-6" %}
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label" for="{{ form.oro_aggiunto.id_for_label }}" id="pesoAggiuntoLabel">
-                                    {{ form.oro_aggiunto.label }}
-                                </label>
-                                {{ form.oro_aggiunto }}
-                                {% if form.oro_aggiunto.errors %}
-                                    <div class="invalid-feedback d-block">{{ form.oro_aggiunto.errors|join:", " }}</div>
-                                {% endif %}
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label" for="{{ form.prezzo_unita.id_for_label }}" id="prezzoUnitaLabel">
-                                    {{ form.prezzo_unita.label }}
-                                </label>
-                                {{ form.prezzo_unita }}
-                                {% if form.prezzo_unita.errors %}
-                                    <div class="invalid-feedback d-block">{{ form.prezzo_unita.errors|join:", " }}</div>
-                                {% endif %}
-                            </div>
-                        </div>
-                        <div class="col-md-6 offset-md-6 st-costo-totale-field">
-                            <div class="mb-3">
-                                <label class="form-label" for="costoTotaleDisplay">Costo totale</label>
-                                <input type="text"
-                                       id="costoTotaleDisplay"
-                                       class="form-control st-costo-totale-display"
-                                       value="0.00"
-                                       readonly
-                                       tabindex="-1"
-                                       aria-readonly="true"
-                                       title="Calcolato: lavorazione + materiale + (peso aggiunto × prezzo al gr/ct).">
-                                <div class="form-check mt-2">
-                                    {{ form.senza_spesa }}
-                                    <label class="form-check-label" for="{{ form.senza_spesa.id_for_label }}">
-                                        {{ form.senza_spesa.label }}
-                                    </label>
+                    <div class="row g-2 st-importi-grid">
+                        <div class="col-12 st-importi-dettaglio" id="praticaImportiDettaglio" hidden>
+                            <div class="row g-2">
+                                {% include "pratiche/partials/form_field.html" with field=form.costo_lavorazione col="col-md-6" %}
+                                {% include "pratiche/partials/form_field.html" with field=form.costo_materiale col="col-md-6" %}
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label" for="{{ form.oro_aggiunto.id_for_label }}" id="pesoAggiuntoLabel">
+                                            {{ form.oro_aggiunto.label }}
+                                        </label>
+                                        {{ form.oro_aggiunto }}
+                                        {% if form.oro_aggiunto.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.oro_aggiunto.errors|join:", " }}</div>
+                                        {% endif %}
+                                    </div>
                                 </div>
-                                {% if form.senza_spesa.errors %}
-                                    <div class="invalid-feedback d-block">{{ form.senza_spesa.errors|join:", " }}</div>
-                                {% endif %}
-                                <div class="form-text">Con stato «In consegna»: Costo totale e Prezzo al Pubblico, oppure Senza Spesa.</div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label" for="{{ form.prezzo_unita.id_for_label }}" id="prezzoUnitaLabel">
+                                            {{ form.prezzo_unita.label }}
+                                        </label>
+                                        {{ form.prezzo_unita }}
+                                        {% if form.prezzo_unita.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.prezzo_unita.errors|join:", " }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6 st-costo-totale-field">
+                                    <div class="mb-3 st-compact-totale">
+                                        <label class="form-label" for="costoTotaleDisplay">Costo totale</label>
+                                        <input type="text"
+                                               id="costoTotaleDisplay"
+                                               class="form-control st-costo-totale-display"
+                                               value="0.00"
+                                               readonly
+                                               tabindex="-1"
+                                               aria-readonly="true"
+                                               title="Calcolato: lavorazione + materiale + (peso aggiunto × prezzo al gr/ct).">
+                                        <div class="form-check mt-2">
+                                            {{ form.senza_spesa }}
+                                            <label class="form-check-label" for="{{ form.senza_spesa.id_for_label }}">
+                                                {{ form.senza_spesa.label }}
+                                            </label>
+                                        </div>
+                                        {% if form.senza_spesa.errors %}
+                                            <div class="invalid-feedback d-block">{{ form.senza_spesa.errors|join:", " }}</div>
+                                        {% endif %}
+                                        <div class="form-text">Con stato «In consegna»: Costo totale e Prezzo al Pubblico, oppure Senza Spesa.</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         {% include "pratiche/partials/form_field.html" with field=form.prezzo_al col="col-md-6" %}
@@ -341,12 +354,27 @@
     </div>
 
                 <div class="st-form-actions">
-        <a href="{{ cancel_url }}" class="btn btn-outline-secondary">
-            Annulla
+        <a href="{{ cancel_url }}"
+           class="btn btn-outline-secondary"
+           data-pratica-annulla
+           {% if pratica_tasto_annulla %}title="Scorciatoia: {{ pratica_tasto_annulla }}"{% endif %}>
+            Annulla{% if pratica_tasto_annulla %} <span class="text-secondary">({{ pratica_tasto_annulla }})</span>{% endif %}
         </a>
-        <button type="submit" class="btn btn-primary">
+        {% if not object %}
+        <button type="button"
+                class="btn btn-outline-primary"
+                data-busta-save-print
+                title="Salva la riparazione e stampa la busta (anteprima o diretta secondo Parametri PC)">
+            <i class="ti ti-printer"></i>
+            Stampa busta + Salva{% if pratica_tasto_stampa_busta %} <span class="text-secondary">({{ pratica_tasto_stampa_busta }})</span>{% endif %}
+        </button>
+        {% endif %}
+        <button type="submit"
+                class="btn btn-primary"
+                data-pratica-salva
+                {% if pratica_tasto_salva %}title="Scorciatoia: {{ pratica_tasto_salva }}"{% endif %}>
             <i class="ti ti-device-floppy"></i>
-            Salva
+            Salva{% if pratica_tasto_salva %} <span class="opacity-75">({{ pratica_tasto_salva }})</span>{% endif %}
         </button>
     </div>
 </form>
@@ -356,25 +384,33 @@
 {% endif %}
 
 {% include "partials/webcam_modal.html" %}
-{% include "partials/busta_print_modal.html" %}
+{% url 'pratiche:pratica_list' as pratica_list_url %}
+{% include "partials/busta_print_modal.html" with busta_return_url=pratica_list_url %}
 {% include "partials/privacy_print_modal.html" %}
 {% include "partials/confirm_dialog.html" %}
+
+{# Form esterno: i campi documento usano form="clienteDocumentoForm" (no nested form). #}
+<form id="clienteDocumentoForm" method="post" hidden aria-hidden="true"></form>
 
 {% endblock %}
 
 {% block extra_js %}
 {{ block.super }}
 <script src="{% static 'securtek/js/name_case.js' %}"></script>
-<script src="{% static 'securtek/js/cliente_search.js' %}"></script>
-<script src="{% static 'securtek/js/pratica_required.js' %}?v=20260725d"></script>
-<script src="{% static 'securtek/js/pratica_importi.js' %}"></script>
+<script src="{% static 'securtek/js/cliente_search.js' %}?v=20260905-documento"></script>
+<script src="{% static 'securtek/js/pratica_required.js' %}?v=20260907-peso-metallo"></script>
+<script src="{% static 'securtek/js/pratica_importi.js' %}?v=20260907-select"></script>
 <script src="{% static 'securtek/js/pratica_foto.js' %}"></script>
 <script src="{% static 'securtek/js/webcam_capture.js' %}"></script>
-<script src="{% static 'securtek/js/pratica_save_before_print.js' %}?v=20260722b"></script>
-<script src="{% static 'securtek/js/busta_print.js' %}?v=20260729-css"></script>
+<script src="{% static 'securtek/js/pratica_save_before_print.js' %}?v=20260904-validate"></script>
+<script src="{% static 'securtek/js/busta_print.js' %}?v=20260906-flag"></script>
 <script src="{% static 'securtek/js/privacy_print.js' %}?v=20260725b"></script>
 <script src="{% static 'securtek/js/confirm_dialog.js' %}"></script>
-<script src="{% static 'securtek/js/pratica_stato.js' %}"></script>
+<script src="{% static 'securtek/js/pratica_documento.js' %}?v=20260905-notify"></script>
+<script src="{% static 'securtek/js/pratica_unsaved.js' %}?v=20260904-unsaved"></script>
+<script src="{% static 'securtek/js/pratica_stato.js' %}?v=20260904-radio"></script>
+<script src="{% static 'securtek/js/pratica_hotkeys.js' %}?v=20260906-busta"></script>
+<script src="{% static 'securtek/js/pratica_textarea_expand.js' %}?v=20260904-autosize"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     if (window.LabRepairNameCase) {
@@ -428,11 +464,18 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function toggleClienteAnagraficaCompleta() {
-        const wrap = document.getElementById("clienteAnagraficaCompleta");
-        if (!wrap) {
-            return;
+        if (typeof window.labrepairSyncAnagraficaCompletaVisibility === "function") {
+            window.labrepairSyncAnagraficaCompletaVisibility();
+        } else {
+            const wrap = document.getElementById("clienteAnagraficaCompleta");
+            if (!wrap) {
+                return;
+            }
+            wrap.hidden = !(tipologiaField && tipologiaField.value === "prezioso");
         }
-        wrap.hidden = !(tipologiaField && tipologiaField.value === "prezioso");
+        if (typeof window.labrepairOnTipologiaDocumentoCheck === "function") {
+            window.labrepairOnTipologiaDocumentoCheck();
+        }
     }
 
     function togglePesoObbligatorio() {
@@ -440,9 +483,12 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!pesoField) {
             return;
         }
+        const metalloField = document.getElementById("id_tipo_metallo");
         const isPrezioso = tipologiaField && tipologiaField.value === "prezioso";
-        pesoField.required = isPrezioso;
-        if (isPrezioso) {
+        const hasMetallo = Boolean(metalloField && String(metalloField.value || "").trim());
+        const pesoRequired = isPrezioso && hasMetallo;
+        pesoField.required = pesoRequired;
+        if (pesoRequired) {
             pesoField.min = "0.001";
         } else {
             pesoField.min = "0";
@@ -453,7 +499,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
         let star = label.querySelector(".st-peso-required-star");
-        if (isPrezioso) {
+        if (pesoRequired) {
             if (!star) {
                 star = document.createElement("span");
                 star.className = "text-danger st-peso-required-star";
@@ -471,6 +517,10 @@ document.addEventListener("DOMContentLoaded", function () {
             toggleClienteAnagraficaCompleta();
             togglePesoObbligatorio();
         });
+    }
+    const tipoMetalloField = document.getElementById("id_tipo_metallo");
+    if (tipoMetalloField) {
+        tipoMetalloField.addEventListener("change", togglePesoObbligatorio);
     }
     updateNuovoClienteLink();
     toggleClienteAnagraficaCompleta();

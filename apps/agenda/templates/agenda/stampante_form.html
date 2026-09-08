@@ -16,6 +16,9 @@ Modifica stampante
                 {% if object.predefinita %}
                     <span class="badge bg-blue-lt ms-1">predefinita</span>
                 {% endif %}
+                {% if object.stampante_buste %}
+                    <span class="badge bg-azure-lt text-azure ms-1">buste</span>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -57,6 +60,20 @@ Modifica stampante
                         {% endif %}
                         {% if form.descrizione.errors %}
                             <div class="invalid-feedback d-block">{{ form.descrizione.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="mb-3">
+                        <label class="form-check">
+                            {{ form.stampante_buste }}
+                            <span class="form-check-label">{{ form.stampante_buste.label }}</span>
+                        </label>
+                        {% if form.stampante_buste.help_text %}
+                            <div class="form-hint">{{ form.stampante_buste.help_text }}</div>
+                        {% endif %}
+                        {% if form.stampante_buste.errors %}
+                            <div class="invalid-feedback d-block">{{ form.stampante_buste.errors|join:", " }}</div>
                         {% endif %}
                     </div>
                 </div>

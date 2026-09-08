@@ -527,6 +527,21 @@ def with_next(url, next_url):
     return f"{url}?{urlencode({'next': next_url})}"
 
 
+def comunicazioni_riepilogo_per_data(comunicazioni):
+    """Raggruppa le comunicazioni per giorno (ordinamento già -data_ora)."""
+    groups = []
+    current = None
+    for comunicazione in comunicazioni:
+        day = timezone.localtime(comunicazione.data_ora).date()
+        if current is None or current["data"] != day:
+            current = {"data": day, "items": []}
+            groups.append(current)
+        current["items"].append(comunicazione)
+    for group in groups:
+        group["count"] = len(group["items"])
+    return groups
+
+
 def redirect_documento_scaduto(request, cliente, return_url=""):
     messages.warning(request, documento_scaduto_message(cliente))
     update_url = reverse("anagrafiche:anagrafica_update", kwargs={"pk": cliente.pk})
@@ -917,6 +932,7 @@ class PraticaDetailView(LoginRequiredMixin, DetailView):
             "ora_inizio",
         )[:8]
         context["comunicazioni"] = self.object.comunicazioni.filter(is_active=True).order_by("-data_ora", "-id")
+        context["comunicazioni_riepilogo"] = comunicazioni_riepilogo_per_data(context["comunicazioni"])
         context["comunicazione_form"] = ComunicazionePraticaForm(
             formato_data=get_comunicazioni_formato_data()
         )
@@ -972,6 +988,9 @@ class PraticaBustaPrintView(LoginRequiredMixin, DetailView):
                 context,
                 request=request,
             )
+            from apps.core.printers import get_stampante_buste_flaggata_for_request
+
+            stampante_flag = get_stampante_buste_flaggata_for_request(request)
             return JsonResponse(
                 {
                     "ok": True,
@@ -981,6 +1000,9 @@ class PraticaBustaPrintView(LoginRequiredMixin, DetailView):
                         static("securtek/css/busta_print.css")
                     )
                     + "?v=20260728-gap2",
+                    "stampante_nome": (stampante_flag.nome if stampante_flag else ""),
+                    "stampante_buste": bool(stampante_flag),
+                    "agent_url": "http://127.0.0.1:17346",
                 }
             )
 
@@ -1091,6 +1113,14 @@ class ClienteReferenteJsonView(LoginRequiredMixin, View):
 
 
 def serialize_cliente_search_result(anagrafica):
+    cognome = (anagrafica.cognome or "").strip()
+    nome = (anagrafica.nome or "").strip()
+    if cognome or nome:
+        # Sempre Cognome poi Nome (priorità visuale al cognome).
+        label = f"{cognome} {nome}".strip()
+    else:
+        label = (anagrafica.ragione_sociale or "").strip() or anagrafica.display_name
+
     details = []
     if anagrafica.codice_fiscale:
         details.append(anagrafica.codice_fiscale)
@@ -1101,7 +1131,9 @@ def serialize_cliente_search_result(anagrafica):
 
     return {
         "id": anagrafica.pk,
-        "label": anagrafica.display_name,
+        "label": label,
+        "cognome": cognome,
+        "nome": nome,
         "subtitle": " · ".join(details),
     }
 
@@ -1128,19 +1160,23 @@ class ClienteSearchView(LoginRequiredMixin, View):
 
         if len(query) >= 2:
             from apps.anagrafiche.search import (
+                annotate_anagrafica_cognome_priority,
                 annotate_anagrafica_name_search,
                 build_anagrafica_name_search_q,
             )
 
             queryset = (
-                annotate_anagrafica_name_search(
-                    Anagrafica.objects.filter(
-                        is_active=True,
-                        tipo=Anagrafica.Tipo.CLIENTE,
-                    )
+                annotate_anagrafica_cognome_priority(
+                    annotate_anagrafica_name_search(
+                        Anagrafica.objects.filter(
+                            is_active=True,
+                            tipo=Anagrafica.Tipo.CLIENTE,
+                        )
+                    ),
+                    query,
                 )
                 .filter(build_anagrafica_name_search_q(query, include_contacts=True))
-                .order_by("cognome", "nome", "ragione_sociale")[:20]
+                .order_by("search_rank", "cognome", "nome", "ragione_sociale")[:20]
             )
             for anagrafica in queryset:
                 if anagrafica.pk in seen_ids:
@@ -1178,8 +1214,17 @@ class PraticaCreateView(LoginRequiredMixin, CreateView):
     def form_invalid(self, form):
         cliente = getattr(form, "documento_scaduto_cliente", None)
         if cliente:
-            return_url = self.request.get_full_path()
-            return redirect_documento_scaduto(self.request, cliente, return_url)
+            messages.warning(self.request, documento_scaduto_message(cliente))
+        if wants_json_response(self.request):
+            payload = {
+                "ok": False,
+                "message": form_first_error_message(form),
+                "errors": form.errors.get_json_data(),
+            }
+            if cliente:
+                payload["documento_scaduto"] = True
+                payload["message"] = documento_scaduto_message(cliente)
+            return JsonResponse(payload, status=400)
         return super().form_invalid(form)
 
     def form_valid(self, form):
@@ -1189,6 +1234,11 @@ class PraticaCreateView(LoginRequiredMixin, CreateView):
                 self.request,
                 "Negozio non selezionato. Effettua nuovamente l'accesso.",
             )
+            if wants_json_response(self.request):
+                return JsonResponse(
+                    {"ok": False, "message": "Negozio non selezionato."},
+                    status=400,
+                )
             return redirect("accounts:login")
 
         form.instance.created_by = self.request.user
@@ -1203,6 +1253,23 @@ class PraticaCreateView(LoginRequiredMixin, CreateView):
         self.object = form.save()
         notify_gs_articolo_sync(self.request, self.object)
         saved_count = len(save_pratica_foto_uploads(self.request, self.object))
+        if wants_json_response(self.request):
+            return JsonResponse(
+                {
+                    "ok": True,
+                    "message": "Riparazione creata correttamente.",
+                    "pratica_id": self.object.pk,
+                    "saved_fotos": saved_count,
+                    "edit_url": reverse(
+                        "pratiche:pratica_update",
+                        kwargs={"pk": self.object.pk},
+                    ),
+                    "busta_url": reverse(
+                        "pratiche:pratica_busta_print",
+                        kwargs={"pk": self.object.pk},
+                    ),
+                }
+            )
         messages.success(self.request, "Riparazione creata correttamente.")
         if saved_count:
             messages.success(
@@ -1215,6 +1282,10 @@ class PraticaCreateView(LoginRequiredMixin, CreateView):
         kwargs = super().get_form_kwargs()
         kwargs["operatore_primo"] = operatore_primo_nuova_riparazione()
         kwargs["layout_compatto"] = layout_compatto(self.request)
+        from apps.core.pc import get_configurazione_pc_for_request
+
+        cfg_pc = get_configurazione_pc_for_request(self.request)
+        kwargs["stato_come_radio"] = bool(getattr(cfg_pc, "pratica_stato_radio", False))
         return kwargs
 
     def get_context_data(self, **kwargs):
@@ -1250,24 +1321,26 @@ class PraticaUpdateView(LoginRequiredMixin, UpdateView):
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs["layout_compatto"] = layout_compatto(self.request)
+        from apps.core.pc import get_configurazione_pc_for_request
+
+        cfg_pc = get_configurazione_pc_for_request(self.request)
+        kwargs["stato_come_radio"] = bool(getattr(cfg_pc, "pratica_stato_radio", False))
         return kwargs
 
     def form_invalid(self, form):
         cliente = getattr(form, "documento_scaduto_cliente", None)
         if cliente:
-            return_url = self.request.get_full_path()
-            if wants_json_response(self.request):
-                return documento_scaduto_json_response(self.request, cliente, return_url)
-            return redirect_documento_scaduto(self.request, cliente, return_url)
+            messages.warning(self.request, documento_scaduto_message(cliente))
         if wants_json_response(self.request):
-            return JsonResponse(
-                {
-                    "ok": False,
-                    "message": form_first_error_message(form),
-                    "errors": form.errors.get_json_data(),
-                },
-                status=400,
-            )
+            payload = {
+                "ok": False,
+                "message": form_first_error_message(form),
+                "errors": form.errors.get_json_data(),
+            }
+            if cliente:
+                payload["documento_scaduto"] = True
+                payload["message"] = documento_scaduto_message(cliente)
+            return JsonResponse(payload, status=400)
         return super().form_invalid(form)
 
     def form_valid(self, form):
@@ -1282,6 +1355,15 @@ class PraticaUpdateView(LoginRequiredMixin, UpdateView):
                     "ok": True,
                     "message": "Scheda salvata.",
                     "saved_fotos": saved_count,
+                    "pratica_id": self.object.pk,
+                    "edit_url": reverse(
+                        "pratiche:pratica_update",
+                        kwargs={"pk": self.object.pk},
+                    ),
+                    "busta_url": reverse(
+                        "pratiche:pratica_busta_print",
+                        kwargs={"pk": self.object.pk},
+                    ),
                 }
             )
         messages.success(self.request, "Riparazione aggiornata correttamente.")
@@ -1303,6 +1385,7 @@ class PraticaUpdateView(LoginRequiredMixin, UpdateView):
             "-data_ora",
             "-id",
         )
+        context["comunicazioni_riepilogo"] = comunicazioni_riepilogo_per_data(context["comunicazioni"])
         context["comunicazione_form"] = ComunicazionePraticaForm(
             formato_data=get_comunicazioni_formato_data()
         )

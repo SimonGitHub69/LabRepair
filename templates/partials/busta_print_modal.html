@@ -1,4 +1,5 @@
-<div class="st-busta-modal" id="bustaPrintModal" hidden>
+<div class="st-busta-modal" id="bustaPrintModal" hidden
+     {% if busta_return_url %}data-busta-return-url="{{ busta_return_url }}"{% endif %}>
     <div class="st-busta-dialog" role="dialog" aria-modal="true" aria-labelledby="bustaPrintTitle">
         <div class="st-busta-header">
             <h3 class="st-busta-title" id="bustaPrintTitle">Stampa busta</h3>

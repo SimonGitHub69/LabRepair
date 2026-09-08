@@ -8,7 +8,9 @@ from django.utils import timezone
 from apps.core.date_fields import (
     apply_current_year_date_widget,
     apply_current_year_datetime_widget,
+    apply_pratica_date_widget,
     validate_current_year_date,
+    validate_pratica_date,
 )
 from apps.core.widgets import NoAutofillEmailInput, NoAutofillTextInput
 
@@ -68,7 +70,6 @@ class PraticaForm(forms.ModelForm):
             "prezzo_pagato",
             "senza_spesa",
             "data_vendita",
-            "note",
             "priorita",
         ]
         widgets = {
@@ -104,7 +105,9 @@ class PraticaForm(forms.ModelForm):
             ),
             "operatore": forms.Select(attrs={"class": "form-select"}),
             "tipo_oggetto": forms.Select(attrs={"class": "form-select", "autocomplete": "off"}),
-            "descrizione": forms.Textarea(attrs={"class": "form-control", "rows": 4}),
+            "descrizione": forms.Textarea(
+                attrs={"class": "form-control st-autosize", "rows": 2, "data-autosize": "1"}
+            ),
             "peso_grammi": forms.NumberInput(attrs={"class": "form-control", "step": "0.001", "min": "0"}),
             "tipo_metallo": forms.Select(attrs={"class": "form-select"}),
             "riparatore": forms.Select(attrs={"class": "form-select", "autocomplete": "off"}),
@@ -116,7 +119,6 @@ class PraticaForm(forms.ModelForm):
             "prezzo_al": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "min": "0"}),
             "prezzo_pagato": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "min": "0"}),
             "senza_spesa": forms.CheckboxInput(attrs={"class": "form-check-input", "id": "id_senza_spesa"}),
-            "note": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
         }
 
     def _cliente_queryset(self):
@@ -143,10 +145,17 @@ class PraticaForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         kwargs.pop("operatore_primo", False)
         layout_compatto = bool(kwargs.pop("layout_compatto", False))
+        stato_come_radio = bool(kwargs.pop("stato_come_radio", False))
         super().__init__(*args, **kwargs)
+        self.stato_come_radio = stato_come_radio
         if layout_compatto:
             self.fields["descrizione"].widget.attrs["rows"] = 2
-            self.fields["note"].widget.attrs["rows"] = 2
+            self.fields["descrizione"].widget.attrs["class"] = "form-control st-autosize"
+            self.fields["descrizione"].widget.attrs["data-autosize"] = "1"
+        if stato_come_radio:
+            self.fields["stato"].widget = forms.RadioSelect(
+                attrs={"class": "form-check-input"}
+            )
         cliente_id = self._resolve_cliente_id()
         cliente_qs = self._cliente_queryset().prefetch_related("contatti", "indirizzi")
         if cliente_id:
@@ -198,7 +207,9 @@ class PraticaForm(forms.ModelForm):
         self.fields["tipo_metallo"].empty_label = "Seleziona tipo di metallo"
         self.fields["peso_grammi"].required = False
         self.fields["peso_grammi"].error_messages.update(
-            {"required": "Inserisci il peso per gli oggetti preziosi."}
+            {
+                "required": "Inserisci il peso quando è indicato il tipo di metallo.",
+            }
         )
         self.fields["riparatore"].queryset = StudioTecnico.objects.filter(is_active=True).order_by("denominazione")
         self.fields["riparatore"].required = False
@@ -221,16 +232,10 @@ class PraticaForm(forms.ModelForm):
             date_field.widget.format = "%Y-%m-%d"
             date_field.input_formats = ["%Y-%m-%d"]
             instance_value = getattr(self.instance, field_name, None) if self.instance.pk else None
-            # TEMP: sblocca min=oggi su Data prevista consegna
-            min_date = None
-            apply_current_year_date_widget(
+            apply_pratica_date_widget(
                 date_field,
-                min_date=min_date,
                 instance_value=instance_value,
             )
-        # TEMP: consente qualsiasi data su Data prevista consegna
-        self.fields["data_scadenza"].widget.attrs.pop("min", None)
-        self.fields["data_scadenza"].widget.attrs.pop("max", None)
         self.fields["data_scadenza"].required = True
         self.fields["data_scadenza"].label = "Data prevista consegna"
         self.fields["data_scadenza"].error_messages.update(
@@ -252,6 +257,10 @@ class PraticaForm(forms.ModelForm):
 
         if not self.instance.pk and not self.initial.get("data_apertura"):
             self.initial["data_apertura"] = timezone.localdate()
+
+        # Data apertura automatica: non modificabile dall'utente.
+        self.fields["data_apertura"].disabled = True
+        self.fields["data_apertura"].help_text = "Impostata automaticamente all'apertura della riparazione."
 
         if not self.instance.pk:
             self.fields["operatore"].widget.attrs["autofocus"] = "autofocus"
@@ -303,7 +312,6 @@ class PraticaForm(forms.ModelForm):
                 "prezzo_pagato",
                 "senza_spesa",
                 "data_vendita",
-                "note",
             ]
         )
 
@@ -322,14 +330,11 @@ class PraticaForm(forms.ModelForm):
             cleaned_data["centro_assistenza"] = None
 
         for field_name in PRATICA_DATE_FIELDS:
-            # TEMP: sblocca vincolo anno corrente su Data prevista consegna
-            if field_name == "data_scadenza":
-                continue
             value = cleaned_data.get(field_name)
             if not value:
                 continue
             try:
-                validate_current_year_date(
+                validate_pratica_date(
                     value,
                     instance=self.instance,
                     field_name=field_name,
@@ -370,12 +375,14 @@ class PraticaForm(forms.ModelForm):
             )
 
         if tipologia == Pratica.Tipologia.PREZIOSO:
-            peso = cleaned_data.get("peso_grammi")
-            if peso is None or peso <= 0:
-                self.add_error(
-                    "peso_grammi",
-                    "Inserisci il peso per gli oggetti preziosi.",
-                )
+            tipo_metallo = (cleaned_data.get("tipo_metallo") or "").strip()
+            if tipo_metallo:
+                peso = cleaned_data.get("peso_grammi")
+                if peso is None or peso <= 0:
+                    self.add_error(
+                        "peso_grammi",
+                        "Inserisci il peso quando è indicato il tipo di metallo.",
+                    )
 
         stato = cleaned_data.get("stato")
         senza_spesa = bool(cleaned_data.get("senza_spesa"))
@@ -417,8 +424,8 @@ class PraticaForm(forms.ModelForm):
                 self.add_error(
                     "cliente",
                     (
-                        "Documento di identità scaduto: aggiorna l'anagrafica del cliente "
-                        "con un documento in corso di validità."
+                        "Documento di identità scaduto: aggiorna i dati nella sezione "
+                        "«Documento di identità» e premi «Salva documento» prima di proseguire."
                     ),
                 )
 
@@ -434,18 +441,11 @@ class PraticaForm(forms.ModelForm):
         value = self.cleaned_data.get("data_scadenza")
         if not value:
             return value
-
-        # TEMP: sblocca blocco "non antecedente a oggi"
-        # if value < timezone.localdate():
-        #     unchanged_existing = (
-        #         self.instance.pk
-        #         and self.instance.data_scadenza == value
-        #     )
-        #     if not unchanged_existing:
-        #         raise forms.ValidationError(
-        #             "La data prevista consegna non può essere antecedente a oggi."
-        #         )
-
+        validate_pratica_date(
+            value,
+            instance=self.instance,
+            field_name="data_scadenza",
+        )
         return value
 
 
@@ -694,8 +694,9 @@ class ComunicazionePraticaForm(forms.ModelForm):
             ),
             "descrizione": forms.Textarea(
                 attrs={
-                    "class": "form-control",
-                    "rows": 3,
+                    "class": "form-control st-autosize",
+                    "rows": 2,
+                    "data-autosize": "1",
                     "placeholder": "Descrivi la comunicazione, mittente/destinatario, oggetto o contenuto rilevante",
                 }
             ),

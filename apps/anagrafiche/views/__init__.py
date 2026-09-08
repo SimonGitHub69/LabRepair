@@ -4,6 +4,7 @@ from .anagrafica import (
     AnagraficaUpdateView,
     AnagraficaDetailView,
     AnagraficaDeleteView,
+    AnagraficaDocumentoUpdateJsonView,
 )
 from .contatto import (
     ContattoCreateView,

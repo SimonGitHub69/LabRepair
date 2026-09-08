@@ -16,7 +16,7 @@ Sistema gestionale per la gestione delle pratiche.
 
 Versione corrente:
 
-0.2.0-alpha
+0.9.3
 
 ## Documentazione
 

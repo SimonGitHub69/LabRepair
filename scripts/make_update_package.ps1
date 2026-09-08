@@ -33,7 +33,8 @@ $IncludeFiles = @(
     "manage.py",
     "requirements.txt",
     "requirements-mssql.txt",
-    ".env.example"
+    ".env.example",
+    "VERSION"
 )
 
 function Copy-TreeFiltered {
@@ -73,17 +74,50 @@ foreach ($file in $IncludeFiles) {
     }
 }
 
+$Installa = @"
+@echo off
+title LabRepair - aggiornamento server
+cd /d "%~dp0"
+echo.
+echo  LabRepair - aggiornamento automatico server
+echo  ==========================================
+echo  1) Backup PostgreSQL PRIMA di continuare
+echo  2) Conferma la cartella di installazione (es. C:\LabRepair)
+echo  3) Lo script NON sovrascrive il file .env
+echo.
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\install_update_server.ps1"
+set ERR=%ERRORLEVEL%
+echo.
+if %ERR% neq 0 (
+  echo Aggiornamento terminato con errori (codice %ERR%).
+) else (
+  echo Operazione conclusa.
+)
+pause
+exit /b %ERR%
+"@
+Set-Content -Path (Join-Path $Staging "INSTALLA.bat") -Value $Installa -Encoding ASCII
+
 $Readme = @"
 LabRepair - Aggiornamento applicazione
 ======================================
 
 Data pacchetto: $(Get-Date -Format "yyyy-MM-dd HH:mm")
 
-SUL SERVER (prima di tutto: backup database PostgreSQL)
+INSTALLAZIONE AUTOMATICA (consigliata)
+--------------------------------------
+1. Backup database PostgreSQL
+2. Estrai questo zip in una cartella temporanea
+3. Doppio clic su INSTALLA.bat (accetta UAC amministratore)
+4. Conferma la cartella di installazione (default C:\LabRepair)
+5. Attendi fine script (copia file, migrate, privilegi, riavvio)
 
+Lo installer NON sovrascrive il file .env.
+
+INSTALLAZIONE MANUALE
+---------------------
 1. Ferma il servizio LabRepair (o chiudi la finestra Waitress)
    PowerShell amministratore:
-     .\scripts\uninstall_service.ps1   # solo stop, oppure
      nssm stop LabRepair
 
 2. Copia i file dello zip SOPRA la cartella di installazione esistente
@@ -93,44 +127,24 @@ SUL SERVER (prima di tutto: backup database PostgreSQL)
      .\scripts\clear_pycache.ps1
      .\scripts\prod_install.ps1
 
-   prod_install esegue: pip install, migrate, collectstatic
+4. Privilegi menu:
+     .\.venv\Scripts\python.exe manage.py rebuild_labrepair_permissions --reset-groups
 
-4. Riavvia:
+5. Riavvia:
      .\scripts\prod_start.ps1
    oppure servizio Windows:
      .\scripts\install_service.ps1
 
-5. Privilegi menu (obbligatorio dopo questo aggiornamento):
-     .\.venv\Scripts\python.exe manage.py rebuild_labrepair_permissions --reset-groups
+Verifica:
+- Login e selezione negozio
+- Menu Parametri > Parametri PC: gap e descrizione stampanti
+- Stampa busta / sync casse se usati
 
-6. Verifica:
-   - Login e selezione negozio
-   - Menu Parametri > Parametri PC: per ogni postazione usa "Gap e descrizione"
-   - Stampanti collegate al PC: rileva, descrizione e gap busta (mm)
-   - Parametri sistema > MS-SQL: ID_IVA_CASSA (default 10) e sync su TB_PREZZICASSE
-   - Salva riparazione: messaggio sync casse (EAN / IVA)
-   - Stampa busta: gap superiore sposta solo parte A, inferiore solo parte B
-   - Menu: Documenti, Report, Comandi vocali, Sistema
-   - In Admin > Gruppi: privilegi "Può accedere al menu ..."
-
-7. Sui PC client (rilevamento stampanti locali / Brother):
-     .\scripts\install_printer_agent_client.ps1
-     Aprire LabRepair con LabRepairApp.vbs (avvia anche l'agente stampanti)
-
-8. (Opzionale) Normalizza nomi anagrafiche storiche:
-     .\.venv\Scripts\python.exe manage.py normalizza_nomi_anagrafiche --dry-run
-     .\.venv\Scripts\python.exe manage.py normalizza_nomi_anagrafiche
-
-9. Backup PostgreSQL schedulato (consigliato, PowerShell Amministratore):
-     .\scripts\install_backup_task.ps1
-     # oppure orario diverso:
-     .\scripts\install_backup_task.ps1 -Time "02:30" -KeepDays 21
+Sui PC client (app, lettore CIE, stampanti locali):
+  estrai installazione\LabRepair_client_windows_*.zip
+  doppio clic su INSTALLA.bat
 
 NOTA: non copiare .env dal pacchetto. Mantieni quello del server.
-NOTA: migration core 0021-0026 (stampanti per PC + TB_PREZZICASSE / ID_IVA_CASSA).
-NOTA: le riparazioni non scrivono più GS_ARTICOLI: usano TB_PREZZICASSE (DELETE+INSERT).
-NOTA: --reset-groups riassegna i privilegi dei gruppi Montale/Quarrata/Pistoia
-      secondo il catalogo LabRepair (togli residui SECURTEK).
 "@
 Set-Content -Path (Join-Path $Staging "AGGIORNAMENTO.txt") -Value $Readme -Encoding UTF8
 

@@ -94,14 +94,13 @@ function initClienteSearch(root) {
             "cellulare",
             "email",
             "residenza",
-            "documento_tipo",
-            "documento_numero",
-            "documento_rilasciato_da",
-            "documento_data_rilascio",
-            "documento_data_scadenza",
         ].forEach(function (field) {
             setAnagraficaField(field, anagrafica[field] || "");
         });
+
+        if (typeof window.labrepairFillClienteDocumento === "function") {
+            window.labrepairFillClienteDocumento(anagrafica);
+        }
 
         if (nodes.empty) {
             nodes.empty.hidden = true;
@@ -127,6 +126,9 @@ function initClienteSearch(root) {
         nodes.content.querySelectorAll("[data-anagrafica-field]").forEach(function (node) {
             node.textContent = "-";
         });
+        if (typeof window.labrepairClearClienteDocumento === "function") {
+            window.labrepairClearClienteDocumento();
+        }
         if (nodes.empty) {
             nodes.empty.hidden = false;
         }
@@ -202,13 +204,27 @@ function initClienteSearch(root) {
             const subtitle = item.subtitle
                 ? `<span class="st-cliente-search-option-subtitle">${escapeHtml(item.subtitle)}</span>`
                 : "";
-            const label = escapeHtml(item.label);
+            const cognome = (item.cognome || "").trim();
+            const nome = (item.nome || "").trim();
+            let labelHtml;
+            let labelText;
+            if (cognome || nome) {
+                labelText = (cognome + " " + nome).trim();
+                labelHtml =
+                    `<span class="st-cliente-search-cognome">${escapeHtml(cognome)}</span>` +
+                    (nome
+                        ? ` <span class="st-cliente-search-nome">${escapeHtml(nome)}</span>`
+                        : "");
+            } else {
+                labelText = item.label || "";
+                labelHtml = escapeHtml(labelText);
+            }
             return `
                 <button type="button"
                         class="st-cliente-search-option"
                         data-cliente-id="${item.id}"
-                        data-cliente-label="${label}">
-                    <span class="st-cliente-search-option-label">${label}</span>
+                        data-cliente-label="${escapeHtml(labelText)}">
+                    <span class="st-cliente-search-option-label">${labelHtml}</span>
                     ${subtitle}
                 </button>
             `;

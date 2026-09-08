@@ -33,7 +33,15 @@ if (Test-Path $vbsLauncher) {
     Write-Host "Avvio automatico configurato in Startup."
 }
 
-& $vbsLauncher
+if (Test-Path $vbsLauncher) {
+    Start-Process -FilePath "wscript.exe" -ArgumentList @("//nologo", $vbsLauncher) -WindowStyle Hidden
+} else {
+    Write-Host "LabRepairPrinterAgent.vbs non trovato: avvio diretto di printer_agent.ps1"
+    Start-Process -FilePath "powershell.exe" -ArgumentList @(
+        "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+        "-WindowStyle", "Hidden", "-File", $TargetPs1
+    ) -WindowStyle Hidden
+}
 Start-Sleep -Seconds 2
 
 try {

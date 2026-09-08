@@ -3,8 +3,12 @@
      * Salva #praticaForm via AJAX se presente (pagina modifica).
      * Usa la stessa validazione del pulsante Salva.
      * Sulla scheda dettaglio non c'è form: resolve immediato.
+     *
+     * options.skipClientValidation: se true, non ripete la validazione
+     * (utile quando il chiamante l'ha già eseguita a monte).
      */
-    window.labrepairSavePraticaForm = function () {
+    window.labrepairSavePraticaForm = function (options) {
+        options = options || {};
         return new Promise(function (resolve, reject) {
             var form = document.getElementById("praticaForm");
             if (!form) {
@@ -12,23 +16,25 @@
                 return;
             }
 
-            if (typeof window.labrepairValidatePraticaForm === "function") {
-                var validation = window.labrepairValidatePraticaForm();
-                if (!validation.ok) {
-                    reject(
-                        new Error(
-                            validation.message ||
-                                "Compila i campi obbligatori prima di stampare."
-                        )
-                    );
+            if (!options.skipClientValidation) {
+                if (typeof window.labrepairValidatePraticaForm === "function") {
+                    var validation = window.labrepairValidatePraticaForm();
+                    if (!validation.ok) {
+                        reject(
+                            new Error(
+                                validation.message ||
+                                    "Compila i campi obbligatori prima di stampare."
+                            )
+                        );
+                        return;
+                    }
+                } else if (
+                    typeof form.reportValidity === "function" &&
+                    !form.reportValidity()
+                ) {
+                    reject(new Error("Compila i campi obbligatori prima di stampare."));
                     return;
                 }
-            } else if (
-                typeof form.reportValidity === "function" &&
-                !form.reportValidity()
-            ) {
-                reject(new Error("Compila i campi obbligatori prima di stampare."));
-                return;
             }
 
             var action = form.getAttribute("action") || window.location.href;

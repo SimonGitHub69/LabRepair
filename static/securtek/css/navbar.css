@@ -3,6 +3,8 @@
     background: rgba(255, 255, 255, 0.92);
     border-bottom: 1px solid var(--st-border);
     min-height: var(--st-navbar-height);
+    padding-bottom: 0.35rem;
+    padding-top: 0.35rem;
     position: sticky;
     top: 0;
     z-index: 1020;
@@ -14,7 +16,7 @@
 }
 
 .st-navbar .navbar-title {
-    font-size: 1.125rem;
+    font-size: 1.05rem;
     font-weight: 700;
     letter-spacing: -0.02em;
     margin: 0;
@@ -24,9 +26,9 @@
     background: var(--tblr-bg-surface-secondary, #f8fafc);
     border-color: transparent;
     border-radius: 999px;
-    min-height: 2.5rem;
-    padding-left: 1rem;
-    width: min(320px, 42vw);
+    min-height: 2.15rem;
+    padding-left: 0.9rem;
+    width: min(300px, 42vw);
 }
 
 .st-navbar .form-control:focus {
@@ -38,20 +40,20 @@
     align-items: center;
     border-radius: 999px;
     display: inline-flex;
-    height: 2.5rem;
+    height: 2.15rem;
     justify-content: center;
-    width: 2.5rem;
+    width: 2.15rem;
 }
 
 .st-navbar .avatar {
     align-items: center;
     border-radius: 50%;
     display: flex;
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     font-weight: 700;
-    height: 2.5rem;
+    height: 2.15rem;
     justify-content: center;
-    width: 2.5rem;
+    width: 2.15rem;
 }
 
 .st-navbar-user-name {

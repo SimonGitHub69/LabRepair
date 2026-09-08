@@ -169,6 +169,68 @@ class AnagraficaForm(forms.ModelForm):
             self.add_error("cellulare", "Inserisci almeno un recapito telefonico.")
 
 
+class DocumentoIdentitaForm(forms.ModelForm):
+    """Aggiornamento documento di identità (es. dalla scheda pratica)."""
+
+    class Meta:
+        model = Anagrafica
+        fields = [
+            "documento_tipo",
+            "documento_numero",
+            "documento_rilasciato_da",
+            "documento_data_rilascio",
+            "documento_data_scadenza",
+            "stampa_privacy",
+        ]
+        widgets = {
+            "documento_tipo": NoAutofillTextInput(),
+            "documento_numero": NoAutofillTextInput(),
+            "documento_rilasciato_da": NoAutofillTextInput(),
+            "documento_data_rilascio": forms.DateInput(
+                attrs={"class": "form-control", "type": "date", "autocomplete": "off"},
+                format="%Y-%m-%d",
+            ),
+            "documento_data_scadenza": forms.DateInput(
+                attrs={"class": "form-control", "type": "date", "autocomplete": "off"},
+                format="%Y-%m-%d",
+            ),
+            "stampa_privacy": forms.RadioSelect(choices=[(True, "Si"), (False, "No")]),
+        }
+
+    def __init__(self, *args, require_valid=True, **kwargs):
+        self.require_valid = require_valid
+        super().__init__(*args, **kwargs)
+        for field_name in ("documento_data_rilascio", "documento_data_scadenza"):
+            self.fields[field_name].input_formats = ["%Y-%m-%d", "%d/%m/%Y"]
+        for field in self.fields.values():
+            field.widget.attrs.setdefault("autocomplete", "off")
+
+    def clean(self):
+        cleaned_data = super().clean()
+        documento_tipo = (cleaned_data.get("documento_tipo") or "").strip()
+        cleaned_data["documento_tipo"] = documento_tipo
+        if not self.require_valid:
+            return cleaned_data
+
+        required_fields = {
+            "documento_tipo": "Inserisci il tipo di documento.",
+            "documento_numero": "Inserisci il numero del documento.",
+            "documento_data_rilascio": "Inserisci la data di rilascio del documento.",
+            "documento_data_scadenza": "Inserisci la data di scadenza del documento.",
+        }
+        for field_name, message in required_fields.items():
+            if not cleaned_data.get(field_name):
+                self.add_error(field_name, message)
+
+        scadenza = cleaned_data.get("documento_data_scadenza")
+        if scadenza and scadenza < timezone.localdate():
+            self.add_error(
+                "documento_data_scadenza",
+                "Il documento di identità risulta scaduto. Inserisci un documento aggiornato.",
+            )
+        return cleaned_data
+
+
 ContattoFormSet = inlineformset_factory(
     Anagrafica,
     Contatto,

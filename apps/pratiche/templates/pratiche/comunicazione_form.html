@@ -77,11 +77,17 @@ Modifica comunicazione
                 <a href="{{ cancel_url }}" class="btn btn-outline-secondary">Annulla</a>
                 <button type="submit" class="btn btn-primary">
                     <i class="ti ti-device-floppy"></i>
-                    Salva
+                    Salva Comunicazione
                 </button>
             </div>
         </form>
     </div>
 </div>
 
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+{% load static %}
+<script src="{% static 'securtek/js/pratica_textarea_expand.js' %}?v=20260904-autosize"></script>
 {% endblock %}

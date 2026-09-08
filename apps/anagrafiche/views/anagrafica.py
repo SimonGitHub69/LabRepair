@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -9,7 +10,7 @@ from django.db.models import Q
 from django.contrib.messages.views import SuccessMessageMixin
 
 from apps.anagrafiche.models import Anagrafica, Contatto, Indirizzo
-from apps.anagrafiche.forms import AnagraficaForm, ContattoFormSet
+from apps.anagrafiche.forms import AnagraficaForm, ContattoFormSet, DocumentoIdentitaForm
 from apps.anagrafiche.forms.anagrafica import build_indirizzo_formset
 from apps.anagrafiche.search import (
     annotate_anagrafica_name_search,
@@ -18,6 +19,7 @@ from apps.anagrafiche.search import (
 from apps.core.list_pagination import ConfigurablePaginationMixin
 from apps.core.negozi import apply_negozio_queryset_filter, normalize_negozio_code
 from apps.pratiche.cliente_documento import is_documento_identita_scaduto
+from apps.pratiche.cliente_referente import get_referente_from_cliente
 from apps.pratiche.models import Pratica
 
 
@@ -296,3 +298,60 @@ class AnagraficaDeleteView(LoginRequiredMixin, View):
         anagrafica.soft_delete(user=request.user)
         messages.success(request, "Anagrafica eliminata correttamente.")
         return redirect("anagrafiche:anagrafica_list")
+
+
+class AnagraficaDocumentoUpdateJsonView(LoginRequiredMixin, View):
+    """Aggiorna solo i campi documento di un cliente (AJAX dalla scheda pratica)."""
+
+    def post(self, request, pk):
+        anagrafica = get_object_or_404(
+            Anagrafica,
+            pk=pk,
+            is_active=True,
+            tipo=Anagrafica.Tipo.CLIENTE,
+        )
+        form = DocumentoIdentitaForm(
+            request.POST,
+            instance=anagrafica,
+            require_valid=True,
+        )
+        if not form.is_valid():
+            first_error = ""
+            if form.non_field_errors():
+                first_error = str(form.non_field_errors()[0])
+            else:
+                for field_errors in form.errors.values():
+                    if field_errors:
+                        first_error = str(field_errors[0])
+                        break
+            return JsonResponse(
+                {
+                    "ok": False,
+                    "message": first_error or "Controlla i campi del documento.",
+                    "errors": form.errors.get_json_data(),
+                },
+                status=400,
+            )
+
+        obj = form.save(commit=False)
+        obj.updated_by = request.user
+        obj.save(
+            update_fields=[
+                "documento_tipo",
+                "documento_numero",
+                "documento_rilasciato_da",
+                "documento_data_rilascio",
+                "documento_data_scadenza",
+                "stampa_privacy",
+                "updated_by",
+                "updated_at",
+            ]
+        )
+        referente = get_referente_from_cliente(obj)
+        return JsonResponse(
+            {
+                "ok": True,
+                "message": "Documento aggiornato sull'anagrafica.",
+                "anagrafica": referente.get("anagrafica"),
+            }
+        )
