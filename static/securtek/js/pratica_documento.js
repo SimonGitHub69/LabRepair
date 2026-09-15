@@ -50,6 +50,12 @@
         panel.querySelectorAll("input, button").forEach(function (el) {
             el.disabled = !enabled;
         });
+        // Dopo enable i date nativi non devono rientrare nel Tab.
+        panel.querySelectorAll("input.st-date-native").forEach(function (el) {
+            el.tabIndex = -1;
+            el.setAttribute("tabindex", "-1");
+            el.setAttribute("aria-hidden", "true");
+        });
     }
 
     function setAlert(message, variant) {
@@ -128,18 +134,120 @@
         });
     }
 
+    function scrollElementIntoPage(el, options) {
+        options = options || {};
+        if (typeof window.labrepairEnsureInView === "function") {
+            window.labrepairEnsureInView(el, {
+                behavior: options.behavior || "auto",
+                topPad: options.block === "center" ? undefined : 16,
+                remeasureMs: options.remeasureMs != null ? options.remeasureMs : 100,
+            });
+            if (options.block === "center" && el) {
+                const rect = el.getBoundingClientRect();
+                const centerY = window.innerHeight / 2;
+                const elCenter = rect.top + rect.height / 2;
+                const delta = elCenter - centerY;
+                if (Math.abs(delta) > 4) {
+                    window.scrollBy({ top: delta, behavior: options.behavior || "auto" });
+                }
+            }
+            return;
+        }
+        if (!el) {
+            return;
+        }
+        const block = options.block || "start";
+        const navVar = getComputedStyle(document.documentElement).getPropertyValue("--st-navbar-height");
+        const topPad = (parseFloat(navVar) || 52) + 16;
+        const rect = el.getBoundingClientRect();
+        let delta = 0;
+
+        if (block === "center") {
+            const centerY = window.innerHeight / 2;
+            const elCenter = rect.top + rect.height / 2;
+            delta = elCenter - centerY;
+        } else {
+            delta = rect.top - topPad;
+        }
+
+        if (Math.abs(delta) > 4) {
+            window.scrollBy({ top: delta, behavior: options.behavior || "auto" });
+        }
+    }
+
+    function resolveFocusableControl(el) {
+        if (!el) {
+            return null;
+        }
+        const wrap = el.closest(".st-date-field");
+        if (wrap) {
+            const text = wrap.querySelector(".st-date-text");
+            if (text && !text.disabled) {
+                return text;
+            }
+        }
+        if (el.disabled || el.getAttribute("tabindex") === "-1") {
+            return null;
+        }
+        return el;
+    }
+
+    function focusRiparatoreField() {
+        const field = document.getElementById("id_riparatore");
+        const target = resolveFocusableControl(field) || field;
+        if (!target || target.disabled) {
+            return;
+        }
+
+        window.setTimeout(function () {
+            scrollElementIntoPage(target, { block: "start", behavior: "auto", remeasureMs: 120 });
+            target.focus({ preventScroll: true });
+            scrollElementIntoPage(target, { block: "start", behavior: "auto", remeasureMs: 120 });
+        }, 80);
+    }
+
+    function unlockPageScroll() {
+        document.body.classList.remove("st-confirm-open");
+    }
+
     function focusDocumentoPanel() {
         const panel = getPanel();
         if (!panel) {
             return;
         }
-        panel.scrollIntoView({ behavior: "smooth", block: "center" });
-        const first = getField("documento_tipo");
-        if (first) {
-            window.setTimeout(function () {
-                first.focus();
-            }, 250);
+
+        unlockPageScroll();
+
+        const card = panel.querySelector(".st-cliente-documento-card") || panel;
+        if (typeof window.labrepairSyncShortYearDates === "function") {
+            window.labrepairSyncShortYearDates(panel);
         }
+
+        // Dopo unhide anagrafica + alert scaduto la maschera cresce: aspetta il layout.
+        window.setTimeout(function () {
+            unlockPageScroll();
+            const firstNative =
+                getField("documento_tipo") ||
+                getField("documento_numero") ||
+                getField("documento_data_rilascio");
+            const first = resolveFocusableControl(firstNative) || firstNative;
+
+            scrollElementIntoPage(card, { block: "start", behavior: "auto", remeasureMs: 160 });
+            if (first && !first.disabled) {
+                first.focus({ preventScroll: true });
+                scrollElementIntoPage(first, { block: "start", behavior: "auto", remeasureMs: 160 });
+            }
+
+            // Secondo passaggio: l'alert/badge possono ancora aver cambiato l'altezza.
+            window.setTimeout(function () {
+                unlockPageScroll();
+                scrollElementIntoPage(first || card, {
+                    block: "start",
+                    behavior: "auto",
+                    remeasureMs: 80,
+                });
+            }, 200);
+        }, 120);
     }
 
     function applyScadutoAlert(anagrafica) {
@@ -196,11 +304,16 @@
                 "<br><br><em>Con oggetti preziosi l'aggiornamento è obbligatorio per salvare la riparazione.</em>";
         }
 
-        const ask = window.labrepairConfirm;
+        const ask =
+            window.LabRepairConfirm && typeof window.LabRepairConfirm.ask === "function"
+                ? window.LabRepairConfirm.ask.bind(window.LabRepairConfirm)
+                : null;
+
         if (typeof ask !== "function") {
             forceShowDocumento = true;
             syncAnagraficaCompletaVisibility();
             applyScadutoAlert(anagrafica);
+            focusDocumentoPanel();
             return;
         }
 
@@ -232,9 +345,11 @@
                     syncAnagraficaCompletaVisibility();
                     setAlert("");
                 }
+                focusRiparatoreField();
             })
             .finally(function () {
                 notifyInFlight = false;
+                document.body.classList.remove("st-confirm-open");
             });
     }
 
@@ -278,15 +393,22 @@
         panel.dataset.updateUrl = anagrafica.documento_update_url || "";
         setEnabled(true);
         updateBadge(anagrafica);
+        if (typeof window.labrepairSyncShortYearDates === "function") {
+            window.labrepairSyncShortYearDates(panel);
+        }
 
         if (anagrafica.documento_scaduto) {
-            if (isTipologiaPrezioso()) {
-                forceShowDocumento = false;
-            }
-            syncAnagraficaCompletaVisibility();
             if (options.skipNotify) {
+                // Caricamento iniziale (es. click dalla lista): solo evidenziazione in pagina.
+                lastNotifiedClienteId = anagrafica.id;
+                forceShowDocumento = true;
+                syncAnagraficaCompletaVisibility();
                 applyScadutoAlert(anagrafica);
             } else {
+                if (isTipologiaPrezioso()) {
+                    forceShowDocumento = false;
+                }
+                syncAnagraficaCompletaVisibility();
                 notifyDocumentoScaduto(anagrafica, options);
             }
         } else {
@@ -324,6 +446,9 @@
         updateBadge(null);
         setAlert("");
         syncAnagraficaCompletaVisibility();
+        if (typeof window.labrepairSyncShortYearDates === "function") {
+            window.labrepairSyncShortYearDates(panel);
+        }
     }
 
     function collectFormData() {

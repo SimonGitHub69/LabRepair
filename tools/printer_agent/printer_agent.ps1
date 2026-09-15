@@ -315,6 +315,8 @@ function Write-CorsHeaders($response) {
     $response.Headers["Access-Control-Allow-Origin"] = "*"
     $response.Headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
     $response.Headers["Access-Control-Allow-Headers"] = "Content-Type"
+    # Chrome: richiesta da origine LAN/pubblica verso 127.0.0.1 (Local Network Access).
+    $response.Headers["Access-Control-Allow-Private-Network"] = "true"
     $response.Headers["Access-Control-Max-Age"] = "86400"
 }
 
@@ -336,6 +338,10 @@ $listener.Prefixes.Add($prefix)
 try {
     $listener.Start()
 } catch {
+    $logDir = Join-Path $env:LOCALAPPDATA "LabRepairPrinterAgent"
+    New-Item -ItemType Directory -Force -Path $logDir | Out-Null
+    $msg = "$(Get-Date -Format o) Impossibile avviare l'agent stampanti su $prefix : $_"
+    Add-Content -Path (Join-Path $logDir "agent.log") -Value $msg -ErrorAction SilentlyContinue
     Write-Error "Impossibile avviare l'agent stampanti su $prefix : $_"
     exit 1
 }
@@ -350,9 +356,10 @@ while ($listener.IsListening) {
 
     $request = $context.Request
     $response = $context.Response
+    $method = ([string]$request.HttpMethod).ToUpperInvariant()
     $path = ($request.Url.AbsolutePath.TrimEnd("/") + "/").ToLowerInvariant()
 
-    if ($request.HttpMethod -eq "OPTIONS") {
+    if ($method -eq "OPTIONS") {
         Write-CorsHeaders $response
         $response.StatusCode = 204
         $response.Close()
@@ -361,9 +368,11 @@ while ($listener.IsListening) {
 
     if ($path -eq "/health/") {
         Write-JsonResponse $response 200 @{
-            ok      = $true
-            service = "LabRepairPrinterAgent"
-            port    = $Port
+            ok        = $true
+            service   = "LabRepairPrinterAgent"
+            version   = "0.9.5"
+            port      = $Port
+            endpoints = @("/health", "/printers", "/print")
         }
         continue
     }
@@ -378,7 +387,15 @@ while ($listener.IsListening) {
         continue
     }
 
-    if ($path -eq "/print/" -and $request.HttpMethod -eq "POST") {
+    if ($path -eq "/print/") {
+        if ($method -ne "POST") {
+            Write-JsonResponse $response 405 @{
+                ok      = $false
+                message = "Usare POST su /print (ricevuto $method)."
+            }
+            continue
+        }
+
         $bodyText = Read-RequestBodyText $request
         $payload = ConvertFrom-JsonSafe $bodyText
         if (-not $payload) {
@@ -414,6 +431,6 @@ while ($listener.IsListening) {
 
     Write-JsonResponse $response 404 @{
         ok      = $false
-        message = "Endpoint non trovato"
+        message = "Endpoint non trovato: $method $path"
     }
 }

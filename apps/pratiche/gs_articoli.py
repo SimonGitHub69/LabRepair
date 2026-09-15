@@ -13,7 +13,6 @@ from django.utils import timezone
 
 from apps.core.mssql import get_mssql_config, open_mssql_connection
 from apps.core.programma import get_gs_barcode_min
-from apps.pratiche.models import Pratica
 
 GS_BARCODE_MAX_EXCLUSIVE = 90000000
 
@@ -37,7 +36,7 @@ PRZ_LOTTO_LEN = 5
 class GsArticoloSyncResult:
     ok: bool
     message: str
-    barcode: int | None = None
+    barcode: str | None = None
     created: bool = False
 
 
@@ -90,64 +89,15 @@ def _ean_str(barcode) -> str:
     return _clip(str(int(barcode)), PRZ_EAN_LEN)
 
 
-def allocate_gs_barcode(cursor):
-    barcode_min = get_gs_barcode_min()
-    cursor.execute(
-        """
-        SELECT MAX(TRY_CONVERT(BIGINT, PRZ_EAN))
-        FROM TB_PREZZICASSE WITH (UPDLOCK, HOLDLOCK)
-        WHERE TRY_CONVERT(BIGINT, PRZ_EAN) >= ?
-          AND TRY_CONVERT(BIGINT, PRZ_EAN) < ?
-        """,
-        barcode_min,
-        GS_BARCODE_MAX_EXCLUSIVE,
-    )
-    current = cursor.fetchone()[0]
-    if current is None:
-        return barcode_min
-    return max(barcode_min, int(current) + 1)
-
-
-def get_ean_by_codart(cursor, codart):
-    cursor.execute(
-        """
-        SELECT TOP 1 PRZ_EAN
-        FROM TB_PREZZICASSE
-        WHERE PRZ_CODART = ?
-        ORDER BY PRZ_DATAAGGIORNAMENTO DESC
-        """,
-        codart,
-    )
-    row = cursor.fetchone()
-    if not row or row[0] is None:
-        return None
-    try:
-        return int(str(row[0]).strip())
-    except (TypeError, ValueError):
-        return None
+def format_prz_ean(codice: str) -> str:
+    """PRZ_EAN = codice riparazione senza trattini (P26-0026 → P260026)."""
+    raw = str(codice or "").strip().replace("-", "").replace(" ", "")
+    return _clip(raw, PRZ_EAN_LEN)
 
 
 def exists_by_codart(cursor, codart):
     cursor.execute("SELECT 1 FROM TB_PREZZICASSE WHERE PRZ_CODART = ?", codart)
     return cursor.fetchone() is not None
-
-
-def is_ean_available(cursor, barcode):
-    cursor.execute("SELECT 1 FROM TB_PREZZICASSE WHERE PRZ_EAN = ?", _ean_str(barcode))
-    return cursor.fetchone() is None
-
-
-def resolve_gs_barcode(cursor, pratica, codart, *, for_insert=False):
-    existing = get_ean_by_codart(cursor, codart)
-    if is_valid_repair_barcode(existing):
-        return existing
-
-    if for_insert and is_valid_repair_barcode(pratica.gs_barcode):
-        cached_barcode = int(pratica.gs_barcode)
-        if is_ean_available(cursor, cached_barcode):
-            return cached_barcode
-
-    return allocate_gs_barcode(cursor)
 
 
 def resolve_iva_cassa(cursor, config):
@@ -162,13 +112,13 @@ def resolve_iva_cassa(cursor, config):
     return 10, Decimal("22.00")
 
 
-def build_prezzi_casse_payload(pratica, user, barcode, config, *, iva_id=None, iva_aliquota=None):
+def build_prezzi_casse_payload(pratica, user, ean, config, *, iva_id=None, iva_aliquota=None):
     now = timezone.localtime()
     created = pratica.created_at or now
     updated = pratica.updated_at or now
     return {
         "PRZ_PVN_CODICE": _clip(config.prz_pvn_codice or "TN", PRZ_PVN_LEN) or "TN",
-        "PRZ_EAN": _ean_str(barcode),
+        "PRZ_EAN": _clip(ean, PRZ_EAN_LEN),
         "PRZ_COR_CODICE": _clip("MAN", PRZ_COR_LEN),
         "PRZ_MOLTIPLICATORE_EAN": 1,
         "PRZ_CONFEZIONE": 1,
@@ -205,7 +155,18 @@ def build_prezzi_casse_payload(pratica, user, barcode, config, *, iva_id=None, i
     }
 
 
-def delete_prezzi_casse(cursor, *, ean: str, codart: str):
+def delete_prezzi_casse(cursor, *, ean: str, codart: str, legacy_ean: str | None = None):
+    if legacy_ean and legacy_ean != ean:
+        cursor.execute(
+            """
+            DELETE FROM TB_PREZZICASSE
+            WHERE PRZ_EAN = ? OR PRZ_EAN = ? OR PRZ_CODART = ?
+            """,
+            ean,
+            legacy_ean,
+            codart,
+        )
+        return
     cursor.execute(
         """
         DELETE FROM TB_PREZZICASSE
@@ -300,31 +261,37 @@ def sync_pratica_to_gs_articoli(pratica, user):
             cursor = connection.cursor()
             iva_id, iva_aliquota = resolve_iva_cassa(cursor, config)
             created = not exists_by_codart(cursor, codart)
-            barcode = resolve_gs_barcode(
-                cursor,
-                pratica,
-                codart,
-                for_insert=created,
-            )
+            ean = format_prz_ean(codart)
+            if not ean:
+                return GsArticoloSyncResult(
+                    ok=False,
+                    message="Codice riparazione non valido per PRZ_EAN.",
+                )
+            legacy_ean = None
+            if is_valid_repair_barcode(pratica.gs_barcode):
+                legacy_ean = _ean_str(pratica.gs_barcode)
             payload = build_prezzi_casse_payload(
                 pratica,
                 user,
-                barcode,
+                ean,
                 config,
                 iva_id=iva_id,
                 iva_aliquota=iva_aliquota,
             )
-            delete_prezzi_casse(cursor, ean=payload["PRZ_EAN"], codart=codart)
+            delete_prezzi_casse(
+                cursor,
+                ean=payload["PRZ_EAN"],
+                codart=codart,
+                legacy_ean=legacy_ean,
+            )
             insert_prezzi_casse(cursor, payload)
             connection.commit()
-
-        Pratica.objects.filter(pk=pratica.pk).update(gs_barcode=barcode)
 
         azione = "creato" if created else "aggiornato"
         return GsArticoloSyncResult(
             ok=True,
-            message=f"Prezzo cassa {azione} ({codart}, EAN {barcode}, IVA {iva_id}).",
-            barcode=barcode,
+            message=f"Prezzo cassa {azione} ({codart}, EAN {ean}, IVA {iva_id}).",
+            barcode=ean,
             created=created,
         )
     except Exception as exc:

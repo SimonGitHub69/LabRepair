@@ -21,7 +21,7 @@ from apps.core.forms import (
 from apps.core.list_pagination import ConfigurablePaginationMixin
 from apps.core.mail import config_email_from_post, parse_email_destinatari, send_smtp_email
 from apps.core.models import ConfigurazioneMssql, ConfigurazionePC, ConfigurazioneProgramma, Stampante
-from apps.core.mssql import config_from_post, test_mssql_connection
+from apps.core.mssql import config_from_post, test_mssql_cassa_connection, test_mssql_connection
 from apps.core.pc import detect_client_pc_name, get_local_system_pc_name
 from apps.core.printers import (
     list_installed_printer_names,
@@ -377,12 +377,18 @@ class ParametriSistemaView(LoginRequiredMixin, PermissionRequiredMixin, View):
             else:
                 destinatari = parse_email_destinatari(smtp.destinatari_default)
                 default_dest = destinatari[0] if destinatari else (smtp.mittente or "")
+        can_view_mssql_password = bool(
+            self.request.user.is_authenticated and self.request.user.is_superuser
+        )
         return {
             "email_form": email_form or ConfigurazioneNotificaEmailForm(instance=smtp),
-            "mssql_form": mssql_form or ConfigurazioneMssqlForm(
-                instance=ConfigurazioneMssql.get_solo()
+            "mssql_form": mssql_form
+            or ConfigurazioneMssqlForm(
+                instance=ConfigurazioneMssql.get_solo(),
+                reveal_password=can_view_mssql_password,
             ),
             "mail_test_destinatario": default_dest,
+            "can_view_mssql_password": can_view_mssql_password,
         }
 
     def get(self, request):
@@ -430,7 +436,34 @@ class ParametriSistemaView(LoginRequiredMixin, PermissionRequiredMixin, View):
             instance = ConfigurazioneMssql.get_solo()
             config = config_from_post(request.POST, instance)
             result = test_mssql_connection(config)
-            form = ConfigurazioneMssqlForm(request.POST, instance=instance)
+            can_view = bool(request.user.is_superuser)
+            form = ConfigurazioneMssqlForm(
+                request.POST,
+                instance=instance,
+                reveal_password=can_view,
+            )
+
+            if result.ok:
+                messages.success(request, result.message)
+            else:
+                messages.error(request, result.message)
+
+            return render(
+                request,
+                self.template_name,
+                self.get_context(mssql_form=form),
+            )
+
+        if action == "test_mssql_cassa":
+            instance = ConfigurazioneMssql.get_solo()
+            config = config_from_post(request.POST, instance)
+            result = test_mssql_cassa_connection(config)
+            can_view = bool(request.user.is_superuser)
+            form = ConfigurazioneMssqlForm(
+                request.POST,
+                instance=instance,
+                reveal_password=can_view,
+            )
 
             if result.ok:
                 messages.success(request, result.message)
@@ -445,7 +478,12 @@ class ParametriSistemaView(LoginRequiredMixin, PermissionRequiredMixin, View):
 
         if action == "mssql":
             instance = ConfigurazioneMssql.get_solo()
-            form = ConfigurazioneMssqlForm(request.POST, instance=instance)
+            can_view = bool(request.user.is_superuser)
+            form = ConfigurazioneMssqlForm(
+                request.POST,
+                instance=instance,
+                reveal_password=can_view,
+            )
             if form.is_valid():
                 obj = form.save(commit=False)
                 obj.updated_by = request.user

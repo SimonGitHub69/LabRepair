@@ -27,7 +27,8 @@ $IncludeDirs = @(
     "templates",
     "static",
     "scripts",
-    "tools"
+    "tools",
+    "docs"
 )
 $IncludeFiles = @(
     "manage.py",
@@ -48,7 +49,7 @@ function Copy-TreeFiltered {
     New-Item -ItemType Directory -Path $Destination -Force | Out-Null
     Get-ChildItem -Path $Source -Recurse -Force | ForEach-Object {
         $rel = $_.FullName.Substring($Source.Length).TrimStart("\")
-        if ($rel -match '\\__pycache__\\|\.pyc$|\.pyo$|\\\.pytest_cache\\|\\\.mypy_cache\\') {
+        if ($rel -match '\\__pycache__\\|\.pyc$|\.pyo$|\\\.pytest_cache\\|\\\.mypy_cache\\|\\bin\\|\\obj\\') {
             return
         }
         $target = Join-Path $Destination $rel

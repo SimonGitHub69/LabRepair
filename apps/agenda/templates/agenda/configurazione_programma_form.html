@@ -54,25 +54,6 @@ Parametri programma
                 </div>
             </div>
 
-            <div class="mb-4">
-                <label class="form-label d-block mb-2">{{ form.layout_stile.label }}</label>
-                {% for option in form.layout_stile %}
-                    <label class="form-check mb-2">
-                        {{ option.tag }}
-                        <span class="form-check-label">{{ option.choice_label }}</span>
-                    </label>
-                {% endfor %}
-                {% if form.layout_stile.errors %}
-                    <div class="invalid-feedback d-block">{{ form.layout_stile.errors|join:", " }}</div>
-                {% endif %}
-                <div class="form-hint mt-2">
-                    <strong>Grafica standard</strong>: layout attuale, più arioso.
-                    <strong>Grafica compatta</strong>: stesse informazioni, più vicine tra loro,
-                    su <em>Riparazioni</em> e <em>Anagrafiche</em>, con meno scorrimento.
-                    Se la postazione è definita in <em>Parametri PC</em>, prevale lo stile di quel PC.
-                </div>
-            </div>
-
             <div class="mb-0" style="max-width: 12rem;">
                 <label class="form-label" for="{{ form.liste_righe_per_pagina.id_for_label }}">{{ form.liste_righe_per_pagina.label }}</label>
                 {{ form.liste_righe_per_pagina }}

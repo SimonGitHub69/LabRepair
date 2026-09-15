@@ -2,7 +2,7 @@ from django.utils import timezone
 
 
 def is_documento_identita_scaduto(cliente):
-    """True se la data di scadenza documento è anterioriore a oggi."""
+    """True se la data di scadenza documento è anteriore a oggi."""
     if not cliente:
         return False
 
@@ -15,7 +15,7 @@ def is_documento_identita_scaduto(cliente):
 
 def documento_scaduto_message(cliente):
     scadenza = cliente.documento_data_scadenza
-    scadenza_label = scadenza.strftime("%d/%m/%Y") if scadenza else ""
+    scadenza_label = scadenza.strftime("%d/%m/%y") if scadenza else ""
     nome = (cliente.ragione_sociale or f"{cliente.cognome} {cliente.nome}").strip()
     if scadenza_label:
         return (
@@ -33,7 +33,7 @@ def documento_scaduto_message(cliente):
 def documento_scaduto_privacy_message(cliente):
     """Avviso non bloccante in stampa Privacy: chiedere documento in corso di validità."""
     scadenza = getattr(cliente, "documento_data_scadenza", None) if cliente else None
-    scadenza_label = scadenza.strftime("%d/%m/%Y") if scadenza else ""
+    scadenza_label = scadenza.strftime("%d/%m/%y") if scadenza else ""
     nome = ""
     if cliente:
         nome = (

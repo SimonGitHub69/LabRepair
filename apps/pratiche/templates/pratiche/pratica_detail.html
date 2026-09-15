@@ -65,7 +65,7 @@
                                 {% if pratica.data_scadenza %}
                                 <span class="st-pratica-chip {% if pratica.is_scaduta %}is-danger{% else %}is-muted{% endif %}">
                                     <i class="ti ti-calendar-due"></i>
-                                    Consegna {{ pratica.data_scadenza|date:"d/m/Y" }}
+                                    Consegna {{ pratica.data_scadenza|date:"d/m/y" }}
                                 </span>
                                 {% endif %}
                             </div>
@@ -217,13 +217,13 @@
                     <div class="st-pratica-facts st-pratica-facts-stack">
                         <div class="st-pratica-fact">
                             <span class="st-pratica-fact-label">Accettazione</span>
-                            <span class="st-pratica-fact-value">{{ pratica.data_apertura|date:"d/m/Y"|default:"—" }}</span>
+                            <span class="st-pratica-fact-value">{{ pratica.data_apertura|date:"d/m/y"|default:"—" }}</span>
                         </div>
                         <div class="st-pratica-fact{% if pratica.is_scaduta %} is-danger{% endif %}">
                             <span class="st-pratica-fact-label">Data prevista consegna</span>
                             <span class="st-pratica-fact-value{% if pratica.is_scaduta %} text-danger{% endif %}">
                                 {% if pratica.data_scadenza %}
-                                    {{ pratica.data_scadenza|date:"d/m/Y" }}
+                                    {{ pratica.data_scadenza|date:"d/m/y" }}
                                 {% else %}
                                     —
                                 {% endif %}
@@ -231,7 +231,7 @@
                         </div>
                         <div class="st-pratica-fact">
                             <span class="st-pratica-fact-label">Chiusura</span>
-                            <span class="st-pratica-fact-value">{{ pratica.data_chiusura|date:"d/m/Y"|default:"—" }}</span>
+                            <span class="st-pratica-fact-value">{{ pratica.data_chiusura|date:"d/m/y"|default:"—" }}</span>
                         </div>
                         <div class="st-pratica-fact">
                             <span class="st-pratica-fact-label">Riparatore</span>
@@ -239,15 +239,15 @@
                         </div>
                         <div class="st-pratica-fact">
                             <span class="st-pratica-fact-label">Data riparatore</span>
-                            <span class="st-pratica-fact-value">{{ pratica.data_riparatore|date:"d/m/Y"|default:"—" }}</span>
+                            <span class="st-pratica-fact-value">{{ pratica.data_riparatore|date:"d/m/y"|default:"—" }}</span>
                         </div>
                         <div class="st-pratica-fact">
                             <span class="st-pratica-fact-label">Data rientro</span>
-                            <span class="st-pratica-fact-value">{{ pratica.data_rientro|date:"d/m/Y"|default:"—" }}</span>
+                            <span class="st-pratica-fact-value">{{ pratica.data_rientro|date:"d/m/y"|default:"—" }}</span>
                         </div>
                         <div class="st-pratica-fact">
                             <span class="st-pratica-fact-label">Data vendita/evasione</span>
-                            <span class="st-pratica-fact-value">{{ pratica.data_vendita|date:"d/m/Y"|default:"—" }}</span>
+                            <span class="st-pratica-fact-value">{{ pratica.data_vendita|date:"d/m/y"|default:"—" }}</span>
                         </div>
                     </div>
                 </div>
@@ -282,17 +282,17 @@
                 </div>
                 <div class="st-pratica-metric is-emphasis">
                     <span class="st-pratica-metric-label">Costo totale</span>
-                    <span class="st-pratica-metric-value st-costo-totale-value">
-                        {% if pratica.senza_spesa and pratica.costo_totale == 0 %}
-                            Senza spesa
-                        {% else %}
-                            {{ pratica.costo_totale|floatformat:2 }} €
-                        {% endif %}
-                    </span>
+                    <span class="st-pratica-metric-value st-costo-totale-value">{{ pratica.costo_totale|floatformat:2 }} €</span>
                 </div>
                 <div class="st-pratica-metric is-emphasis">
                     <span class="st-pratica-metric-label">Prezzo al Pubblico</span>
-                    <span class="st-pratica-metric-value st-costo-totale-value">{{ pratica.prezzo_al|floatformat:2 }} €</span>
+                    <span class="st-pratica-metric-value st-costo-totale-value">
+                        {% if pratica.senza_spesa %}
+                            Senza spesa
+                        {% else %}
+                            {{ pratica.prezzo_al|floatformat:2 }} €
+                        {% endif %}
+                    </span>
                 </div>
                 <div class="st-pratica-metric">
                     <span class="st-pratica-metric-label">Prezzo pagato</span>
@@ -439,7 +439,7 @@
                             {% for evento in eventi_agenda %}
                                 <tr>
                                     <td>
-                                        {{ evento.data_inizio|date:"d/m/Y" }}
+                                        {{ evento.data_inizio|date:"d/m/y" }}
                                         {% if evento.ora_inizio %}
                                             {{ evento.ora_inizio|time:"H:i" }}
                                         {% endif %}
@@ -495,7 +495,7 @@
 <script src="{% static 'securtek/js/pratica_foto.js' %}"></script>
 <script src="{% static 'securtek/js/webcam_capture.js' %}"></script>
 <script src="{% static 'securtek/js/pratica_save_before_print.js' %}?v=20260904-validate"></script>
-<script src="{% static 'securtek/js/busta_print.js' %}?v=20260904-returnlist"></script>
+<script src="{% static 'securtek/js/busta_print.js' %}?v=20260910-preview-save"></script>
 <script src="{% static 'securtek/js/privacy_print.js' %}?v=20260725b"></script>
 <script src="{% static 'securtek/js/confirm_dialog.js' %}"></script>
 <script src="{% static 'securtek/js/pratica_textarea_expand.js' %}?v=20260904-autosize"></script>

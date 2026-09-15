@@ -7,6 +7,7 @@
     const statusEl = modal.querySelector("[data-busta-status]");
     const previewEl = modal.querySelector("[data-busta-preview]");
     const printBtn = modal.querySelector("[data-busta-print]");
+    const printBrowserBtn = modal.querySelector("[data-busta-print-browser]");
     const closeButtons = modal.querySelectorAll("[data-busta-close]");
     const titleEl = document.getElementById("bustaPrintTitle");
 
@@ -14,9 +15,22 @@
     let stampanteNome = "";
     let agentUrl = "http://127.0.0.1:17346";
     let skipFinalSave = false;
+    let forceSave = false;
 
     function isDirectPrint() {
         return document.body.getAttribute("data-busta-stampa-diretta") === "1";
+    }
+
+    function wantsSave() {
+        if (forceSave) {
+            return true;
+        }
+        // Parametri PC: default sì se attributo assente.
+        return document.body.getAttribute("data-busta-stampa-salva") !== "0";
+    }
+
+    function wantsReturnToList() {
+        return document.body.getAttribute("data-busta-stampa-torna-elenco") === "1";
     }
 
     function setStatus(message, isError) {
@@ -40,6 +54,7 @@
         printHtml = "";
         stampanteNome = "";
         skipFinalSave = false;
+        forceSave = false;
         if (previewEl) {
             previewEl.innerHTML = "";
             previewEl.hidden = true;
@@ -47,7 +62,34 @@
         if (printBtn) {
             printBtn.hidden = true;
         }
+        hideBrowserFallback();
         setStatus("Preparazione busta…", false);
+    }
+
+    function localAgentFetch(url, options) {
+        options = options || {};
+        options.credentials = "omit";
+        // Chrome Local Network Access: origine LAN → 127.0.0.1.
+        options.targetAddressSpace = "loopback";
+        return fetch(url, options);
+    }
+
+    function hideBrowserFallback() {
+        if (printBtn) {
+            delete printBtn.dataset.fallbackBrowser;
+        }
+        if (printBrowserBtn) {
+            printBrowserBtn.hidden = true;
+        }
+    }
+
+    function showBrowserFallback() {
+        if (printBtn) {
+            printBtn.dataset.fallbackBrowser = "1";
+        }
+        if (printBrowserBtn && printHtml) {
+            printBrowserBtn.hidden = false;
+        }
     }
 
     function clearPendingFotoInputs(form) {
@@ -221,9 +263,8 @@
         const base = (agentUrl || "http://127.0.0.1:17346").replace(/\/$/, "");
         let response;
         try {
-            response = await fetch(base + "/print", {
+            response = await localAgentFetch(base + "/print", {
                 method: "POST",
-                credentials: "omit",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     printer: printerName,
@@ -251,7 +292,7 @@
             "Agent stampanti non raggiungibile (" +
             base +
             "). Avvia LabRepair Printer Agent su questo PC, " +
-            "poi premi di nuovo Stampa. In alternativa puoi usare la stampa del browser."
+            "poi premi di nuovo Stampa. Oppure usa «Stampa dal browser»."
         );
     }
 
@@ -292,11 +333,36 @@
         return "/pratiche/";
     }
 
+    async function finishAfterPrint(statusMessage) {
+        if (wantsReturnToList()) {
+            if (statusMessage) {
+                setStatus(statusMessage, false);
+            }
+            await saveAndReturnToList();
+            return;
+        }
+
+        if (skipFinalSave || !wantsSave()) {
+            // Scheda già coerente oppure stampa senza nuovo salvataggio.
+        } else {
+            markFormCleanForLeave();
+        }
+
+        setStatus(
+            (statusMessage ? statusMessage + " " : "") +
+                "Puoi continuare sulla scheda.",
+            false
+        );
+        window.setTimeout(function () {
+            closeModal();
+        }, 900);
+    }
+
     async function saveAndReturnToList() {
         const form = document.getElementById("praticaForm");
         const returnUrl = getReturnUrl();
 
-        if (!skipFinalSave) {
+        if (!skipFinalSave && wantsSave()) {
             setStatus("Salvataggio scheda…", false);
             if (form && typeof window.labrepairSavePraticaForm === "function") {
                 await window.labrepairSavePraticaForm({ skipClientValidation: true });
@@ -313,7 +379,81 @@
         window.location.assign(returnUrl);
     }
 
+    async function fetchBustaDocument(url) {
+        if (!url) {
+            throw new Error("URL busta non disponibile.");
+        }
+        const separator = url.indexOf("?") >= 0 ? "&" : "?";
+        const response = await fetch(url + separator + "format=json", {
+            credentials: "same-origin",
+            headers: { Accept: "application/json" },
+        });
+        const payload = await response.json().catch(function () {
+            return {};
+        });
+        if (!response.ok || !payload.ok) {
+            throw new Error(payload.message || "Impossibile preparare la busta.");
+        }
+        if (titleEl && payload.title) {
+            titleEl.textContent = payload.title;
+        }
+        stampanteNome = (payload.stampante_nome || "").trim();
+        agentUrl = (payload.agent_url || "http://127.0.0.1:17346").trim();
+        printHtml = await buildDocument(payload.sheet_html || "", payload.css_url || "");
+        if (!stampanteNome) {
+            throw new Error(
+                "Nessuna stampante buste attiva per questa postazione. " +
+                    "Impostala in Parametri PC → Stampanti → flag «Stampante buste»."
+            );
+        }
+        return payload;
+    }
+
+    async function maybeSaveBeforePrint() {
+        if (skipFinalSave || !wantsSave()) {
+            return null;
+        }
+        const form = document.getElementById("praticaForm");
+        if (!form || typeof window.labrepairSavePraticaForm !== "function") {
+            return null;
+        }
+        if (typeof window.labrepairValidatePraticaForm === "function") {
+            const validation = window.labrepairValidatePraticaForm();
+            if (!validation.ok) {
+                throw new Error(
+                    validation.message ||
+                        "Compila i campi obbligatori prima di stampare."
+                );
+            }
+        }
+        setStatus("Salvataggio scheda…", false);
+        const saved = await window.labrepairSavePraticaForm({
+            skipClientValidation: true,
+        });
+        if (saved && saved.edit_url) {
+            adoptCreatedPratica(saved);
+        }
+        markFormCleanForLeave();
+        return saved;
+    }
+
     async function printDocument(html) {
+        if (!html && !printHtml) {
+            return;
+        }
+        try {
+            const saved = await maybeSaveBeforePrint();
+            if (saved && saved.busta_url) {
+                await fetchBustaDocument(saved.busta_url);
+                html = printHtml;
+            }
+        } catch (error) {
+            const message = friendlyErrorMessage(error);
+            showPrintReady(printHtml || html, message, true);
+            throw new Error(message);
+        }
+
+        html = html || printHtml;
         if (!html) {
             return;
         }
@@ -327,23 +467,33 @@
         setStatus("Stampa su " + stampanteNome + "…", false);
         try {
             const result = await printViaAgent(html, stampanteNome);
-            setStatus(result.message || ("Busta inviata a " + stampanteNome), false);
-            await saveAndReturnToList();
+            const message = result.message || ("Busta inviata a " + stampanteNome);
+            setStatus(message, false);
+            await finishAfterPrint(message);
         } catch (error) {
             const message = friendlyErrorMessage(error);
             showPrintReady(html, message, true);
-            if (printBtn) {
-                printBtn.dataset.fallbackBrowser = "1";
-            }
+            showBrowserFallback();
             throw new Error(message);
         }
     }
 
-    async function printThenReturnToList(html) {
+    async function printThenFinish(html) {
         /**
-         * Usato da «Stampa busta + Salva»: stampa subito (senza restare in anteprima)
-         * e torna sempre all'elenco perché la riparazione è già salvata.
+         * Stampa immediata (senza restare in anteprima), poi elenco o resta in scheda
+         * secondo l'opzione «Torna all'elenco».
          */
+        try {
+            const saved = await maybeSaveBeforePrint();
+            if (saved && saved.busta_url) {
+                await fetchBustaDocument(saved.busta_url);
+                html = printHtml;
+            }
+        } catch (error) {
+            setStatus(friendlyErrorMessage(error), true);
+            throw error;
+        }
+
         printHtml = html || printHtml;
         if (!printHtml) {
             throw new Error("Documento busta non disponibile.");
@@ -356,13 +506,11 @@
         }
 
         setStatus("Stampa su " + stampanteNome + "…", false);
+        let message = "";
         try {
             const result = await printViaAgent(printHtml, stampanteNome);
-            setStatus(
-                (result.message || ("Busta inviata a " + stampanteNome)) +
-                    " Ritorno all'elenco…",
-                false
-            );
+            message = result.message || ("Busta inviata a " + stampanteNome);
+            setStatus(message, false);
         } catch (error) {
             setStatus(
                 friendlyErrorMessage(error) + " Apro la stampa del browser…",
@@ -372,112 +520,66 @@
             await new Promise(function (resolve) {
                 window.setTimeout(resolve, 1200);
             });
+            message = "Stampa browser aperta.";
         }
 
         skipFinalSave = true;
-        markFormCleanForLeave();
-        await saveAndReturnToList();
+        await finishAfterPrint(message);
     }
 
     async function loadBusta(url, options) {
         options = options || {};
-        const form = document.getElementById("praticaForm");
-        const skipSave = !!options.skipSave;
-
-        // 1) Coerenza dati: blocca subito (senza modal) se manca qualcosa.
-        if (!skipSave && form && typeof window.labrepairValidatePraticaForm === "function") {
-            const validation = window.labrepairValidatePraticaForm();
-            if (!validation.ok) {
-                return;
-            }
-        }
+        // skipSave: scheda appena salvata (es. «Stampa busta + Salva»).
+        // Altrimenti, se Parametri PC richiede salvataggio, salva prima dell'anteprima
+        // così la busta mostra le modifiche correnti del form.
 
         // Flag PC «Stampa busta senza anteprima» → stampa diretta; altrimenti anteprima + Stampa.
         const directPrint = isDirectPrint();
         openModal();
-        setStatus(
-            !skipSave && form ? "Salvataggio scheda…" : "Preparazione busta…",
-            false
-        );
+        setStatus("Preparazione busta…", false);
         if (printBtn) {
             printBtn.hidden = true;
-            delete printBtn.dataset.fallbackBrowser;
             delete printBtn.dataset.returnOnly;
             printBtn.innerHTML = '<i class="ti ti-printer"></i> Stampa';
         }
+        hideBrowserFallback();
         if (previewEl) {
             previewEl.hidden = true;
             previewEl.innerHTML = "";
         }
 
         try {
-            // 2) Salvataggio automatico della scheda (stessa validazione di Salva).
-            if (!skipSave && form && typeof window.labrepairSavePraticaForm === "function") {
-                const saved = await window.labrepairSavePraticaForm({
-                    skipClientValidation: true,
-                });
-                if (saved && saved.busta_url && !url) {
+            if (!options.skipSave && !skipFinalSave && wantsSave()) {
+                const saved = await maybeSaveBeforePrint();
+                if (saved && saved.busta_url) {
                     url = saved.busta_url;
                 }
-                if (saved && saved.edit_url) {
-                    adoptCreatedPratica(saved);
-                }
-                setStatus("Scheda salvata. Preparazione busta…", false);
-            } else {
-                setStatus("Preparazione busta…", false);
+                // Evita un secondo salvataggio al click Stampa.
+                skipFinalSave = true;
             }
 
-            if (!url) {
-                throw new Error("URL busta non disponibile.");
-            }
-
-            const separator = url.indexOf("?") >= 0 ? "&" : "?";
-            const response = await fetch(url + separator + "format=json", {
-                credentials: "same-origin",
-                headers: { Accept: "application/json" },
-            });
-            const payload = await response.json().catch(function () {
-                return {};
-            });
-            if (!response.ok || !payload.ok) {
-                throw new Error(payload.message || "Impossibile preparare la busta.");
-            }
-
-            if (titleEl && payload.title) {
-                titleEl.textContent = payload.title;
-            }
-
-            stampanteNome = (payload.stampante_nome || "").trim();
-            agentUrl = (payload.agent_url || "http://127.0.0.1:17346").trim();
-            printHtml = await buildDocument(payload.sheet_html || "", payload.css_url || "");
-
-            if (!stampanteNome) {
-                throw new Error(
-                    "Nessuna stampante buste attiva per questa postazione. " +
-                        "Impostala in Parametri PC → Stampanti → flag «Stampante buste»."
-                );
-            }
+            await fetchBustaDocument(url);
 
             if (directPrint) {
-                // Senza anteprima: stampa e torna all'elenco.
-                if (skipFinalSave) {
-                    await printThenReturnToList(printHtml);
-                } else {
-                    try {
-                        await printDocument(printHtml);
-                    } catch (error) {
-                        setStatus(friendlyErrorMessage(error), true);
-                    }
+                // Senza anteprima: stampa e poi elenco o resta in scheda.
+                try {
+                    await printThenFinish(printHtml);
+                } catch (error) {
+                    setStatus(friendlyErrorMessage(error), true);
+                    showPrintReady(printHtml, friendlyErrorMessage(error), true);
+                    showBrowserFallback();
                 }
                 return;
             }
 
-            // Con anteprima: salva già fatto → mostra busta e attendi conferma Stampa.
+            // Con anteprima: mostra busta e attendi conferma Stampa.
             renderPreview(printHtml);
             setStatus(
                 skipFinalSave
-                    ? "Riparazione salvata. Controlla la busta e premi Stampa."
-                    : "Stampante buste: " + stampanteNome,
+                    ? "Scheda aggiornata. Controlla la busta e premi Stampa."
+                    : "Stampante buste: " +
+                          stampanteNome +
+                          ". Anteprima sui dati già salvati (Parametri PC: salvataggio disattivo).",
                 false
             );
             if (printBtn) {
@@ -488,9 +590,7 @@
             setStatus(message, true);
             if (printHtml) {
                 showPrintReady(printHtml, message, true);
-                if (printBtn) {
-                    printBtn.dataset.fallbackBrowser = "1";
-                }
+                showBrowserFallback();
             } else if (printBtn) {
                 printBtn.hidden = true;
             }
@@ -502,6 +602,8 @@
         if (!form) {
             return;
         }
+
+        forceSave = true;
 
         if (typeof window.labrepairValidatePraticaForm === "function") {
             const validation = window.labrepairValidatePraticaForm();
@@ -520,10 +622,10 @@
         setStatus("Salvataggio riparazione…", false);
         if (printBtn) {
             printBtn.hidden = true;
-            delete printBtn.dataset.fallbackBrowser;
             delete printBtn.dataset.returnOnly;
             printBtn.innerHTML = '<i class="ti ti-printer"></i> Stampa';
         }
+        hideBrowserFallback();
         if (previewEl) {
             previewEl.hidden = true;
             previewEl.innerHTML = "";
@@ -558,8 +660,10 @@
             if (action && action.indexOf("/modifica") >= 0) {
                 if (printBtn) {
                     printBtn.hidden = false;
-                    printBtn.innerHTML = '<i class="ti ti-list"></i> Torna all\'elenco';
-                    printBtn.dataset.returnOnly = "1";
+                    printBtn.innerHTML = wantsReturnToList()
+                        ? '<i class="ti ti-list"></i> Torna all\'elenco'
+                        : '<i class="ti ti-check"></i> Continua in scheda';
+                    printBtn.dataset.returnOnly = wantsReturnToList() ? "1" : "stay";
                 }
             } else if (printBtn) {
                 printBtn.hidden = true;
@@ -575,6 +679,7 @@
                 return;
             }
             skipFinalSave = false;
+            forceSave = false;
             loadBusta(url);
         });
     });
@@ -588,13 +693,15 @@
 
     closeButtons.forEach(function (button) {
         button.addEventListener("click", function () {
-            const formEl = document.getElementById("praticaForm");
-            const action = formEl ? formEl.getAttribute("action") || "" : "";
-            // Dopo creazione riuscita, Chiudi torna all'elenco.
-            if (skipFinalSave || action.indexOf("/modifica") >= 0) {
-                markFormCleanForLeave();
-                window.location.assign(getReturnUrl());
-                return;
+            if (wantsReturnToList()) {
+                const formEl = document.getElementById("praticaForm");
+                const action = formEl ? formEl.getAttribute("action") || "" : "";
+                // Dopo creazione riuscita, Chiudi torna all'elenco solo se richiesto.
+                if (skipFinalSave || action.indexOf("/modifica") >= 0) {
+                    markFormCleanForLeave();
+                    window.location.assign(getReturnUrl());
+                    return;
+                }
             }
             closeModal();
         });
@@ -612,6 +719,26 @@
         }
     });
 
+    if (printBrowserBtn) {
+        printBrowserBtn.addEventListener("click", function () {
+            if (!printHtml) {
+                return;
+            }
+            setStatus("Apro la stampa del browser…", false);
+            printDocumentBrowser(printHtml);
+            window.setTimeout(function () {
+                skipFinalSave = true;
+                finishAfterPrint("Stampa browser aperta.").catch(function () {
+                    if (wantsReturnToList()) {
+                        window.location.assign(getReturnUrl());
+                    } else {
+                        closeModal();
+                    }
+                });
+            }, 1000);
+        });
+    }
+
     if (printBtn) {
         printBtn.addEventListener("click", function () {
             if (printBtn.dataset.returnOnly === "1") {
@@ -620,28 +747,15 @@
                 window.location.assign(getReturnUrl());
                 return;
             }
+            if (printBtn.dataset.returnOnly === "stay") {
+                closeModal();
+                return;
+            }
 
             const html = printHtml;
-            const useBrowserFallback = printBtn.dataset.fallbackBrowser === "1";
-
             printDocument(html).catch(function (error) {
-                if (useBrowserFallback && html) {
-                    setStatus(
-                        friendlyErrorMessage(error) +
-                            " Apro la stampa del browser…",
-                        true
-                    );
-                    printDocumentBrowser(html);
-                    window.setTimeout(function () {
-                        skipFinalSave = true;
-                        markFormCleanForLeave();
-                        saveAndReturnToList().catch(function () {
-                            window.location.assign(getReturnUrl());
-                        });
-                    }, 1000);
-                    return;
-                }
                 setStatus(friendlyErrorMessage(error), true);
+                showBrowserFallback();
             });
         });
     }

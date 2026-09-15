@@ -7,6 +7,8 @@
     let dirty = false;
     let initialSnapshot = "";
     let allowingLeave = false;
+    let suppressDirty = true;
+    let annullaWasDirty = false;
 
     function withRestoredNames(callback) {
         const restore =
@@ -74,6 +76,9 @@
     }
 
     function markDirty() {
+        if (suppressDirty || allowingLeave) {
+            return;
+        }
         dirty = true;
     }
 
@@ -110,6 +115,19 @@
         window.location.href = url;
     }
 
+    function annullaHref(link) {
+        return link.getAttribute("href") || "";
+    }
+
+    function shouldPromptLeave(link) {
+        // pointerdown cattura lo stato PRIMA del blur (name-case / date)
+        // che altrimenti marca dirty e fa apparire il dialogo al primo Annulla.
+        if (link && link.dataset.annullaDirtyCaptured === "1") {
+            return link.dataset.annullaWasDirty === "1";
+        }
+        return isDirty();
+    }
+
     form.addEventListener("input", markDirty, true);
     form.addEventListener("change", markDirty, true);
 
@@ -119,13 +137,35 @@
     });
 
     document.querySelectorAll("[data-pratica-annulla]").forEach(function (link) {
+        link.addEventListener(
+            "pointerdown",
+            function (event) {
+                if (event.button != null && event.button !== 0) {
+                    return;
+                }
+                const href = annullaHref(link);
+                if (!href || href === "#") {
+                    return;
+                }
+                annullaWasDirty = isDirty();
+                link.dataset.annullaDirtyCaptured = "1";
+                link.dataset.annullaWasDirty = annullaWasDirty ? "1" : "0";
+            },
+            true
+        );
+
         link.addEventListener("click", function (event) {
-            const href = link.getAttribute("href") || "";
+            const href = annullaHref(link);
             if (!href || href === "#") {
                 return;
             }
-            if (!isDirty()) {
+
+            const needsPrompt = shouldPromptLeave(link);
+            link.dataset.annullaDirtyCaptured = "0";
+
+            if (!needsPrompt) {
                 allowingLeave = true;
+                dirty = false;
                 return;
             }
 
@@ -143,11 +183,21 @@
     window.labrepairPraticaFormIsDirty = isDirty;
     window.labrepairPraticaFormMarkClean = refreshInitialSnapshot;
 
+    function finishBootstrap() {
+        refreshInitialSnapshot();
+        suppressDirty = false;
+    }
+
+    function scheduleBootstrap() {
+        // Dopo enhance date / sync consegna / sezioni collassabili il form
+        // può cambiare senza intervento utente: rilancia lo snapshot.
+        window.setTimeout(finishBootstrap, 50);
+        window.setTimeout(finishBootstrap, 300);
+    }
+
     if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", function () {
-            window.setTimeout(refreshInitialSnapshot, 50);
-        });
+        document.addEventListener("DOMContentLoaded", scheduleBootstrap);
     } else {
-        window.setTimeout(refreshInitialSnapshot, 50);
+        scheduleBootstrap();
     }
 })();

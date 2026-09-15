@@ -589,7 +589,7 @@ def documento_scaduto_json_response(request, cliente, return_url=""):
 
 
 def notify_gs_articolo_sync(request, pratica):
-    """Sincronizza la riparazione su TB_PREZZICASSE e mostra l'esito all'utente."""
+    """Sincronizza la riparazione su TB_PREZZICASSE; in caso di errore mostra un avviso."""
     import logging
 
     logger = logging.getLogger(__name__)
@@ -605,8 +605,6 @@ def notify_gs_articolo_sync(request, pratica):
         messages.warning(request, result.message)
         return result
 
-    if result.message and "disattivato" not in result.message.lower():
-        messages.info(request, result.message)
     return result
 
 
@@ -900,11 +898,7 @@ class PraticaListView(LoginRequiredMixin, ConfigurablePaginationMixin, ListView)
                     kwargs={"pratica_pk": pratica.pk},
                 )
         context["active_filters"] = self.build_active_filters(context["cliente_filtro"])
-        query_dict = self.request.GET.copy()
-        query_dict.pop("page", None)
-        if "negozio" not in query_dict:
-            query_dict["negozio"] = negozio_filter
-        context["filters_query"] = query_dict.urlencode()
+        context["filters_query"] = self.get_filters_query(extra={"negozio": negozio_filter})
         return context
 
 class PraticaDetailView(LoginRequiredMixin, DetailView):

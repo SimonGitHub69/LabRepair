@@ -48,6 +48,14 @@ class ConfigurazionePC(BaseModel):
         default=ConfigurazioneProgramma.LayoutStile.STANDARD,
         help_text="Interfaccia usata da questa postazione (sovrascrive Parametri programma).",
     )
+    layout_alto_contrasto = models.BooleanField(
+        "Grafica ad alto contrasto",
+        default=False,
+        help_text=(
+            "Se attivo, in Anagrafiche e Riparazioni aumenta contrasto e dimensione testo "
+            "ed evidenzia in blu grassetto i valori inseriti. Non modifica le altre sezioni."
+        ),
+    )
     stampanti = models.JSONField(
         "Stampanti",
         default=list,
@@ -62,13 +70,32 @@ class ConfigurazionePC(BaseModel):
             "la finestra di stampa senza mostrare l'anteprima a schermo."
         ),
     )
+    busta_stampa_salva_scheda = models.BooleanField(
+        "Salva scheda prima di stampare la busta",
+        default=True,
+        help_text=(
+            "Se attivo, prima di stampare la busta viene salvata la scheda riparazione. "
+            "Se disattivo, la busta usa i dati già registrati."
+        ),
+    )
+    busta_stampa_torna_elenco = models.BooleanField(
+        "Torna all'elenco dopo la stampa busta",
+        default=False,
+        help_text=(
+            "Se attivo, dopo la stampa busta si torna all'elenco riparazioni. "
+            "Se disattivo, si resta nella scheda."
+        ),
+    )
     pratica_tasto_salva = models.CharField(
-        "Tasto Salva riparazione",
+        "Tasto Salva",
         max_length=20,
         choices=PraticaTastoScorciatoia.choices,
         blank=True,
         default=PraticaTastoScorciatoia.CTRL_S,
-        help_text="Scorciatoia per Salva nella maschera riparazione.",
+        help_text=(
+            "Scorciatoia Salva su tutte le maschere di modifica "
+            "(riparazione, anagrafiche, tabelle, parametri)."
+        ),
     )
     pratica_tasto_annulla = models.CharField(
         "Tasto Annulla riparazione",
@@ -76,7 +103,7 @@ class ConfigurazionePC(BaseModel):
         choices=PraticaTastoScorciatoia.choices,
         blank=True,
         default=PraticaTastoScorciatoia.ESC,
-        help_text="Scorciatoia per Annulla nella maschera riparazione.",
+        help_text="Scorciatoia per Annulla nella maschera riparazione (stessa in anagrafica cliente).",
     )
     pratica_tasto_stampa_busta = models.CharField(
         "Tasto Stampa busta",
@@ -93,6 +120,22 @@ class ConfigurazionePC(BaseModel):
         blank=True,
         default=PraticaTastoScorciatoia.CTRL_SHIFT_P,
         help_text="Scorciatoia per Stampa Privacy nella maschera riparazione.",
+    )
+    pratica_tasto_riparatore = models.CharField(
+        "Tasto Riparatore",
+        max_length=20,
+        choices=PraticaTastoScorciatoia.choices,
+        blank=True,
+        default=PraticaTastoScorciatoia.F6,
+        help_text="Scorciatoia per portare il focus sul campo Riparatore.",
+    )
+    pratica_tasto_tipo_oggetto = models.CharField(
+        "Tasto Tipo oggetto",
+        max_length=20,
+        choices=PraticaTastoScorciatoia.choices,
+        blank=True,
+        default=PraticaTastoScorciatoia.F7,
+        help_text="Scorciatoia per portare il focus sul campo Tipo oggetto.",
     )
     pratica_stato_radio = models.BooleanField(
         "Stato riparazione a radio-bottoni",

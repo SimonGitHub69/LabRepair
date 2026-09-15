@@ -14,7 +14,18 @@ class ConfigurazioneMssql(BaseModel):
     )
     server = models.CharField("Istanza server", max_length=300, blank=True)
     porta = models.PositiveIntegerField("Porta", default=1433)
-    nome_database = models.CharField("Database", max_length=200, blank=True)
+    nome_database = models.CharField(
+        "Database",
+        max_length=200,
+        blank=True,
+        help_text="Database per la sincronizzazione prezzi cassa (TB_PREZZICASSE).",
+    )
+    nome_database_cassa = models.CharField(
+        "Database Cassa",
+        max_length=200,
+        blank=True,
+        help_text="Database usato per la lettura degli scontrini.",
+    )
     utente = models.CharField("Utente", max_length=200, blank=True)
     password = models.CharField("Password", max_length=200, blank=True)
     prz_pvn_codice = models.CharField(
@@ -51,12 +62,27 @@ class ConfigurazioneMssql(BaseModel):
         obj, _ = cls.objects.get_or_create(pk=1, defaults={"attiva": False})
         return obj
 
+    def _has_credentials(self):
+        if self.autenticazione_windows:
+            return True
+        return bool((self.utente or "").strip() and self.password)
+
     @property
     def is_configured(self):
-        base = bool(self.server.strip() and self.nome_database.strip())
-        if self.autenticazione_windows:
-            return base
-        return base and bool(self.utente.strip() and self.password)
+        return bool(
+            (self.server or "").strip()
+            and (self.nome_database or "").strip()
+            and self._has_credentials()
+        )
+
+    @property
+    def is_cassa_configured(self):
+        """Pronto per leggere gli scontrini (Database Cassa)."""
+        return bool(
+            (self.server or "").strip()
+            and (self.nome_database_cassa or "").strip()
+            and self._has_credentials()
+        )
 
     @property
     def server_display(self):

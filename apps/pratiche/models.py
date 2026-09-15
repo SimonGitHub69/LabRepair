@@ -215,7 +215,7 @@ class Pratica(BaseModel):
     senza_spesa = models.BooleanField(
         "Senza spesa",
         default=False,
-        help_text="Se attivo, consente stato In consegna anche con Costo totale a zero.",
+        help_text="Se attivo, consente stato In consegna anche con Prezzo al Pubblico a zero.",
     )
     gs_barcode = models.DecimalField(
         "Barcode GS",

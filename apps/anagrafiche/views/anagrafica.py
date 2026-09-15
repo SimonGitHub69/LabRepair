@@ -6,7 +6,7 @@ from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.generic import ListView, CreateView, UpdateView, DetailView, View
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.contrib.messages.views import SuccessMessageMixin
 
 from apps.anagrafiche.models import Anagrafica, Contatto, Indirizzo
@@ -38,6 +38,19 @@ def get_safe_next_url(request):
     return next_url
 
 
+def is_embed_request(request):
+    return request.GET.get("embed") == "1" or request.POST.get("embed") == "1"
+
+
+class EmbedFrameMixin:
+    """Forza SAMEORIGIN così la scheda cliente si vede nell'iframe della riparazione."""
+
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        response["X-Frame-Options"] = "SAMEORIGIN"
+        return response
+
+
 class AnagraficaListView(LoginRequiredMixin, ConfigurablePaginationMixin, ListView):
     model = Anagrafica
     template_name = "anagrafiche/anagrafica_list.html"
@@ -45,7 +58,18 @@ class AnagraficaListView(LoginRequiredMixin, ConfigurablePaginationMixin, ListVi
     paginate_by = 20
 
     def get_queryset(self):
-        queryset = Anagrafica.objects.filter(is_active=True)
+        queryset = Anagrafica.objects.filter(is_active=True).annotate(
+            pratiche_attive_count=Count(
+                "pratiche",
+                filter=Q(pratiche__is_active=True),
+                distinct=True,
+            ),
+            pratiche_centro_attive_count=Count(
+                "pratiche_centro_assistenza",
+                filter=Q(pratiche_centro_assistenza__is_active=True),
+                distinct=True,
+            ),
+        )
 
         q = (self.request.GET.get("q") or "").strip()
         tipo = (self.request.GET.get("tipo") or "").strip()
@@ -64,9 +88,6 @@ class AnagraficaListView(LoginRequiredMixin, ConfigurablePaginationMixin, ListVi
         context = super().get_context_data(**kwargs)
         context["tipi_anagrafica"] = Anagrafica.Tipo.choices
         context["selected_tipo"] = (self.request.GET.get("tipo") or "").strip()
-        query_dict = self.request.GET.copy()
-        query_dict.pop("page", None)
-        context["filters_query"] = query_dict.urlencode()
         list_path = reverse("anagrafiche:anagrafica_list")
         full_qs = self.request.GET.urlencode()
         context["list_return_url"] = f"{list_path}?{full_qs}" if full_qs else list_path
@@ -226,7 +247,8 @@ class AnagraficaFormsetMixin:
             self.save_formset(contatto_formset)
             self.save_formset(indirizzo_formset)
 
-        messages.success(self.request, self.success_message)
+        if not is_embed_request(self.request):
+            messages.success(self.request, self.success_message)
         return redirect(self.get_success_url())
 
     def form_invalid_with_formsets(self, form, contatto_formset, indirizzo_formset):
@@ -269,14 +291,31 @@ class AnagraficaFormsetMixin:
         return False
 
 
-class AnagraficaCreateView(LoginRequiredMixin, AnagraficaFormsetMixin, SuccessMessageMixin, CreateView):
+class AnagraficaCreateView(
+    LoginRequiredMixin, EmbedFrameMixin, AnagraficaFormsetMixin, SuccessMessageMixin, CreateView
+):
     model = Anagrafica
     form_class = AnagraficaForm
     template_name = "anagrafiche/anagrafica_form.html"
     success_message = "Anagrafica creata correttamente."
 
     def get_success_url(self):
+        if is_embed_request(self.request):
+            return reverse("anagrafiche:anagrafica_embed_done", kwargs={"pk": self.object.pk})
         return reverse("anagrafiche:anagrafica_detail", kwargs={"pk": self.object.pk})
+
+
+class AnagraficaEmbedDoneView(LoginRequiredMixin, DetailView):
+    """Pagina minima nell'iframe: avvisa la riparazione e chiude la maschera."""
+
+    model = Anagrafica
+    template_name = "anagrafiche/anagrafica_embed_done.html"
+    context_object_name = "anagrafica"
+
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        response["X-Frame-Options"] = "SAMEORIGIN"
+        return response
 
 
 class AnagraficaUpdateView(LoginRequiredMixin, AnagraficaFormsetMixin, SuccessMessageMixin, UpdateView):
@@ -295,7 +334,11 @@ class AnagraficaUpdateView(LoginRequiredMixin, AnagraficaFormsetMixin, SuccessMe
 class AnagraficaDeleteView(LoginRequiredMixin, View):
     def post(self, request, *args, **kwargs):
         anagrafica = get_object_or_404(Anagrafica, pk=kwargs["pk"], is_active=True)
-        anagrafica.soft_delete(user=request.user)
+        try:
+            anagrafica.soft_delete(user=request.user)
+        except PermissionError as exc:
+            messages.error(request, str(exc))
+            return redirect("anagrafiche:anagrafica_list")
         messages.success(request, "Anagrafica eliminata correttamente.")
         return redirect("anagrafiche:anagrafica_list")
 

@@ -10,6 +10,7 @@ from apps.core.date_fields import (
     apply_current_year_datetime_widget,
     apply_pratica_date_widget,
     validate_current_year_date,
+    validate_not_before_today,
     validate_pratica_date,
 )
 from apps.core.widgets import NoAutofillEmailInput, NoAutofillTextInput
@@ -39,7 +40,25 @@ PRATICA_DATE_FIELDS = (
 )
 
 
+class OptionalClienteChoiceField(forms.ModelChoiceField):
+    """Se l'ID non è nel queryset, non blocca: lascia None e decide clean()."""
+
+    def to_python(self, value):
+        if value in self.empty_values:
+            return None
+        try:
+            return super().to_python(value)
+        except forms.ValidationError:
+            return None
+
+
 class PraticaForm(forms.ModelForm):
+    cliente = OptionalClienteChoiceField(
+        queryset=Anagrafica.objects.none(),
+        required=False,
+        widget=forms.HiddenInput(attrs={"id": "id_cliente"}),
+    )
+
     class Meta:
         model = Pratica
         fields = [
@@ -74,7 +93,6 @@ class PraticaForm(forms.ModelForm):
         ]
         widgets = {
             "titolo": forms.TextInput(attrs={"class": "form-control"}),
-            "cliente": forms.HiddenInput(attrs={"id": "id_cliente"}),
             "referente_cognome": NoAutofillTextInput(),
             "referente_nome": NoAutofillTextInput(),
             "referente_telefono": NoAutofillTextInput(),
@@ -138,7 +156,7 @@ class PraticaForm(forms.ModelForm):
 
         initial_cliente = self.initial.get("cliente")
         if initial_cliente:
-            return str(initial_cliente)
+            return str(getattr(initial_cliente, "pk", initial_cliente))
 
         return ""
 
@@ -154,15 +172,23 @@ class PraticaForm(forms.ModelForm):
             self.fields["descrizione"].widget.attrs["data-autosize"] = "1"
         if stato_come_radio:
             self.fields["stato"].widget = forms.RadioSelect(
-                attrs={"class": "form-check-input"}
+                attrs={"class": "form-check-input", "tabindex": "-1"}
             )
         cliente_id = self._resolve_cliente_id()
-        cliente_qs = self._cliente_queryset().prefetch_related("contatti", "indirizzi")
+        # Il ModelChoiceField valida solo sul queryset: se l'ID inviato non c'è
+        # (es. cliente soft-deleted ancora sulla pratica) Django risponde
+        # «Scegli un'opzione valida» in stampa/salva AJAX.
         if cliente_id:
-            self.fields["cliente"].queryset = cliente_qs.filter(pk=cliente_id)
-            self.selected_cliente = cliente_qs.filter(pk=cliente_id).first()
+            selected_qs = Anagrafica.objects.filter(
+                pk=cliente_id,
+                tipo=Anagrafica.Tipo.CLIENTE,
+            ).prefetch_related("contatti", "indirizzi")
+            self.fields["cliente"].queryset = selected_qs
+            self.selected_cliente = (
+                selected_qs.filter(is_active=True).first() or selected_qs.first()
+            )
         else:
-            self.fields["cliente"].queryset = cliente_qs.none()
+            self.fields["cliente"].queryset = Anagrafica.objects.none()
             self.selected_cliente = None
         self.selected_cliente_anagrafica = None
         if self.selected_cliente:
@@ -172,7 +198,13 @@ class PraticaForm(forms.ModelForm):
             self.selected_cliente_anagrafica = referente.get("anagrafica")
         self.fields["cliente"].required = False
         self.fields["cliente"].error_messages.update(
-            {"required": "Seleziona un cliente oppure inserisci Nome e Cognome."}
+            {
+                "required": "Seleziona un cliente oppure inserisci Nome e Cognome.",
+                "invalid_choice": (
+                    "Il cliente selezionato non è valido. "
+                    "Selezionalo di nuovo dalla ricerca oppure inserisci Nome e Cognome."
+                ),
+            }
         )
         for field_name in (
             "referente_cognome",
@@ -232,8 +264,10 @@ class PraticaForm(forms.ModelForm):
             date_field.widget.format = "%Y-%m-%d"
             date_field.input_formats = ["%Y-%m-%d"]
             instance_value = getattr(self.instance, field_name, None) if self.instance.pk else None
+            min_date = timezone.localdate() if field_name == "data_scadenza" else None
             apply_pratica_date_widget(
                 date_field,
+                min_date=min_date,
                 instance_value=instance_value,
             )
         self.fields["data_scadenza"].required = True
@@ -387,23 +421,11 @@ class PraticaForm(forms.ModelForm):
         stato = cleaned_data.get("stato")
         senza_spesa = bool(cleaned_data.get("senza_spesa"))
         if stato == Pratica.Stato.IN_CONSEGNA and not senza_spesa:
-            costo_lavorazione = Decimal(cleaned_data.get("costo_lavorazione") or 0)
-            costo_materiale = Decimal(cleaned_data.get("costo_materiale") or 0)
-            oro_aggiunto = Decimal(cleaned_data.get("oro_aggiunto") or 0)
-            prezzo_unita = Decimal(cleaned_data.get("prezzo_unita") or 0)
             prezzo_al = Decimal(cleaned_data.get("prezzo_al") or 0)
-            costo_totale = (
-                costo_lavorazione + costo_materiale + (oro_aggiunto * prezzo_unita)
-            )
-            if costo_totale <= 0:
-                self.add_error(
-                    "senza_spesa",
-                    "Con stato «In consegna» inserisci un Costo totale oppure seleziona Senza Spesa.",
-                )
-            elif prezzo_al <= 0:
+            if prezzo_al <= 0:
                 self.add_error(
                     "prezzo_al",
-                    "Inserisci il Prezzo al Pubblico.",
+                    "Con stato «In consegna» inserisci un Prezzo al Pubblico oppure seleziona Senza Spesa.",
                 )
 
         if tipologia == Pratica.Tipologia.PREZIOSO and cliente:
@@ -442,6 +464,11 @@ class PraticaForm(forms.ModelForm):
         if not value:
             return value
         validate_pratica_date(
+            value,
+            instance=self.instance,
+            field_name="data_scadenza",
+        )
+        validate_not_before_today(
             value,
             instance=self.instance,
             field_name="data_scadenza",

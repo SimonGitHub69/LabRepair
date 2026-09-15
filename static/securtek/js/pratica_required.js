@@ -26,6 +26,9 @@
         {
             id: "id_data_scadenza",
             message: "Inserisci la data prevista consegna.",
+            notBeforeToday: true,
+            notBeforeTodayMessage:
+                "La data prevista consegna non può essere precedente a oggi.",
         },
     ];
 
@@ -39,17 +42,10 @@
         message: "Seleziona il centro assistenza.",
     };
 
-    const COSTO_TOTALE_REQUIRED = {
-        id: "costoTotaleDisplay",
-        focusId: "costoTotaleDisplay",
-        message:
-            "Con stato «In consegna» inserisci un Costo totale oppure seleziona Senza Spesa.",
-        inConsegnaCosto: true,
-    };
-
     const PREZZO_PUBBLICO_REQUIRED = {
         id: "id_prezzo_al",
-        message: "Inserisci il Prezzo al Pubblico.",
+        message:
+            "Con stato «In consegna» inserisci un Prezzo al Pubblico oppure seleziona Senza Spesa.",
         inConsegnaPrezzoPubblico: true,
     };
 
@@ -61,7 +57,15 @@
         if (config.focusId) {
             return document.getElementById(config.focusId);
         }
-        return getField(config);
+        const field = getField(config);
+        if (field && field.classList.contains("st-date-native")) {
+            const wrap = field.closest(".st-date-field");
+            const text = wrap ? wrap.querySelector(".st-date-text") : null;
+            if (text) {
+                return text;
+            }
+        }
+        return field;
     }
 
     function isPrezioso() {
@@ -97,25 +101,6 @@
         const normalized = String(value || "").replace(",", ".").trim();
         const amount = Number.parseFloat(normalized);
         return Number.isFinite(amount) ? amount : 0;
-    }
-
-    function getCostoTotaleValue() {
-        const lavorazione = document.getElementById("id_costo_lavorazione");
-        const materiale = document.getElementById("id_costo_materiale");
-        const oro = document.getElementById("id_oro_aggiunto");
-        const prezzoUnita = document.getElementById("id_prezzo_unita");
-        const fromFields =
-            parseAmount(lavorazione && lavorazione.value) +
-            parseAmount(materiale && materiale.value) +
-            parseAmount(oro && oro.value) * parseAmount(prezzoUnita && prezzoUnita.value);
-        if (fromFields > 0) {
-            return fromFields;
-        }
-        const display = document.getElementById("costoTotaleDisplay");
-        if (display && display.value) {
-            return parseAmount(display.value);
-        }
-        return 0;
     }
 
     function fieldTrimmedValue(id) {
@@ -158,34 +143,41 @@
             fields.push(CENTRO_REQUIRED);
         }
         if (isInConsegna()) {
-            fields.push(COSTO_TOTALE_REQUIRED);
             fields.push(PREZZO_PUBBLICO_REQUIRED);
         }
         return fields;
     }
 
-    function isFilled(config) {
-        const field = getField(config);
-        if (!field && !config.inConsegnaCosto && !config.inConsegnaPrezzoPubblico) {
+    function todayIsoDateLocal() {
+        if (typeof window.labrepairTodayIsoDate === "function") {
+            return window.labrepairTodayIsoDate();
+        }
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, "0");
+        const d = String(now.getDate()).padStart(2, "0");
+        return y + "-" + m + "-" + d;
+    }
+
+    function isConsegnaNotBeforeToday(field) {
+        if (!field) {
             return true;
         }
+        const value = String(field.value || "").trim();
+        if (!value) {
+            return true;
+        }
+        return value >= todayIsoDateLocal();
+    }
 
-        if (config.inConsegnaCosto) {
-            if (!isInConsegna()) {
-                return true;
-            }
-            if (isSenzaSpesa()) {
-                return true;
-            }
-            return getCostoTotaleValue() > 0;
+    function isFilled(config) {
+        const field = getField(config);
+        if (!field && !config.inConsegnaPrezzoPubblico) {
+            return true;
         }
 
         if (config.inConsegnaPrezzoPubblico) {
             if (!isInConsegna() || isSenzaSpesa()) {
-                return true;
-            }
-            // Solo se c'è un costo totale (o stiamo ancora validando i costi)
-            if (getCostoTotaleValue() <= 0) {
                 return true;
             }
             return parseAmount(field && field.value) > 0;
@@ -215,17 +207,32 @@
             return Number.isFinite(value) && value > 0;
         }
 
+        if (config.notBeforeToday) {
+            if (!(field.value || "").trim()) {
+                const wrap = field.closest(".st-date-field");
+                const text = wrap ? wrap.querySelector(".st-date-text") : null;
+                if (text && String(text.value || "").trim()) {
+                    if (typeof window.labrepairCommitDateFields === "function") {
+                        window.labrepairCommitDateFields(wrap);
+                    }
+                }
+            }
+            if (!(field.value || "").trim()) {
+                return false;
+            }
+            return isConsegnaNotBeforeToday(field);
+        }
+
         return Boolean((field.value || "").trim());
     }
 
     function focusField(config) {
         let target = getFocusTarget(config);
 
-        if (config.inConsegnaCosto) {
+        if (config.inConsegnaPrezzoPubblico) {
             const senzaSpesa = document.getElementById("id_senza_spesa");
-            const costoDisplay = document.getElementById("costoTotaleDisplay");
-            const lavorazione = document.getElementById("id_costo_lavorazione");
-            target = senzaSpesa || lavorazione || costoDisplay || target;
+            const prezzoAl = document.getElementById("id_prezzo_al");
+            target = prezzoAl || senzaSpesa || target;
         }
 
         if (
@@ -300,16 +307,27 @@
         focusField(config);
         let target = getFocusTarget(config);
 
-        if (config.inConsegnaCosto) {
+        if (config.inConsegnaPrezzoPubblico) {
             const senzaSpesa = document.getElementById("id_senza_spesa");
-            target = senzaSpesa || target;
+            const prezzoAl = document.getElementById("id_prezzo_al");
+            target = prezzoAl || senzaSpesa || target;
         }
 
         if (!target || typeof target.reportValidity !== "function") {
             return;
         }
 
-        target.setCustomValidity(config.message);
+        let message = config.message;
+        if (
+            config.notBeforeToday &&
+            target.value &&
+            !isConsegnaNotBeforeToday(target) &&
+            config.notBeforeTodayMessage
+        ) {
+            message = config.notBeforeTodayMessage;
+        }
+
+        target.setCustomValidity(message);
 
         function clearValidity() {
             target.setCustomValidity("");
@@ -331,6 +349,11 @@
         if (form && typeof window.labrepairSyncNoAutofillMirrors === "function") {
             window.labrepairSyncNoAutofillMirrors(form);
         }
+        if (typeof window.labrepairCommitDateFields === "function") {
+            if (!window.labrepairCommitDateFields(form || document)) {
+                return { ok: false, message: "Controlla le date inserite (gg/mm/aa)." };
+            }
+        }
 
         const senzaSpesa = document.getElementById("id_senza_spesa");
         if (senzaSpesa && typeof senzaSpesa.setCustomValidity === "function") {
@@ -343,7 +366,14 @@
             return { ok: true };
         }
         showFieldMessage(missing);
-        return { ok: false, message: missing.message };
+        let message = missing.message;
+        if (missing.notBeforeToday) {
+            const field = getField(missing);
+            if (field && field.value && !isConsegnaNotBeforeToday(field)) {
+                message = missing.notBeforeTodayMessage || message;
+            }
+        }
+        return { ok: false, message: message };
     };
 
     function initPraticaRequiredOrder() {

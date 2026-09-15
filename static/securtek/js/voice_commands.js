@@ -180,8 +180,7 @@
         }
         var target = new URL(base, window.location.origin);
         target.searchParams.set("q", q);
-        window.location.href = target.toString();
-        return true;
+        return go(target.toString());
     }
 
     function resolveDestination(destinazione, customUrl) {
@@ -327,7 +326,7 @@
         if (matchesExactOrIncludes(text, phrases(map, "prima_pagina"))) {
             var first = document.querySelector(".st-pagination a[aria-label='Prima pagina']");
             if (first) {
-                window.location.href = first.getAttribute("href");
+                go(first.getAttribute("href"));
                 toast("Prima pagina");
                 return true;
             }

@@ -7,6 +7,10 @@ function initClienteSearch(root) {
     const searchInput = root.querySelector("[data-cliente-search-input]");
     const resultsBox = root.querySelector("[data-cliente-search-results]");
     const clearButton = root.querySelector("[data-cliente-search-clear]");
+    const searchPanel = root.querySelector("[data-cliente-search-panel]");
+    const summaryBox = root.querySelector("[data-cliente-search-summary]");
+    const reopenButton = root.querySelector("[data-cliente-search-reopen]");
+    const canCollapse = root.dataset.clienteSearchCollapse === "1";
     const searchUrl = root.dataset.searchUrl;
     const referenteUrlTemplate = root.dataset.referenteUrlTemplate || "";
 
@@ -62,6 +66,10 @@ function initClienteSearch(root) {
             empty: document.getElementById("clienteAnagraficaEmpty"),
             content: document.getElementById("clienteAnagraficaContent"),
             editLink: document.getElementById("clienteAnagraficaEditLink"),
+            panel: document.querySelector("[data-cliente-anagrafica-panel]"),
+            collapseToggle: document.querySelector("[data-anagrafica-collapse-toggle]"),
+            docBadge: document.querySelector("[data-anagrafica-doc-badge]"),
+            documentoWrap: document.querySelector("[data-cliente-documento-panel]"),
         };
     }
 
@@ -72,7 +80,18 @@ function initClienteSearch(root) {
         }
     }
 
-    function fillAnagraficaPanel(anagrafica) {
+    function syncAnagraficaDocWarning(anagrafica) {
+        const nodes = getAnagraficaPanelNodes();
+        const scaduto = !!(anagrafica && anagrafica.documento_scaduto);
+        if (nodes.panel) {
+            nodes.panel.classList.toggle("is-warning", scaduto);
+        }
+        if (nodes.docBadge) {
+            nodes.docBadge.hidden = !scaduto;
+        }
+    }
+
+    function fillAnagraficaPanel(anagrafica, options) {
         const nodes = getAnagraficaPanelNodes();
         if (!nodes.content) {
             return;
@@ -99,13 +118,27 @@ function initClienteSearch(root) {
         });
 
         if (typeof window.labrepairFillClienteDocumento === "function") {
-            window.labrepairFillClienteDocumento(anagrafica);
+            window.labrepairFillClienteDocumento(anagrafica, options || {});
         }
 
         if (nodes.empty) {
             nodes.empty.hidden = true;
         }
         nodes.content.hidden = false;
+        syncAnagraficaDocWarning(anagrafica);
+
+        if (nodes.documentoWrap) {
+            nodes.documentoWrap.hidden = false;
+        }
+
+        if (nodes.collapseToggle) {
+            nodes.collapseToggle.hidden = false;
+        }
+
+        if (typeof window.labrepairSetSectionCollapsed === "function") {
+            window.labrepairSetSectionCollapsed("cliente-anagrafica-body", true, false);
+            window.labrepairSetSectionCollapsed("cliente-documento-body", true, false);
+        }
 
         if (nodes.editLink) {
             if (anagrafica.edit_url) {
@@ -133,6 +166,16 @@ function initClienteSearch(root) {
             nodes.empty.hidden = false;
         }
         nodes.content.hidden = true;
+        syncAnagraficaDocWarning(null);
+        if (nodes.documentoWrap) {
+            nodes.documentoWrap.hidden = true;
+        }
+        if (nodes.collapseToggle) {
+            nodes.collapseToggle.hidden = true;
+        }
+        if (typeof window.labrepairSetSectionCollapsed === "function") {
+            window.labrepairSetSectionCollapsed("cliente-anagrafica-body", false, false);
+        }
         if (nodes.editLink) {
             nodes.editLink.hidden = true;
             nodes.editLink.href = "#";
@@ -168,6 +211,7 @@ function initClienteSearch(root) {
 
     let debounceTimer = null;
     let activeRequest = null;
+    let activeIndex = -1;
 
     function toggleClearButton() {
         if (!clearButton) {
@@ -176,14 +220,112 @@ function initClienteSearch(root) {
         clearButton.hidden = !hiddenField.value;
     }
 
+    function collapseSearch() {
+        if (!canCollapse || !searchPanel || !summaryBox) {
+            return;
+        }
+        searchPanel.hidden = true;
+        summaryBox.hidden = false;
+        closeResults();
+        root.classList.add("is-cliente-selected");
+    }
+
+    function expandSearch(options) {
+        if (!canCollapse || !searchPanel || !summaryBox) {
+            return;
+        }
+        options = options || {};
+        summaryBox.hidden = true;
+        searchPanel.hidden = false;
+        root.classList.remove("is-cliente-selected");
+        if (options.clear) {
+            clearCliente({ keepExpanded: true });
+        } else if (options.focus !== false) {
+            searchInput.focus();
+            searchInput.select();
+        }
+    }
+
+    function getOptions() {
+        return Array.prototype.slice.call(
+            resultsBox.querySelectorAll(".st-cliente-search-option[data-cliente-id]")
+        );
+    }
+
+    function scrollOptionIntoList(option) {
+        if (!option || resultsBox.hidden) {
+            return;
+        }
+
+        const boxRect = resultsBox.getBoundingClientRect();
+        const optRect = option.getBoundingClientRect();
+        const borderTop = parseFloat(window.getComputedStyle(resultsBox).borderTopWidth) || 0;
+        const relativeTop = optRect.top - boxRect.top - borderTop + resultsBox.scrollTop;
+        const optionHeight = Math.max(option.offsetHeight, optRect.height);
+        const viewHeight = resultsBox.clientHeight;
+        const pad = 10;
+        const maxScroll = Math.max(0, resultsBox.scrollHeight - viewHeight);
+
+        let nextScroll = resultsBox.scrollTop;
+        if (relativeTop < nextScroll + pad) {
+            nextScroll = relativeTop - pad;
+        } else if (relativeTop + optionHeight > nextScroll + viewHeight - pad) {
+            nextScroll = relativeTop + optionHeight - viewHeight + pad;
+        }
+
+        resultsBox.scrollTop = Math.max(0, Math.min(maxScroll, nextScroll));
+    }
+
+    function setResultsOpen(isOpen) {
+        root.classList.toggle("is-results-open", Boolean(isOpen));
+    }
+
+    function setActiveIndex(index) {
+        const options = getOptions();
+        if (!options.length) {
+            activeIndex = -1;
+            return;
+        }
+
+        if (index < 0) {
+            index = 0;
+        } else if (index >= options.length) {
+            index = options.length - 1;
+        }
+
+        activeIndex = index;
+        let activeOption = null;
+        options.forEach(function (option, optionIndex) {
+            const isActive = optionIndex === activeIndex;
+            option.classList.toggle("is-active", isActive);
+            option.setAttribute("aria-selected", isActive ? "true" : "false");
+            if (isActive) {
+                activeOption = option;
+            }
+        });
+
+        if (activeOption) {
+            window.requestAnimationFrame(function () {
+                scrollOptionIntoList(activeOption);
+                window.requestAnimationFrame(function () {
+                    scrollOptionIntoList(activeOption);
+                });
+            });
+        }
+    }
+
     function closeResults() {
+        activeIndex = -1;
         resultsBox.hidden = true;
         resultsBox.innerHTML = "";
+        setResultsOpen(false);
     }
 
     function renderMessage(message) {
+        activeIndex = -1;
         resultsBox.innerHTML = `<div class="st-cliente-search-empty">${message}</div>`;
         resultsBox.hidden = false;
+        setResultsOpen(true);
     }
 
     function escapeHtml(value) {
@@ -222,6 +364,8 @@ function initClienteSearch(root) {
             return `
                 <button type="button"
                         class="st-cliente-search-option"
+                        role="option"
+                        aria-selected="false"
                         data-cliente-id="${item.id}"
                         data-cliente-label="${escapeHtml(labelText)}">
                     <span class="st-cliente-search-option-label">${labelHtml}</span>
@@ -230,6 +374,9 @@ function initClienteSearch(root) {
             `;
         }).join("");
         resultsBox.hidden = false;
+        resultsBox.setAttribute("role", "listbox");
+        setResultsOpen(true);
+        setActiveIndex(0);
     }
 
     function getFilterForm() {
@@ -243,17 +390,39 @@ function initClienteSearch(root) {
         }
     }
 
+    function focusReferenteCognome() {
+        if (getFilterForm()) {
+            return;
+        }
+        const cognome = document.getElementById("id_referente_cognome");
+        if (!cognome) {
+            return;
+        }
+        window.requestAnimationFrame(function () {
+            cognome.focus();
+            if (typeof cognome.select === "function") {
+                cognome.select();
+            }
+        });
+    }
+
     function selectCliente(id, label) {
         hiddenField.value = id;
         searchInput.value = label;
         searchInput.dataset.selectedLabel = label;
         closeResults();
         toggleClearButton();
-        fetchReferente(id);
+        fetchReferente(id).finally(function () {
+            collapseSearch();
+            focusReferenteCognome();
+        });
         submitFilterForm();
     }
 
-    function clearCliente() {
+    root.__labrepairSelectCliente = selectCliente;
+
+    function clearCliente(options) {
+        options = options || {};
         hiddenField.value = "";
         searchInput.value = "";
         delete searchInput.dataset.selectedLabel;
@@ -261,6 +430,17 @@ function initClienteSearch(root) {
         toggleClearButton();
         clearReferenteFields();
         clearAnagraficaPanel();
+        if (!options.keepExpanded) {
+            expandSearch({ focus: false });
+        } else {
+            if (searchPanel) {
+                searchPanel.hidden = false;
+            }
+            if (summaryBox) {
+                summaryBox.hidden = true;
+            }
+            root.classList.remove("is-cliente-selected");
+        }
         if (getFilterForm()) {
             submitFilterForm();
             return;
@@ -322,15 +502,76 @@ function initClienteSearch(root) {
         }, 250);
     }
 
-    if (hiddenField.value) {
-        fetchResults({selected: hiddenField.value});
-    }
+    // Cliente già selezionato: non aprire il dropdown (lista filtri / modifica scheda).
+    closeResults();
 
     searchInput.addEventListener("input", handleSearchInput);
     searchInput.addEventListener("focus", function () {
         const query = searchInput.value.trim();
         if (query.length >= 2 && !hiddenField.value) {
             handleSearchInput();
+        }
+    });
+    searchInput.addEventListener("keydown", function (event) {
+        const options = getOptions();
+        const resultsOpen = !resultsBox.hidden && options.length > 0;
+
+        if (event.key === "ArrowDown") {
+            if (!resultsOpen) {
+                return;
+            }
+            event.preventDefault();
+            event.stopPropagation();
+            setActiveIndex(activeIndex < 0 ? 0 : activeIndex + 1);
+            return;
+        }
+
+        if (event.key === "ArrowUp") {
+            if (!resultsOpen) {
+                return;
+            }
+            event.preventDefault();
+            event.stopPropagation();
+            setActiveIndex(activeIndex < 0 ? options.length - 1 : activeIndex - 1);
+            return;
+        }
+
+        if (event.key === "PageDown" || event.key === "PageUp" || event.key === "Home" || event.key === "End") {
+            if (!resultsOpen) {
+                return;
+            }
+            event.preventDefault();
+            event.stopPropagation();
+            if (event.key === "PageDown") {
+                setActiveIndex(Math.min(options.length - 1, (activeIndex < 0 ? 0 : activeIndex) + 5));
+            } else if (event.key === "PageUp") {
+                setActiveIndex(Math.max(0, (activeIndex < 0 ? 0 : activeIndex) - 5));
+            } else if (event.key === "Home") {
+                setActiveIndex(0);
+            } else {
+                setActiveIndex(options.length - 1);
+            }
+            return;
+        }
+
+        if (event.key === "Enter") {
+            if (!resultsOpen || activeIndex < 0 || !options[activeIndex]) {
+                return;
+            }
+            event.preventDefault();
+            event.stopPropagation();
+            const option = options[activeIndex];
+            selectCliente(option.dataset.clienteId, option.dataset.clienteLabel);
+            return;
+        }
+
+        if (event.key === "Escape") {
+            if (resultsBox.hidden) {
+                return;
+            }
+            event.preventDefault();
+            event.stopPropagation();
+            closeResults();
         }
     });
 
@@ -341,9 +582,29 @@ function initClienteSearch(root) {
         }
         selectCliente(option.dataset.clienteId, option.dataset.clienteLabel);
     });
+    resultsBox.addEventListener("mousemove", function (event) {
+        const option = event.target.closest(".st-cliente-search-option[data-cliente-id]");
+        if (!option || resultsBox.hidden) {
+            return;
+        }
+        const options = getOptions();
+        const index = options.indexOf(option);
+        if (index >= 0 && index !== activeIndex) {
+            setActiveIndex(index);
+        }
+    });
 
     if (clearButton) {
-        clearButton.addEventListener("click", clearCliente);
+        clearButton.addEventListener("click", function () {
+            clearCliente();
+        });
+    }
+
+    if (reopenButton) {
+        reopenButton.addEventListener("click", function () {
+            // Riapre la ricerca senza cancellare subito: l'operatore può correggere o usare X.
+            expandSearch({ focus: true });
+        });
     }
 
     document.addEventListener("click", function (event) {
@@ -353,11 +614,17 @@ function initClienteSearch(root) {
     });
 
     toggleClearButton();
+    if (canCollapse && hiddenField.value) {
+        collapseSearch();
+    }
 
     const initialScript = document.getElementById("cliente-anagrafica-initial");
     if (initialScript) {
         try {
-            fillAnagraficaPanel(JSON.parse(initialScript.textContent));
+            // Apertura da lista/scheda: evidenzia scaduto in pagina, senza dialog.
+            fillAnagraficaPanel(JSON.parse(initialScript.textContent), {
+                skipNotify: true,
+            });
         } catch (error) {
             clearAnagraficaPanel();
         }
@@ -369,3 +636,11 @@ function initClienteSearch(root) {
 document.addEventListener("DOMContentLoaded", function () {
     document.querySelectorAll("[data-cliente-search-root]").forEach(initClienteSearch);
 });
+
+window.labrepairSelectCliente = function (id, label) {
+    const root = document.querySelector("#praticaForm [data-cliente-search-root], [data-cliente-search-root]");
+    if (!root || typeof root.__labrepairSelectCliente !== "function") {
+        return;
+    }
+    root.__labrepairSelectCliente(String(id), String(label || ""));
+};

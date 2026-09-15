@@ -228,12 +228,12 @@
                         {% endif %}
                         <div class="st-anagrafica-fact">
                             <span class="st-anagrafica-fact-label">Data rilascio</span>
-                            <span class="st-anagrafica-fact-value">{{ anagrafica.documento_data_rilascio|date:"d/m/Y"|default:"—" }}</span>
+                            <span class="st-anagrafica-fact-value">{{ anagrafica.documento_data_rilascio|date:"d/m/y"|default:"—" }}</span>
                         </div>
                         <div class="st-anagrafica-fact">
                             <span class="st-anagrafica-fact-label">Data scadenza</span>
                             <span class="st-anagrafica-fact-value{% if documento_scaduto %} text-danger fw-bold{% endif %}">
-                                {{ anagrafica.documento_data_scadenza|date:"d/m/Y"|default:"—" }}
+                                {{ anagrafica.documento_data_scadenza|date:"d/m/y"|default:"—" }}
                             </span>
                         </div>
                         <div class="st-anagrafica-fact">
@@ -324,7 +324,7 @@
                             <td>
                                 {% if pratica.data_scadenza %}
                                 <span class="{% if pratica.is_scaduta %}text-danger fw-bold{% endif %}">
-                                    {{ pratica.data_scadenza|date:"d/m/Y" }}
+                                    {{ pratica.data_scadenza|date:"d/m/y" }}
                                 </span>
                                 {% else %}
                                 <span class="text-secondary">—</span>

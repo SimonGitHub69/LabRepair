@@ -44,7 +44,7 @@ Args = "--app=""" & Login & """" & _
        " --user-data-dir=""" & Profile & """" & _
        " --unsafely-treat-insecure-origin-as-secure=" & Origin & _
        " --test-type" & _
-       " --disable-features=InsecureDownloadWarnings,HttpsFirstBalancedModeAutoEnable,HttpsUpgrades,HttpsFirstModeV2,HttpsFirstModeV2ForEngagedSites,HttpsFirstModeV2ForTypicallySecureUsers"
+       " --disable-features=InsecureDownloadWarnings,HttpsFirstBalancedModeAutoEnable,HttpsUpgrades,HttpsFirstModeV2,HttpsFirstModeV2ForEngagedSites,HttpsFirstModeV2ForTypicallySecureUsers,LocalNetworkAccessChecks,BlockInsecurePrivateNetworkRequests,PrivateNetworkAccessSendPreflights"
 
 ' Lettore CIE sul PC client: avvia agent locale se installato.
 Dim cieAgentVbs
@@ -106,8 +106,15 @@ Sub ApplyInsecureOriginPolicy(ByVal originUrl)
   ' Stessa policy documentata da Microsoft/Google: toglie "Not secure" / "Non sicuro".
   sh.RegWrite "HKCU\Software\Policies\Google\Chrome\OverrideSecurityRestrictionsOnInsecureOrigin\1", originUrl, "REG_SZ"
   sh.RegWrite "HKCU\Software\Policies\Microsoft\Edge\OverrideSecurityRestrictionsOnInsecureOrigin\1", originUrl, "REG_SZ"
+  ' Chrome/Edge 2025+: permette fetch da server LAN verso l'agent locale (127.0.0.1).
+  sh.RegWrite "HKCU\Software\Policies\Google\Chrome\LocalNetworkAccessAllowedForUrls\1", originUrl, "REG_SZ"
+  sh.RegWrite "HKCU\Software\Policies\Microsoft\Edge\LocalNetworkAccessAllowedForUrls\1", originUrl, "REG_SZ"
+  sh.RegWrite "HKCU\Software\Policies\Google\Chrome\InsecurePrivateNetworkRequestsAllowedForUrls\1", originUrl, "REG_SZ"
+  sh.RegWrite "HKCU\Software\Policies\Microsoft\Edge\InsecurePrivateNetworkRequestsAllowedForUrls\1", originUrl, "REG_SZ"
   ' Anche machine-wide se abbiamo privilegi (ignore se Access denied).
   sh.RegWrite "HKLM\SOFTWARE\Policies\Google\Chrome\OverrideSecurityRestrictionsOnInsecureOrigin\1", originUrl, "REG_SZ"
   sh.RegWrite "HKLM\SOFTWARE\Policies\Microsoft\Edge\OverrideSecurityRestrictionsOnInsecureOrigin\1", originUrl, "REG_SZ"
+  sh.RegWrite "HKLM\SOFTWARE\Policies\Google\Chrome\LocalNetworkAccessAllowedForUrls\1", originUrl, "REG_SZ"
+  sh.RegWrite "HKLM\SOFTWARE\Policies\Microsoft\Edge\LocalNetworkAccessAllowedForUrls\1", originUrl, "REG_SZ"
   On Error GoTo 0
 End Sub

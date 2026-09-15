@@ -236,8 +236,24 @@ Parametri mail e SQL
                     <div class="mb-3">
                         <label class="form-label" for="{{ mssql_form.nome_database.id_for_label }}">{{ mssql_form.nome_database.label }}</label>
                         {{ mssql_form.nome_database }}
+                        {% if mssql_form.nome_database.help_text %}
+                            <div class="form-hint">{{ mssql_form.nome_database.help_text }}</div>
+                        {% endif %}
                         {% if mssql_form.nome_database.errors %}
                             <div class="invalid-feedback d-block">{{ mssql_form.nome_database.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ mssql_form.nome_database_cassa.id_for_label }}">{{ mssql_form.nome_database_cassa.label }}</label>
+                        {{ mssql_form.nome_database_cassa }}
+                        {% if mssql_form.nome_database_cassa.help_text %}
+                            <div class="form-hint">{{ mssql_form.nome_database_cassa.help_text }}</div>
+                        {% endif %}
+                        {% if mssql_form.nome_database_cassa.errors %}
+                            <div class="invalid-feedback d-block">{{ mssql_form.nome_database_cassa.errors|join:", " }}</div>
                         {% endif %}
                     </div>
                 </div>
@@ -255,8 +271,25 @@ Parametri mail e SQL
                 <div class="col-md-6">
                     <div class="mb-3">
                         <label class="form-label" for="{{ mssql_form.password.id_for_label }}">{{ mssql_form.password.label }}</label>
-                        {{ mssql_form.password }}
-                        <div class="form-hint">La password non viene mostrata dopo il salvataggio per sicurezza.</div>
+                        <div class="st-password-field">
+                            {{ mssql_form.password }}
+                            {% if can_view_mssql_password %}
+                            <button type="button"
+                                    class="st-password-toggle"
+                                    data-password-toggle
+                                    data-password-target="{{ mssql_form.password.id_for_label }}"
+                                    aria-label="Mostra password"
+                                    aria-pressed="false"
+                                    title="Mostra password">
+                                <i class="ti ti-eye" data-password-toggle-icon></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                        {% if can_view_mssql_password %}
+                            <div class="form-hint">Clicca l'occhio per mostrare o nascondere la password SQL.</div>
+                        {% else %}
+                            <div class="form-hint">La password salvata non è visibile. Lascia vuoto per mantenerla, oppure inseriscine una nuova.</div>
+                        {% endif %}
                         {% if mssql_form.password.errors %}
                             <div class="invalid-feedback d-block">{{ mssql_form.password.errors|join:", " }}</div>
                         {% endif %}
@@ -309,10 +342,16 @@ Parametri mail e SQL
         </div>
 
         <div class="card-footer d-flex flex-wrap justify-content-between gap-2">
-            <button type="submit" name="action" value="test_mssql" class="btn btn-outline-primary">
-                <i class="ti ti-plug-connected"></i>
-                Test connessione
-            </button>
+            <div class="d-flex flex-wrap gap-2">
+                <button type="submit" name="action" value="test_mssql" class="btn btn-outline-primary">
+                    <i class="ti ti-plug-connected"></i>
+                    Test Database
+                </button>
+                <button type="submit" name="action" value="test_mssql_cassa" class="btn btn-outline-primary">
+                    <i class="ti ti-receipt"></i>
+                    Test Database Cassa
+                </button>
+            </div>
             <button type="submit" name="action" value="mssql" class="btn btn-primary">
                 <i class="ti ti-device-floppy"></i>
                 Salva parametri SQL
@@ -333,4 +372,43 @@ Parametri mail e SQL
     abilita e reimposta la password di <code>sa</code>.
 </div>
 
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+{% if can_view_mssql_password %}
+<script>
+(function () {
+    document.querySelectorAll("[data-password-toggle]").forEach(function (toggle) {
+        var field = toggle.closest(".st-password-field");
+        var targetId = toggle.getAttribute("data-password-target");
+        var input =
+            (field && field.querySelector("input")) ||
+            (targetId ? document.getElementById(targetId) : null);
+        var icon = toggle.querySelector("[data-password-toggle-icon]");
+        if (!input) {
+            return;
+        }
+        toggle.addEventListener("click", function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            var visible = input.type === "text";
+            input.type = visible ? "password" : "text";
+            // Toglie readonly dell'antifill così il testo in chiaro è leggibile.
+            if (input.readOnly) {
+                input.removeAttribute("readonly");
+            }
+            var label = visible ? "Mostra password" : "Nascondi password";
+            toggle.setAttribute("aria-label", label);
+            toggle.setAttribute("title", label);
+            toggle.setAttribute("aria-pressed", visible ? "false" : "true");
+            if (icon) {
+                icon.classList.toggle("ti-eye", visible);
+                icon.classList.toggle("ti-eye-off", !visible);
+            }
+        });
+    });
+})();
+</script>
+{% endif %}
 {% endblock %}

@@ -118,7 +118,7 @@
                         <div class="lr-recent-date{% if pratica.is_scaduta %} is-overdue{% endif %}">
                             {% if pratica.data_scadenza %}
                                 <i class="ti ti-calendar-event"></i>
-                                <span>{{ pratica.data_scadenza|date:"d/m/Y" }}</span>
+                                <span>{{ pratica.data_scadenza|date:"d/m/y" }}</span>
                             {% else %}
                                 <span class="text-secondary">—</span>
                             {% endif %}
@@ -179,7 +179,7 @@
                                 </div>
                                 <div class="text-end">
                                     <div class="{% if pratica.is_scaduta %}text-danger fw-bold{% endif %}">
-                                        {{ pratica.data_scadenza|date:"d/m/Y" }}
+                                        {{ pratica.data_scadenza|date:"d/m/y" }}
                                     </div>
                                     <div class="lr-muted-line">{{ pratica.get_stato_display }}</div>
                                 </div>

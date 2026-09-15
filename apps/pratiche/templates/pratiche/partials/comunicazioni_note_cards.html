@@ -9,9 +9,9 @@
                 <i class="ti ti-calendar-event" aria-hidden="true"></i>
                 <time datetime="{{ comunicazione.data_ora|date:'c' }}">
                     {% if comunicazioni_formato_data == "solo_data" %}
-                        {{ comunicazione.data_ora|date:"d/m/Y" }}
+                        {{ comunicazione.data_ora|date:"d/m/y" }}
                     {% else %}
-                        <span class="st-com-note-date-day">{{ comunicazione.data_ora|date:"d/m/Y" }}</span>
+                        <span class="st-com-note-date-day">{{ comunicazione.data_ora|date:"d/m/y" }}</span>
                         <span class="st-com-note-date-time">{{ comunicazione.data_ora|date:"H:i" }}</span>
                     {% endif %}
                 </time>

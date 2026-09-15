@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="it">
+<head>
+    <meta charset="utf-8">
+    <title>Cliente salvato</title>
+</head>
+<body>
+    <p>Cliente salvato. Chiusura in corso…</p>
+    <script>
+    (function () {
+        var payload = {
+            type: "labrepair:anagrafica-embed-done",
+            id: "{{ anagrafica.pk }}",
+            label: "{{ anagrafica.display_name|default:''|escapejs }}"
+        };
+        if (window.parent && window.parent !== window) {
+            window.parent.postMessage(payload, window.location.origin);
+        }
+    })();
+    </script>
+</body>
+</html>

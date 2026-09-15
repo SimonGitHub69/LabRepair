@@ -65,6 +65,7 @@ TEMPLATES = [
                 "apps.core.context_processors.current_negozio",
                 "apps.core.context_processors.programma_settings",
                 "apps.core.context_processors.app_info",
+                "apps.core.context_processors.embed_layout",
             ],
         },
     },
@@ -107,6 +108,12 @@ TIME_ZONE = env("TIME_ZONE", default="Europe/Rome")
 
 USE_I18N = True
 USE_TZ = True
+
+# Visualizzazione date UI: giorno/mese/anno a 2 cifre (es. 08/09/26).
+DATE_FORMAT = "d/m/y"
+SHORT_DATE_FORMAT = "d/m/y"
+DATETIME_FORMAT = "d/m/y H:i"
+SHORT_DATETIME_FORMAT = "d/m/y H:i"
 
 STATIC_URL = "/static/"
 
@@ -151,7 +158,8 @@ if not DEBUG:
     SECURE_REFERRER_POLICY = "same-origin"
     SESSION_COOKIE_HTTPONLY = True
     CSRF_COOKIE_HTTPONLY = True
-    X_FRAME_OPTIONS = "DENY"
+    # SAMEORIGIN: la maschera «Nuovo cliente» in riparazione usa un iframe.
+    X_FRAME_OPTIONS = "SAMEORIGIN"
     # Attiva solo dietro HTTPS (o reverse proxy con SSL)
     if env.bool("USE_HTTPS", default=False):
         SECURE_SSL_REDIRECT = True

@@ -6,6 +6,7 @@ from apps.anagrafiche.models import Anagrafica, Contatto, Indirizzo
 from apps.anagrafiche.forms.contatto import ContattoForm
 from apps.anagrafiche.forms.indirizzo import IndirizzoForm
 from apps.anagrafiche.name_case import format_cognome, format_nome
+from apps.core.date_fields import apply_data_nascita_widget, validate_data_nascita
 from apps.core.widgets import NoAutofillEmailInput, NoAutofillTextInput
 
 
@@ -42,7 +43,12 @@ class AnagraficaForm(forms.ModelForm):
             "nome": NoAutofillTextInput(),
             "sesso": forms.Select(attrs={"class": "form-select", "autocomplete": "off"}),
             "data_nascita": forms.DateInput(
-                attrs={"class": "form-control", "type": "date", "autocomplete": "off"},
+                attrs={
+                    "class": "form-control",
+                    "type": "date",
+                    "autocomplete": "off",
+                    "data-date-year": "full",
+                },
                 format="%Y-%m-%d",
             ),
             "luogo_nascita": NoAutofillTextInput(),
@@ -90,8 +96,17 @@ class AnagraficaForm(forms.ModelForm):
             "documento_data_scadenza",
         ):
             self.fields[field_name].input_formats = ["%Y-%m-%d"]
+        apply_data_nascita_widget(
+            self.fields["data_nascita"],
+            instance_value=getattr(self.instance, "data_nascita", None),
+        )
         for field in self.fields.values():
             field.widget.attrs.setdefault("autocomplete", "off")
+
+    def clean_data_nascita(self):
+        value = self.cleaned_data.get("data_nascita")
+        validate_data_nascita(value)
+        return value
 
     def clean(self):
         cleaned_data = super().clean()

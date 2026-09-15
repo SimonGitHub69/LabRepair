@@ -31,7 +31,7 @@ class AziendaAdmin(admin.ModelAdmin):
 
 @admin.register(ConfigurazioneMssql)
 class ConfigurazioneMssqlAdmin(admin.ModelAdmin):
-    list_display = ("server", "nome_database", "utente", "attiva", "is_active")
+    list_display = ("server", "nome_database", "nome_database_cassa", "utente", "attiva", "is_active")
     list_filter = ("attiva", "is_active")
 
 
@@ -42,7 +42,10 @@ class ConfigurazionePCAdmin(admin.ModelAdmin):
         "descrizione",
         "negozio_default",
         "layout_stile",
+        "layout_alto_contrasto",
         "busta_stampa_senza_anteprima",
+        "busta_stampa_salva_scheda",
+        "busta_stampa_torna_elenco",
         "pratica_stato_radio",
         "pratica_tasto_salva",
         "stampanti_count",
@@ -52,7 +55,10 @@ class ConfigurazionePCAdmin(admin.ModelAdmin):
     list_filter = (
         "negozio_default",
         "layout_stile",
+        "layout_alto_contrasto",
         "busta_stampa_senza_anteprima",
+        "busta_stampa_salva_scheda",
+        "busta_stampa_torna_elenco",
         "pratica_stato_radio",
         "is_active",
     )

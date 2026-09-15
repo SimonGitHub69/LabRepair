@@ -72,6 +72,16 @@ function New-Shortcut($path, $target, $arguments, $workDir, $icon, $description)
     $lnk.Save()
 }
 
+function Stop-MatchingProcess($name, $pathFragment) {
+    Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+        Where-Object {
+            $_.Name -eq $name -and $_.CommandLine -and ($_.CommandLine -like "*$pathFragment*")
+        } |
+        ForEach-Object {
+            try { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue } catch { }
+        }
+}
+
 function Read-OriginFile([string]$path) {
     if (-not (Test-Path $path)) { return "" }
     $line = (Get-Content -Path $path -TotalCount 1 -ErrorAction SilentlyContinue)
@@ -125,6 +135,11 @@ New-Item -ItemType Directory -Force -Path $AppDir | Out-Null
 New-Item -ItemType Directory -Force -Path $CieDir | Out-Null
 New-Item -ItemType Directory -Force -Path $PrinterDir | Out-Null
 New-Item -ItemType Directory -Force -Path $StartMenu | Out-Null
+
+Write-Host "Arresto agent in esecuzione (se presenti)..."
+Stop-MatchingProcess "cie_reader.exe" "LabRepairCieAgent"
+Stop-MatchingProcess "powershell.exe" "printer_agent.ps1"
+Start-Sleep -Seconds 1
 
 $launcherFiles = @(
     "LabRepairApp.vbs",

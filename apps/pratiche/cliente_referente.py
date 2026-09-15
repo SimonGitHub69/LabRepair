@@ -13,10 +13,10 @@ def _pick_contatto(anagrafica, tipo):
     return contatto.valore if contatto else ""
 
 
-def _format_date(value):
+def _format_date(value, full_year=False):
     if not value:
         return ""
-    return value.strftime("%d/%m/%Y")
+    return value.strftime("%d/%m/%Y" if full_year else "%d/%m/%y")
 
 
 def _format_date_iso(value):
@@ -100,7 +100,7 @@ def get_referente_from_cliente(anagrafica):
             "nome": anagrafica.nome or "",
             "sesso": anagrafica.get_sesso_display() if anagrafica.sesso else "",
             "codice_fiscale": anagrafica.codice_fiscale or "",
-            "data_nascita": _format_date(anagrafica.data_nascita),
+            "data_nascita": _format_date(anagrafica.data_nascita, full_year=True),
             "luogo_nascita": anagrafica.luogo_nascita or "",
             "provincia_nascita": anagrafica.provincia_nascita or "",
             "telefono": telefono,
@@ -149,8 +149,6 @@ def get_referente_from_cliente_id(cliente_id):
 
 
 def cliente_referente_url_template():
-    from django.urls import reverse
-
     return reverse("pratiche:cliente_referente_json", kwargs={"pk": 0}).replace(
         "/0/", "/__CLIENTE_ID__/"
     )

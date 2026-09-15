@@ -10,7 +10,7 @@
             {% for group in comunicazioni_riepilogo %}
                 <details class="st-com-riepilogo-day" data-com-day open>
                     <summary class="st-com-riepilogo-day-head">
-                        <strong>{{ group.data|date:"d/m/Y" }}</strong>
+                        <strong>{{ group.data|date:"d/m/y" }}</strong>
                         <span class="badge bg-secondary-lt text-secondary">{{ group.count }}</span>
                     </summary>
                     <ul class="st-com-riepilogo-list">

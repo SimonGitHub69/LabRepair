@@ -12,6 +12,7 @@
         const response = await fetch(agentUrl + "/printers", {
             method: "GET",
             credentials: "omit",
+            targetAddressSpace: "loopback",
         });
         if (!response.ok) {
             throw new Error("Agent stampanti non disponibile");

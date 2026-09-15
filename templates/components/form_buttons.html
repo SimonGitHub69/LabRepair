@@ -4,8 +4,9 @@
         Annulla
     </a>
 
-    <button type="submit" class="btn btn-primary">
-        Salva
+    <button type="submit" class="btn btn-primary"
+            {% if pratica_tasto_salva %}title="Scorciatoia: {{ pratica_tasto_salva }}"{% endif %}>
+        Salva{% if pratica_tasto_salva %} <span class="opacity-75">({{ pratica_tasto_salva }})</span>{% endif %}
     </button>
 
 </div>

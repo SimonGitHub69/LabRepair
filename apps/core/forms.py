@@ -14,6 +14,7 @@ class ConfigurazioneMssqlForm(forms.ModelForm):
             "server",
             "porta",
             "nome_database",
+            "nome_database_cassa",
             "utente",
             "password",
             "prz_pvn_codice",
@@ -36,7 +37,14 @@ class ConfigurazioneMssqlForm(forms.ModelForm):
                 attrs={
                     "class": "form-control",
                     "autocomplete": "off",
-                    "placeholder": "Nome database",
+                    "placeholder": "Database prezzi / gestionale",
+                }
+            ),
+            "nome_database_cassa": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "autocomplete": "off",
+                    "placeholder": "Database scontrini",
                 }
             ),
             "utente": forms.TextInput(attrs={"class": "form-control", "autocomplete": "off"}),
@@ -45,6 +53,7 @@ class ConfigurazioneMssqlForm(forms.ModelForm):
                     "class": "form-control",
                     "type": "password",
                     "autocomplete": "off",
+                    "id": "id_mssql_password",
                 }
             ),
             "prz_pvn_codice": forms.TextInput(
@@ -63,11 +72,21 @@ class ConfigurazioneMssqlForm(forms.ModelForm):
             "note": forms.Textarea(attrs={"class": "form-control", "rows": 3, "autocomplete": "off"}),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, reveal_password=False, **kwargs):
+        self.reveal_password = bool(reveal_password)
         super().__init__(*args, **kwargs)
         self.fields["password"].required = False
-        if self.instance.pk and self.instance.password:
-            self.fields["password"].widget.attrs["placeholder"] = "Password salvata: lascia vuoto per mantenerla"
+        if self.reveal_password and self.instance.pk and self.instance.password and not self.is_bound:
+            # Solo amministratore: password salvata nel campo (mascherata + occhiolino).
+            self.initial["password"] = self.instance.password
+            self.fields["password"].widget.attrs.pop("placeholder", None)
+        else:
+            # Altri utenti: non esporre la password salvata nell'HTML.
+            self.initial["password"] = ""
+            if self.instance.pk and self.instance.password:
+                self.fields["password"].widget.attrs["placeholder"] = (
+                    "Password salvata: lascia vuoto per mantenerla"
+                )
 
     def clean_password(self):
         password = (self.cleaned_data.get("password") or "").strip()
@@ -120,7 +139,6 @@ class ConfigurazioneProgrammaForm(forms.ModelForm):
         model = ConfigurazioneProgramma
         fields = [
             "modalita_accettazione",
-            "layout_stile",
             "liste_righe_per_pagina",
             "barcode_iniziale",
             "webcam_tasto_scatto",
@@ -136,9 +154,6 @@ class ConfigurazioneProgrammaForm(forms.ModelForm):
         ]
         widgets = {
             "modalita_accettazione": forms.RadioSelect(
-                attrs={"class": "form-check-input"},
-            ),
-            "layout_stile": forms.RadioSelect(
                 attrs={"class": "form-check-input"},
             ),
             "liste_righe_per_pagina": forms.Select(attrs={"class": "form-select"}),
@@ -362,12 +377,17 @@ class ConfigurazionePCForm(forms.ModelForm):
             "descrizione",
             "negozio_default",
             "layout_stile",
+            "layout_alto_contrasto",
             "busta_stampa_senza_anteprima",
+            "busta_stampa_salva_scheda",
+            "busta_stampa_torna_elenco",
             "pratica_stato_radio",
             "pratica_tasto_salva",
             "pratica_tasto_annulla",
             "pratica_tasto_stampa_busta",
             "pratica_tasto_stampa_privacy",
+            "pratica_tasto_riparatore",
+            "pratica_tasto_tipo_oggetto",
             "stampanti",
             "note",
         ]
@@ -388,7 +408,16 @@ class ConfigurazionePCForm(forms.ModelForm):
             ),
             "negozio_default": forms.Select(attrs={"class": "form-select"}),
             "layout_stile": forms.RadioSelect(attrs={"class": "form-check-input"}),
+            "layout_alto_contrasto": forms.CheckboxInput(
+                attrs={"class": "form-check-input"}
+            ),
             "busta_stampa_senza_anteprima": forms.CheckboxInput(
+                attrs={"class": "form-check-input"}
+            ),
+            "busta_stampa_salva_scheda": forms.CheckboxInput(
+                attrs={"class": "form-check-input"}
+            ),
+            "busta_stampa_torna_elenco": forms.CheckboxInput(
                 attrs={"class": "form-check-input"}
             ),
             "pratica_stato_radio": forms.CheckboxInput(attrs={"class": "form-check-input"}),
@@ -396,6 +425,8 @@ class ConfigurazionePCForm(forms.ModelForm):
             "pratica_tasto_annulla": forms.Select(attrs={"class": "form-select"}),
             "pratica_tasto_stampa_busta": forms.Select(attrs={"class": "form-select"}),
             "pratica_tasto_stampa_privacy": forms.Select(attrs={"class": "form-select"}),
+            "pratica_tasto_riparatore": forms.Select(attrs={"class": "form-select"}),
+            "pratica_tasto_tipo_oggetto": forms.Select(attrs={"class": "form-select"}),
             "note": forms.Textarea(attrs={"class": "form-control", "rows": 3, "autocomplete": "off"}),
         }
 
@@ -480,6 +511,9 @@ class ConfigurazionePCForm(forms.ModelForm):
             "pratica_tasto_annulla": cleaned_data.get("pratica_tasto_annulla") or "",
             "pratica_tasto_stampa_busta": cleaned_data.get("pratica_tasto_stampa_busta") or "",
             "pratica_tasto_stampa_privacy": cleaned_data.get("pratica_tasto_stampa_privacy")
+            or "",
+            "pratica_tasto_riparatore": cleaned_data.get("pratica_tasto_riparatore") or "",
+            "pratica_tasto_tipo_oggetto": cleaned_data.get("pratica_tasto_tipo_oggetto")
             or "",
         }
         assegnati = [(nome, valore) for nome, valore in tasti.items() if valore]

@@ -106,15 +106,61 @@
                 <div class="col-md-6">
                     <div class="mb-3">
                         <label class="form-check">
-                            {{ form.busta_stampa_senza_anteprima }}
-                            <span class="form-check-label">{{ form.busta_stampa_senza_anteprima.label }}</span>
+                            {{ form.layout_alto_contrasto }}
+                            <span class="form-check-label">{{ form.layout_alto_contrasto.label }}</span>
                         </label>
-                        {% if form.busta_stampa_senza_anteprima.help_text %}
-                            <div class="form-hint">{{ form.busta_stampa_senza_anteprima.help_text }}</div>
+                        {% if form.layout_alto_contrasto.help_text %}
+                            <div class="form-hint">{{ form.layout_alto_contrasto.help_text }}</div>
                         {% endif %}
-                        {% if form.busta_stampa_senza_anteprima.errors %}
-                            <div class="invalid-feedback d-block">{{ form.busta_stampa_senza_anteprima.errors|join:", " }}</div>
+                        {% if form.layout_alto_contrasto.errors %}
+                            <div class="invalid-feedback d-block">{{ form.layout_alto_contrasto.errors|join:", " }}</div>
                         {% endif %}
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="mb-3">
+                        <div class="form-label mb-2">Stampa busta</div>
+                        <div class="form-hint mb-2">
+                            Comportamento di questa postazione quando si stampa la busta dalla scheda riparazione.
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-check">
+                                    {{ form.busta_stampa_senza_anteprima }}
+                                    <span class="form-check-label">{{ form.busta_stampa_senza_anteprima.label }}</span>
+                                </label>
+                                {% if form.busta_stampa_senza_anteprima.help_text %}
+                                    <div class="form-hint">{{ form.busta_stampa_senza_anteprima.help_text }}</div>
+                                {% endif %}
+                                {% if form.busta_stampa_senza_anteprima.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.busta_stampa_senza_anteprima.errors|join:", " }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-check">
+                                    {{ form.busta_stampa_salva_scheda }}
+                                    <span class="form-check-label">{{ form.busta_stampa_salva_scheda.label }}</span>
+                                </label>
+                                {% if form.busta_stampa_salva_scheda.help_text %}
+                                    <div class="form-hint">{{ form.busta_stampa_salva_scheda.help_text }}</div>
+                                {% endif %}
+                                {% if form.busta_stampa_salva_scheda.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.busta_stampa_salva_scheda.errors|join:", " }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-check">
+                                    {{ form.busta_stampa_torna_elenco }}
+                                    <span class="form-check-label">{{ form.busta_stampa_torna_elenco.label }}</span>
+                                </label>
+                                {% if form.busta_stampa_torna_elenco.help_text %}
+                                    <div class="form-hint">{{ form.busta_stampa_torna_elenco.help_text }}</div>
+                                {% endif %}
+                                {% if form.busta_stampa_torna_elenco.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.busta_stampa_torna_elenco.errors|join:", " }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="col-md-6">
@@ -135,11 +181,14 @@
                     <div class="mb-3">
                         <div class="form-label mb-2">Scorciatoie maschera riparazione</div>
                         <div class="form-hint mb-3">
-                            Tasti rapidi per Salva, Annulla, Stampa busta e Stampa Privacy.
+                            <strong>Salva</strong> vale su tutte le maschere di modifica
+                            (riparazione, anagrafiche, tabelle, parametri).
+                            Annulla, Stampa busta, Stampa Privacy e focus Riparatore/Tipo oggetto
+                            restano per la scheda riparazione (Annulla anche in anagrafica).
                             Ogni scorciatoia deve essere diversa.
                         </div>
                         <div class="row g-3">
-                            <div class="col-md-3">
+                            <div class="col-md-4 col-xl-2">
                                 <label class="form-label" for="{{ form.pratica_tasto_salva.id_for_label }}">
                                     {{ form.pratica_tasto_salva.label }}
                                 </label>
@@ -148,7 +197,7 @@
                                     <div class="invalid-feedback d-block">{{ form.pratica_tasto_salva.errors|join:", " }}</div>
                                 {% endif %}
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-4 col-xl-2">
                                 <label class="form-label" for="{{ form.pratica_tasto_annulla.id_for_label }}">
                                     {{ form.pratica_tasto_annulla.label }}
                                 </label>
@@ -157,7 +206,7 @@
                                     <div class="invalid-feedback d-block">{{ form.pratica_tasto_annulla.errors|join:", " }}</div>
                                 {% endif %}
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-4 col-xl-2">
                                 <label class="form-label" for="{{ form.pratica_tasto_stampa_busta.id_for_label }}">
                                     {{ form.pratica_tasto_stampa_busta.label }}
                                 </label>
@@ -166,13 +215,31 @@
                                     <div class="invalid-feedback d-block">{{ form.pratica_tasto_stampa_busta.errors|join:", " }}</div>
                                 {% endif %}
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-4 col-xl-2">
                                 <label class="form-label" for="{{ form.pratica_tasto_stampa_privacy.id_for_label }}">
                                     {{ form.pratica_tasto_stampa_privacy.label }}
                                 </label>
                                 {{ form.pratica_tasto_stampa_privacy }}
                                 {% if form.pratica_tasto_stampa_privacy.errors %}
                                     <div class="invalid-feedback d-block">{{ form.pratica_tasto_stampa_privacy.errors|join:", " }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4 col-xl-2">
+                                <label class="form-label" for="{{ form.pratica_tasto_riparatore.id_for_label }}">
+                                    {{ form.pratica_tasto_riparatore.label }}
+                                </label>
+                                {{ form.pratica_tasto_riparatore }}
+                                {% if form.pratica_tasto_riparatore.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.pratica_tasto_riparatore.errors|join:", " }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4 col-xl-2">
+                                <label class="form-label" for="{{ form.pratica_tasto_tipo_oggetto.id_for_label }}">
+                                    {{ form.pratica_tasto_tipo_oggetto.label }}
+                                </label>
+                                {{ form.pratica_tasto_tipo_oggetto }}
+                                {% if form.pratica_tasto_tipo_oggetto.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.pratica_tasto_tipo_oggetto.errors|join:", " }}</div>
                                 {% endif %}
                             </div>
                         </div>
@@ -319,7 +386,11 @@
         const agentUrl = (btn.dataset.agentUrl || "http://127.0.0.1:17346").replace(/\/$/, "");
         const previous = selectedNames();
         btn.disabled = true;
-        fetch(agentUrl + "/printers", { method: "GET", credentials: "omit" })
+        fetch(agentUrl + "/printers", {
+            method: "GET",
+            credentials: "omit",
+            targetAddressSpace: "loopback",
+        })
             .then(function (response) {
                 if (!response.ok) {
                     throw new Error("agent");

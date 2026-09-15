@@ -13,13 +13,16 @@
 
 <div class="container-xl">
 
-    <form method="post" enctype="multipart/form-data" id="anagraficaForm" class="st-form-stack{% if layout_stile == 'compatta' %} st-form-layout-compact{% endif %}" autocomplete="off" data-block-suggestions="1" data-lpignore="true">
+    <form method="post" enctype="multipart/form-data" id="anagraficaForm" class="st-form-stack{% if layout_stile == 'compatta' %} st-form-layout-compact{% endif %}" autocomplete="off" data-block-suggestions="1" data-lpignore="true"{% if not object %} data-anagrafica-nuovo="1"{% endif %}>
         {% csrf_token %}
         {% if cliente_prezioso %}
             <input type="hidden" name="prezioso_mode" value="1">
         {% endif %}
         {% if documento_scaduto_required %}
             <input type="hidden" name="documento_scaduto" value="1">
+        {% endif %}
+        {% if embed_layout %}
+            <input type="hidden" name="embed" value="1">
         {% endif %}
         {% if next_url %}
             <input type="hidden" name="next" value="{{ next_url }}">
@@ -599,10 +602,28 @@
         </div>
 
         <div class="st-form-actions">
+            {% if embed_layout %}
+            <button type="button"
+                    class="btn btn-outline-secondary"
+                    data-embed-close
+                    data-anagrafica-annulla
+                    {% if pratica_tasto_annulla %}title="Scorciatoia: {{ pratica_tasto_annulla }}"{% endif %}>
+                Annulla{% if pratica_tasto_annulla %} <span class="text-secondary">({{ pratica_tasto_annulla }})</span>{% endif %}
+            </button>
+            {% else %}
             <a href="{% if next_url %}{{ next_url }}{% elif object %}{% url 'anagrafiche:anagrafica_detail' object.pk %}{% else %}{% url 'anagrafiche:anagrafica_list' %}{% endif %}"
-               class="btn btn-outline-secondary">Annulla</a>
-            <button type="submit" class="btn btn-primary">
-                <i class="ti ti-device-floppy"></i> Conferma
+               class="btn btn-outline-secondary"
+               data-anagrafica-annulla
+               {% if pratica_tasto_annulla %}title="Scorciatoia: {{ pratica_tasto_annulla }}"{% endif %}>
+                Annulla{% if pratica_tasto_annulla %} <span class="text-secondary">({{ pratica_tasto_annulla }})</span>{% endif %}
+            </a>
+            {% endif %}
+            <button type="submit"
+                    class="btn btn-primary"
+                    data-anagrafica-salva
+                    {% if pratica_tasto_salva %}title="Scorciatoia: {{ pratica_tasto_salva }}"{% endif %}>
+                <i class="ti ti-device-floppy"></i>
+                Conferma{% if pratica_tasto_salva %} <span class="opacity-75">({{ pratica_tasto_salva }})</span>{% endif %}
             </button>
         </div>
     </form>
@@ -768,6 +789,32 @@ document.addEventListener("DOMContentLoaded", function () {
         toggleAnagraficaSections();
     }
 
+    function focusNuovoClienteCognome() {
+        const form = document.getElementById("anagraficaForm");
+        if (!form || form.dataset.anagraficaNuovo !== "1") {
+            return;
+        }
+        if (form.querySelector(".invalid-feedback.d-block, .alert-danger")) {
+            return;
+        }
+        if (tipoField && tipoField.value !== "cliente") {
+            return;
+        }
+        const field = document.getElementById("id_cognome");
+        if (!field || field.disabled) {
+            return;
+        }
+        const delay = document.body.classList.contains("st-embed-layout") ? 40 : 0;
+        window.setTimeout(function () {
+            try {
+                field.focus();
+            } catch (error) {
+                // ignore
+            }
+        }, delay);
+    }
+    focusNuovoClienteCognome();
+
     const anagraficaForm = document.getElementById("anagraficaForm");
     if (anagraficaForm) {
         anagraficaForm.addEventListener(
@@ -798,6 +845,22 @@ document.addEventListener("DOMContentLoaded", function () {
     document.querySelectorAll("[data-formset-add]").forEach(function (button) {
         button.addEventListener("click", function () {
             addFormsetRow(button.dataset.formsetAdd);
+        });
+    });
+
+    function notifyEmbedClose() {
+        if (window.parent && window.parent !== window) {
+            window.parent.postMessage(
+                { type: "labrepair:anagrafica-embed-close" },
+                window.location.origin
+            );
+        }
+    }
+
+    document.querySelectorAll("[data-embed-close]").forEach(function (button) {
+        button.addEventListener("click", function (event) {
+            event.preventDefault();
+            notifyEmbedClose();
         });
     });
 });

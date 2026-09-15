@@ -1,17 +1,17 @@
 ' Avvia l'agent stampanti locale se non e' gia' attivo.
 Option Explicit
 
-Dim sh, fso, agentDir, ps1, http
+Dim sh, fso, agentDir, ps1, http, i, scriptDir, localPs1
 
 Set sh = CreateObject("WScript.Shell")
 Set fso = CreateObject("Scripting.FileSystemObject")
 
 agentDir = sh.ExpandEnvironmentStrings("%LOCALAPPDATA%\LabRepairPrinterAgent")
 ps1 = agentDir & "\printer_agent.ps1"
+scriptDir = fso.GetParentFolderName(WScript.ScriptFullName)
 
 If Not fso.FileExists(ps1) Then
-  Dim localPs1
-  localPs1 = fso.BuildPath(fso.GetParentFolderName(WScript.ScriptFullName), "..\tools\printer_agent\printer_agent.ps1")
+  localPs1 = fso.BuildPath(scriptDir, "..\tools\printer_agent\printer_agent.ps1")
   If fso.FileExists(localPs1) Then
     ps1 = localPs1
   Else
@@ -25,6 +25,15 @@ End If
 
 On Error Resume Next
 sh.Run "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File """ & ps1 & """", 0, False
+On Error GoTo 0
+
+For i = 1 To 15
+  WScript.Sleep 300
+  If IsAgentHealthy() Then
+    WScript.Quit 0
+  End If
+Next
+
 WScript.Quit 0
 
 Function IsAgentHealthy()

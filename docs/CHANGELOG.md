@@ -9,6 +9,108 @@ La versione corrente è nel file `VERSION` e compare in sidebar, piè di pagina,
 
 ---
 
+# [0.9.10] - 2026-09-15
+
+## Aggiunto
+
+- Parametri PC: **Grafica ad alto contrasto** (testo più grande, contrasto maggiore, valori in blu grassetto) solo su **Anagrafiche** e **Riparazioni**.
+- Scheda riparazione: dopo la selezione del cliente la ricerca si nasconde; **Cambia cliente** la riapre se serve correggere.
+- Documento scaduto in modifica riparazione: resta evidenziato (badge **Scaduto**), sezione **compattabile** e chiusa di default.
+- Stesso comportamento per **Anagrafica completa cliente** (badge Doc. scaduto, Apri/Chiudi, chiusa di default).
+- In riparazione **preziosa**, con cliente selezionato, anagrafica e documento partono sempre **compattati** (Apri per espandere); se il documento è scaduto resta l’evidenza.
+- Data prevista consegna: non si accettano più date precedenti a oggi (né in modifica lasciando invariata una data passata).
+- Data prevista consegna: blocco immediato in uscita dal campo / calendario (messaggio subito, senza attendere Salva).
+- Scheda riparazione: **Nuovo cliente** si apre in una maschera sopra la riparazione; alla chiusura si torna alla scheda (e se salvato il cliente viene selezionato).
+- Anagrafica cliente: **Conferma** e **Annulla** usano gli stessi tasti della scheda riparazione (Parametri PC).
+- Data di nascita: formato **gg/mm/aaaa** (anno a 4 cifre).
+- Data di nascita: controllo di coerenza sull'età (non futura; avviso se **inferiore a 6 anni** o **oltre 100**).
+- Nuovo cliente: all'apertura il cursore va sul campo **Cognome**.
+- Parametri Sistema (MS-SQL): campo **Database Cassa** per la lettura degli scontrini (oltre al Database prezzi).
+- Parametri SQL: occhiolino per **mostrare/nascondere** la password (solo utenti amministratore / superuser).
+- Parametri programma: rimosso **Stile grafica maschere** (resta impostabile per PC in Parametri PC).
+- Parametri PC: scorciatoie **Riparatore** (default F6) e **Tipo oggetto** (default F7) per portare il focus sui campi in scheda riparazione; abbreviazione mostrata sull'etichetta.
+- Scorciatoia **Salva** (Parametri PC): attiva su tutte le maschere di modifica (tabelle, anagrafiche, parametri), non solo riparazione.
+
+## Corretto
+
+- Icona calendario dei campi data: il selettore nativo si riapre (non restava più bloccato da readonly antifill e dal focus sul testo).
+- Maschera **Nuovo cliente** in riparazione: la scheda si apre davvero nell’overlay (non restava più pagina vuota) e **Conferma** seleziona il cliente e torna alla riparazione.
+- Scheda riparazione: **Annulla** non richiede più due pressioni (il blur su nome/date non marca più a torto «modifiche non salvate» né blocca il click).
+
+---
+
+# [0.9.9] - 2026-09-11
+
+## Corretto
+
+- Modalità App: navigazioni interne (stampa busta, cambio pagina, back, `location.assign`) non fanno più logout né chiedono «Uscire dall'app?». Il logout resta solo alla chiusura della finestra.
+
+## Modificato
+
+- Liste riparazioni/anagrafiche: i link di paginazione tengono la scelta **Righe** anche se arriva dalla sessione.
+- Parametri PC: opzioni stampa busta raggruppate in un’unica sezione.
+- Date documento scaduto in stampa Privacy allineate al formato giorno/mese/anno a 2 cifre.
+
+---
+
+# [0.9.8] - 2026-09-10
+
+## Modificato
+
+- Stampa busta: **Salva scheda** e **Torna all'elenco** si impostano in Parametri PC (non più nel dialogo di stampa).
+- Stampa busta: con salvataggio attivo, la scheda viene salvata **prima** dell'anteprima così mostra le modifiche appena fatte.
+- Scheda riparazione: flag **Senza spesa** spostato sotto **Prezzo al Pubblico**.
+- Stato «In consegna»: messaggio e controllo su **Prezzo al Pubblico** oppure **Senza Spesa** (non più sul costo totale).
+- Scheda riparazione: **Stato** e **Priorità** spostati nella card Oggetto.
+- Non viene più mostrato il messaggio «Prezzo cassa aggiornato…» dopo il salvataggio (restano gli avvisi se la sync fallisce).
+
+---
+
+# [0.9.7] - 2026-09-09
+
+## Aggiunto
+
+- Non si può eliminare un cliente (o centro assistenza) se ha riparazioni collegate.
+
+## Modificato
+
+- In scheda riparazione, **Riparatore** è il primo campo della card Oggetto.
+- Stampa/salva busta: non fallisce più con «Cliente: scelta non valida» se il cliente collegato non è più nell'elenco attivo.
+- Liste: la scelta «Righe» (10/20/50/100) resta memorizzata per la sessione.
+- Stampa busta: opzioni **Salva la scheda** e **Torna all'elenco**; di default in modifica si resta sulla riparazione.
+
+---
+
+# [0.9.6] - 2026-09-09
+
+## Modificato
+
+- Messaggio «Prezzo cassa aggiornato»: non si accumula più; resta solo l'ultimo.
+
+---
+
+# [0.9.5] - 2026-09-09
+
+## Modificato
+
+- Stampa busta: se l'agent stampanti non risponde, compare **Stampa dal browser** (non serve più premere due volte Stampa).
+- PC client: LabRepairApp consente a Chrome/Edge l'accesso all'agent stampanti su 127.0.0.1 (server in LAN).
+- Agent stampanti: `/health` indica versione ed endpoint (incluso `/print`); messaggio 404 più chiaro.
+- Installazione client: prima di copiare i file, ferma agent CIE e stampanti se già in esecuzione.
+
+---
+
+# [0.9.4] - 2026-09-09
+
+## Modificato
+
+- Aprendo una riparazione dalla lista, documento di identità scaduto: evidenziato in scheda (badge/alert), senza dialog.
+- Date in interfaccia in formato giorno/mese/anno a 2 cifre (es. 08/09/26).
+- Data prevista consegna: non accettata se precedente a oggi (il valore già salvato resta valido se invariato).
+- Su TB_PREZZICASSE, PRZ_EAN usa il codice riparazione senza trattino (es. P26-0026 → P260026).
+
+---
+
 # [0.9.3] - 2026-09-08
 
 ## Modificato

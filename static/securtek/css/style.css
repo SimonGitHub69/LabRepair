@@ -66,6 +66,23 @@ body {
     overflow: hidden;
 }
 
+/* Sezioni form: overflow hidden blocca lo scroll automatico al focus (Tab). */
+.card.st-form-section,
+.st-form-section .card {
+    overflow: visible;
+}
+
+/* Margine sotto navbar sticky / sopra barra Salva sticky quando si scrolla al focus. */
+.st-form-stack .form-control,
+.st-form-stack .form-select,
+.st-form-stack textarea.form-control,
+.st-form-stack .form-check-input,
+.st-form-stack .st-date-text,
+.st-form-stack .mb-3 {
+    scroll-margin-top: calc(var(--st-navbar-height, 52px) + 0.75rem);
+    scroll-margin-bottom: 5.75rem;
+}
+
 .card-header {
     background: transparent;
     border-bottom: 1px solid var(--st-border);
@@ -143,6 +160,103 @@ body {
     box-shadow: 0 0 0 3px rgba(32, 107, 196, 0.12);
 }
 
+/* Focus da tastiera (Tab): cornice e sfondo più evidenti. */
+.form-control:focus-visible,
+.form-select:focus-visible,
+textarea.form-control:focus-visible,
+.form-check-input:focus-visible,
+.page-link:focus-visible,
+.st-stato-radio-option:focus-visible,
+.st-stato-radio-option:has(.form-check-input:focus-visible) {
+    border-color: var(--st-primary, #206bc4) !important;
+    background-color: rgba(32, 107, 196, 0.08);
+    box-shadow:
+        0 0 0 2px #fff,
+        0 0 0 4px var(--st-primary, #206bc4),
+        0 0 0 8px rgba(32, 107, 196, 0.22);
+    outline: none;
+}
+
+.form-check-input:focus-visible {
+    background-color: rgba(32, 107, 196, 0.18);
+}
+
+.btn:focus-visible {
+    outline: none;
+    box-shadow:
+        0 0 0 2px #fff,
+        0 0 0 4px var(--st-primary, #206bc4),
+        0 0 0 8px rgba(32, 107, 196, 0.22);
+}
+
+/* Outline / secondari: sfondo azzurro leggero ok (testo scuro). */
+.btn-outline-secondary:focus-visible,
+.btn-outline-primary:focus-visible,
+.btn-ghost-secondary:focus-visible,
+.btn-link:focus-visible {
+    border-color: var(--st-primary, #206bc4) !important;
+    background-color: rgba(32, 107, 196, 0.12);
+    color: var(--st-primary, #206bc4);
+}
+
+/* Solidi: mantieni colore pieno e testo chiaro (no sfondo chiaro su testo bianco). */
+.btn-primary:focus-visible {
+    background-color: var(--tblr-primary, #206bc4);
+    border-color: var(--tblr-primary, #206bc4);
+    color: #fff;
+}
+
+.btn-danger:focus-visible {
+    background-color: var(--tblr-danger, #d63939);
+    border-color: var(--tblr-danger, #d63939);
+    color: #fff;
+    box-shadow:
+        0 0 0 2px #fff,
+        0 0 0 4px var(--tblr-danger, #d63939),
+        0 0 0 8px rgba(214, 57, 57, 0.28);
+}
+
+.btn-success:focus-visible {
+    background-color: var(--tblr-success, #2fb344);
+    border-color: var(--tblr-success, #2fb344);
+    color: #fff;
+}
+
+.btn-secondary:focus-visible {
+    background-color: var(--tblr-secondary, #616876);
+    border-color: var(--tblr-secondary, #616876);
+    color: #fff;
+}
+
+.st-stato-radio-option:has(.form-check-input:focus-visible) {
+    background: rgba(32, 107, 196, 0.12);
+}
+
+[data-bs-theme="dark"] .form-control:focus-visible,
+[data-bs-theme="dark"] .form-select:focus-visible,
+[data-bs-theme="dark"] textarea.form-control:focus-visible,
+[data-bs-theme="dark"] .st-stato-radio-option:has(.form-check-input:focus-visible) {
+    background-color: rgba(32, 107, 196, 0.22);
+    box-shadow:
+        0 0 0 2px var(--st-surface, #151b23),
+        0 0 0 4px var(--st-primary, #206bc4),
+        0 0 0 8px rgba(32, 107, 196, 0.35);
+}
+
+[data-bs-theme="dark"] .btn:focus-visible {
+    box-shadow:
+        0 0 0 2px var(--st-surface, #151b23),
+        0 0 0 4px var(--st-primary, #206bc4),
+        0 0 0 8px rgba(32, 107, 196, 0.35);
+}
+
+[data-bs-theme="dark"] .btn-danger:focus-visible {
+    box-shadow:
+        0 0 0 2px var(--st-surface, #151b23),
+        0 0 0 4px var(--tblr-danger, #d63939),
+        0 0 0 8px rgba(214, 57, 57, 0.35);
+}
+
 textarea.form-control {
     min-height: 5.5rem;
     resize: vertical;
@@ -158,6 +272,109 @@ textarea.form-control.st-input-like {
     line-height: 1.4;
     padding-top: 0.35rem;
     padding-bottom: 0.35rem;
+}
+
+/* Campi data: testo gg/mm/aa editabile + date nativo nascosto (submit/calendario). */
+.st-date-field {
+    display: block;
+    position: relative;
+}
+
+.st-date-field > .st-date-text {
+    padding-right: 2.35rem;
+    width: 100%;
+}
+
+.st-date-field > .st-date-text.form-control-sm {
+    padding-right: 2.1rem;
+}
+
+/* Sovrapposto all'icona: area cliccabile reale (showPicker fallisce su 0x0). */
+.st-date-field > .st-date-native {
+    background: transparent;
+    border: 0;
+    color: transparent;
+    cursor: pointer;
+    height: 1.75rem !important;
+    left: auto;
+    margin: 0 !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    opacity: 0.01;
+    overflow: hidden;
+    padding: 0 !important;
+    pointer-events: auto;
+    position: absolute;
+    right: 0.4rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1.75rem !important;
+    z-index: 3;
+}
+
+.st-date-field > .st-date-native::-webkit-calendar-picker-indicator {
+    background: transparent;
+    cursor: pointer;
+    display: block;
+    height: 100%;
+    left: 0;
+    margin: 0;
+    opacity: 0;
+    padding: 0;
+    position: absolute;
+    top: 0;
+    width: 100%;
+}
+
+.st-date-field > .st-date-text.form-control-sm ~ .st-date-native {
+    height: 1.5rem !important;
+    right: 0.3rem;
+    width: 1.5rem !important;
+}
+
+.st-date-calendar-btn {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    color: var(--st-text-muted, #6c7a91);
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 1.05rem;
+    height: 1.75rem;
+    justify-content: center;
+    line-height: 1;
+    opacity: 0.85;
+    padding: 0;
+    position: absolute;
+    right: 0.4rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1.75rem;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.st-date-calendar-btn:hover,
+.st-date-calendar-btn:focus,
+.st-date-field:has(.st-date-native:hover) .st-date-calendar-btn {
+    color: var(--st-primary, #206bc4);
+    opacity: 1;
+    outline: none;
+}
+
+.st-date-calendar-btn:focus-visible {
+    box-shadow: none;
+}
+
+.st-date-field > .st-date-text.form-control-sm ~ .st-date-calendar-btn {
+    font-size: 0.95rem;
+    height: 1.5rem;
+    right: 0.3rem;
+    width: 1.5rem;
+}
+
+[data-bs-theme="dark"] .st-date-calendar-btn {
+    color: var(--st-text-muted, #94a3b8);
 }
 
 input[type="date"],
@@ -186,12 +403,6 @@ input[type="datetime-local"]::-webkit-datetime-edit-minute-field {
     color: var(--tblr-body-color);
 }
 
-input[type="date"]::-webkit-calendar-picker-indicator,
-input[type="datetime-local"]::-webkit-calendar-picker-indicator {
-    cursor: pointer;
-    opacity: 0.75;
-}
-
 [data-bs-theme="dark"] input[type="date"],
 [data-bs-theme="dark"] input[type="datetime-local"],
 [data-bs-theme="dark"] input[type="time"],
@@ -199,12 +410,6 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 [data-bs-theme="dark"] input[type="week"] {
     background-color: var(--tblr-bg-forms, var(--tblr-body-bg));
     color-scheme: dark;
-}
-
-[data-bs-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
-[data-bs-theme="dark"] input[type="datetime-local"]::-webkit-calendar-picker-indicator {
-    filter: invert(0.9);
-    opacity: 0.9;
 }
 
 .form-hint {
@@ -311,4 +516,30 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
     :root {
         --st-page-pad-x: 0.65rem;
     }
+}
+
+/* Maschera nuovo cliente (iframe): niente menu laterale né barra superiore. */
+body.st-embed-layout {
+    background: var(--tblr-bg-surface, #fff);
+}
+
+body.st-embed-layout .st-sidebar,
+body.st-embed-layout .st-sidebar-backdrop,
+body.st-embed-layout .st-navbar,
+body.st-embed-layout .footer {
+    display: none !important;
+}
+
+body.st-embed-layout .page-wrapper {
+    margin-left: 0;
+    min-height: 100vh;
+}
+
+body.st-embed-layout .page-body {
+    padding-bottom: 0.5rem;
+    padding-top: 0.5rem;
+}
+
+body.st-embed-layout .st-form-page-header {
+    margin-bottom: 0.75rem;
 }

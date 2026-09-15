@@ -8,14 +8,15 @@ Anagrafiche
 {% block content %}
 
 <div class="page-header d-print-none mb-3">
-        <div class="row align-items-center">
+        <div class="row align-items-center g-2">
             <div class="col">
                 <h2 class="page-title">Anagrafiche</h2>
             </div>
 
             <div class="col-auto">
                 <a href="{% url 'anagrafiche:anagrafica_create' %}" class="btn btn-primary">
-                    Nuova Anagrafica
+                    <i class="ti ti-plus"></i>
+                    Nuova anagrafica
                 </a>
             </div>
         </div>
@@ -101,12 +102,20 @@ Anagrafiche
                             </a>
 
                             <a href="{% url 'anagrafiche:anagrafica_update' anagrafica.pk %}?next={{ list_return_url|urlencode }}"
-                            class="btn btn-icon btn-outline-primary"
-                            title="Modifica">
-
+                               class="btn btn-icon btn-outline-primary"
+                               title="Modifica">
                                 <i class="ti ti-edit"></i>
                             </a>
 
+                            {% with bloccata=anagrafica.pratiche_attive_count|add:anagrafica.pratiche_centro_attive_count %}
+                            {% if bloccata %}
+                            <button type="button"
+                                    class="btn btn-icon btn-outline-danger"
+                                    disabled
+                                    title="Non eliminabile: ci sono riparazioni collegate">
+                                <i class="ti ti-trash"></i>
+                            </button>
+                            {% else %}
                             <button type="button"
                                     class="btn btn-icon btn-outline-danger js-delete-anagrafica"
                                     title="Elimina"
@@ -114,6 +123,8 @@ Anagrafiche
                                     data-delete-name="{{ anagrafica.ragione_sociale }}">
                                 <i class="ti ti-trash"></i>
                             </button>
+                            {% endif %}
+                            {% endwith %}
 
                         </td>
                     </tr>

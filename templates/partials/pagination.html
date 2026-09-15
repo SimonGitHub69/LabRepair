@@ -91,10 +91,11 @@
         {% if page_obj.paginator.num_pages > 1 %}
         <form class="st-pagination-jump" method="get" action="" data-page-jump>
             {% for key, value in request.GET.items %}
-                {% if key != "page" %}
+                {% if key != "page" and key != "page_size" %}
                     <input type="hidden" name="{{ key }}" value="{{ value }}">
                 {% endif %}
             {% endfor %}
+            <input type="hidden" name="page_size" value="{{ page_size }}">
             <label class="text-secondary mb-0" for="stPageJump">Vai</label>
             <input id="stPageJump"
                    class="form-control form-control-sm"

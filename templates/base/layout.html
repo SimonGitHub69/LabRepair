@@ -38,10 +38,10 @@
     </style>
 
     <link rel="stylesheet" href="{% static 'securtek/css/variables.css' %}?v={{ app_version }}-density14">
-    <link rel="stylesheet" href="{% static 'securtek/css/style.css' %}?v={{ app_version }}-density14">
+    <link rel="stylesheet" href="{% static 'securtek/css/style.css' %}?v={{ app_version }}-density25">
     <link rel="stylesheet" href="{% static 'securtek/css/sidebar.css' %}?v={{ app_version }}-density2">
     <link rel="stylesheet" href="{% static 'securtek/css/navbar.css' %}?v={{ app_version }}-density">
-    <link rel="stylesheet" href="{% static 'securtek/css/components.css' %}?v={{ app_version }}-density17">
+    <link rel="stylesheet" href="{% static 'securtek/css/components.css' %}?v={{ app_version }}-pw-toggle2">
     <link rel="stylesheet" href="{% static 'securtek/css/dashboard.css' %}?v={{ app_version }}-density">
 
     {% block extra_css %}{% endblock %}
@@ -51,16 +51,22 @@
 <body
     autocomplete="off"
     data-layout-stile="{{ layout_stile|default:'standard' }}"
+    {% if embed_layout %}class="st-embed-layout"{% endif %}
+    {% if layout_contrasto_attivo %}data-layout-contrasto="alto"{% endif %}
     data-webcam-hotkey-scatto="{{ webcam_tasto_scatto|default:'' }}"
     data-webcam-hotkey-usa="{{ webcam_tasto_usa_foto|default:'' }}"
     data-webcam-hotkey-nuovo-scatto="{{ webcam_tasto_nuovo_scatto|default:'' }}"
     {% if busta_stampa_senza_anteprima %}data-busta-stampa-diretta="1"{% endif %}
+    data-busta-stampa-salva="{% if busta_stampa_salva_scheda %}1{% else %}0{% endif %}"
+    data-busta-stampa-torna-elenco="{% if busta_stampa_torna_elenco %}1{% else %}0{% endif %}"
     data-pratica-hotkey-salva="{{ pratica_tasto_salva|default:'' }}"
     data-pratica-hotkey-annulla="{{ pratica_tasto_annulla|default:'' }}"
     data-pratica-hotkey-busta="{{ pratica_tasto_stampa_busta|default:'' }}"
     data-pratica-hotkey-privacy="{{ pratica_tasto_stampa_privacy|default:'' }}"
+    data-pratica-hotkey-riparatore="{{ pratica_tasto_riparatore|default:'' }}"
+    data-pratica-hotkey-tipo-oggetto="{{ pratica_tasto_tipo_oggetto|default:'' }}"
     {% if comandi_voce_attivi %}data-voice-commands="1" data-voice-lang="{{ comandi_voce_lingua|default:'it-IT' }}"{% endif %}
-    {% if user.is_authenticated and request.session.labrepair_app %}
+    {% if user.is_authenticated and request.session.labrepair_app and not embed_layout %}
     data-logout-on-close="1"
     data-logout-url="{% url 'accounts:logout' %}"
     {% endif %}>
@@ -97,8 +103,9 @@
 <script src="{% static 'vendor/tabler/js/tabler.min.js' %}"></script>
 <script defer src="{% static 'vendor/alpinejs/cdn.min.js' %}"></script>
 <script src="{% static 'vendor/htmx/htmx.min.js' %}"></script>
-<script src="{% static 'securtek/js/app.js' %}?v={{ app_version }}-nav4"></script>
-{% if comandi_voce_attivi and user.is_authenticated %}
+<script src="{% static 'securtek/js/app.js' %}?v={{ app_version }}-annulla1"></script>
+<script src="{% static 'securtek/js/pratica_hotkeys.js' %}?v={{ app_version }}-salva-global"></script>
+{% if comandi_voce_attivi and user.is_authenticated and not embed_layout %}
 {{ comandi_voce_mappa|json_script:"labrepair-voice-commands" }}
 {{ comandi_voce_extra|json_script:"labrepair-voice-extra" }}
 <script>

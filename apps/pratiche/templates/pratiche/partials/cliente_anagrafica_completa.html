@@ -2,23 +2,47 @@
     {% if form.selected_cliente_anagrafica %}
         {{ form.selected_cliente_anagrafica|json_script:"cliente-anagrafica-initial" }}
     {% endif %}
-    <div class="card st-cliente-anagrafica-card mb-3" data-cliente-anagrafica-panel>
+    <div class="card st-cliente-anagrafica-card{% if object and form.selected_cliente_anagrafica.documento_scaduto %} is-warning{% endif %}"
+         data-cliente-anagrafica-panel>
         <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
             <h4 class="card-title mb-0">
                 <i class="ti ti-id me-1"></i>
                 Anagrafica completa cliente
             </h4>
-            <a href="#"
-               class="btn btn-sm btn-outline-primary"
-               id="clienteAnagraficaEditLink"
-               target="_blank"
-               rel="noopener"
-               {% if not form.selected_cliente %}hidden{% endif %}>
-                <i class="ti ti-edit"></i>
-                Modifica anagrafica
-            </a>
+            <div class="card-actions d-flex align-items-center gap-2">
+                <span class="badge bg-red-lt"
+                      data-anagrafica-doc-badge
+                      {% if not object or not form.selected_cliente_anagrafica.documento_scaduto %}hidden{% endif %}>
+                    Doc. scaduto
+                </span>
+                <button type="button"
+                        class="btn btn-sm btn-outline-secondary st-collapse-toggle"
+                        data-collapse-target="cliente-anagrafica-body"
+                        data-collapse-key="cliente-anagrafica"
+                        data-collapse-default="{% if form.selected_cliente %}collapsed{% else %}open{% endif %}"
+                        aria-controls="cliente-anagrafica-body"
+                        aria-expanded="{% if form.selected_cliente %}false{% else %}true{% endif %}"
+                        title="{% if form.selected_cliente %}Espandi sezione{% else %}Comprimi sezione{% endif %}"
+                        data-anagrafica-collapse-toggle
+                        {% if not form.selected_cliente %}hidden{% endif %}>
+                    <i class="ti ti-chevron-down"></i>
+                    <span class="d-none d-sm-inline" data-collapse-label>{% if form.selected_cliente %}Apri{% else %}Chiudi{% endif %}</span>
+                </button>
+                <a href="#"
+                   class="btn btn-sm btn-outline-primary"
+                   id="clienteAnagraficaEditLink"
+                   target="_blank"
+                   rel="noopener"
+                   tabindex="-1"
+                   {% if not form.selected_cliente %}hidden{% endif %}>
+                    <i class="ti ti-edit"></i>
+                    Modifica anagrafica
+                </a>
+            </div>
         </div>
-        <div class="card-body">
+        <div class="card-body"
+             id="cliente-anagrafica-body"
+             {% if form.selected_cliente %}hidden{% endif %}>
             <div id="clienteAnagraficaEmpty" class="text-secondary" {% if form.selected_cliente %}hidden{% endif %}>
                 Seleziona un cliente per visualizzare i dati anagrafici completi.
             </div>
@@ -64,104 +88,124 @@
                         <div class="text-secondary small">Residenza</div>
                         <div class="fw-semibold" data-anagrafica-field="residenza">-</div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                    <div class="col-12" data-cliente-documento-panel>
-                        <div class="card st-cliente-documento-card mb-0">
-                            <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
-                                <h5 class="card-title mb-0">
-                                    <i class="ti ti-id-badge-2 me-1 text-primary"></i>
-                                    Documento di identità
-                                </h5>
-                                <div class="card-actions d-flex align-items-center gap-2">
-                                    <span class="badge bg-secondary-lt" data-documento-badge hidden>Valido</span>
-                                    <button type="button"
-                                            class="btn btn-sm btn-primary"
-                                            data-documento-save
-                                            disabled>
-                                        <i class="ti ti-device-floppy"></i>
-                                        Salva documento
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <div class="alert alert-warning mb-3" data-documento-alert hidden></div>
-                                <div class="st-anagrafica-facts st-cliente-documento-facts">
-                                    <div class="st-anagrafica-fact">
-                                        <label class="st-anagrafica-fact-label" for="id_doc_documento_tipo">Tipo</label>
-                                        <input type="text"
-                                               class="form-control form-control-sm"
-                                               id="id_doc_documento_tipo"
-                                               name="documento_tipo"
-                                               form="clienteDocumentoForm"
-                                               autocomplete="off"
-                                               disabled>
-                                    </div>
-                                    <div class="st-anagrafica-fact">
-                                        <label class="st-anagrafica-fact-label" for="id_doc_documento_numero">Numero</label>
-                                        <input type="text"
-                                               class="form-control form-control-sm is-mono"
-                                               id="id_doc_documento_numero"
-                                               name="documento_numero"
-                                               form="clienteDocumentoForm"
-                                               autocomplete="off"
-                                               disabled>
-                                    </div>
-                                    <div class="st-anagrafica-fact st-anagrafica-fact-wide">
-                                        <label class="st-anagrafica-fact-label" for="id_doc_documento_rilasciato_da">Rilasciato da</label>
-                                        <input type="text"
-                                               class="form-control form-control-sm"
-                                               id="id_doc_documento_rilasciato_da"
-                                               name="documento_rilasciato_da"
-                                               form="clienteDocumentoForm"
-                                               autocomplete="off"
-                                               disabled>
-                                    </div>
-                                    <div class="st-anagrafica-fact">
-                                        <label class="st-anagrafica-fact-label" for="id_doc_documento_data_rilascio">Data rilascio</label>
-                                        <input type="date"
-                                               class="form-control form-control-sm"
-                                               id="id_doc_documento_data_rilascio"
-                                               name="documento_data_rilascio"
-                                               form="clienteDocumentoForm"
-                                               autocomplete="off"
-                                               disabled>
-                                    </div>
-                                    <div class="st-anagrafica-fact">
-                                        <label class="st-anagrafica-fact-label" for="id_doc_documento_data_scadenza">Data scadenza</label>
-                                        <input type="date"
-                                               class="form-control form-control-sm"
-                                               id="id_doc_documento_data_scadenza"
-                                               name="documento_data_scadenza"
-                                               form="clienteDocumentoForm"
-                                               autocomplete="off"
-                                               disabled>
-                                    </div>
-                                    <div class="st-anagrafica-fact">
-                                        <span class="st-anagrafica-fact-label">Stampa privacy</span>
-                                        <div class="d-flex gap-3 align-items-center mt-1" data-documento-stampa-privacy>
-                                            <label class="form-check mb-0">
-                                                <input class="form-check-input"
-                                                       type="radio"
-                                                       name="stampa_privacy"
-                                                       form="clienteDocumentoForm"
-                                                       value="True"
-                                                       disabled>
-                                                <span class="form-check-label">Si</span>
-                                            </label>
-                                            <label class="form-check mb-0">
-                                                <input class="form-check-input"
-                                                       type="radio"
-                                                       name="stampa_privacy"
-                                                       form="clienteDocumentoForm"
-                                                       value="False"
-                                                       checked
-                                                       disabled>
-                                                <span class="form-check-label">No</span>
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+    <div class="st-cliente-documento-wrap" data-cliente-documento-panel {% if not form.selected_cliente %}hidden{% endif %}>
+        <div class="card st-cliente-documento-card mb-0{% if object and form.selected_cliente_anagrafica.documento_scaduto %} is-warning{% endif %}">
+            <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <h5 class="card-title mb-0">
+                    <i class="ti ti-id-badge-2 me-1 text-primary"></i>
+                    Documento di identità
+                </h5>
+                <div class="card-actions d-flex align-items-center gap-2">
+                    <span class="badge {% if object and form.selected_cliente_anagrafica.documento_scaduto %}bg-red-lt{% else %}bg-secondary-lt{% endif %}"
+                          data-documento-badge
+                          {% if not object or not form.selected_cliente_anagrafica.documento_data_scadenza_iso %}hidden{% endif %}>
+                        {% if object and form.selected_cliente_anagrafica.documento_scaduto %}Scaduto{% else %}Valido{% endif %}
+                    </span>
+                    <button type="button"
+                            class="btn btn-sm btn-outline-secondary st-collapse-toggle"
+                            data-collapse-target="cliente-documento-body"
+                            data-collapse-key="cliente-documento"
+                            data-collapse-default="{% if form.selected_cliente %}collapsed{% else %}open{% endif %}"
+                            aria-controls="cliente-documento-body"
+                            aria-expanded="{% if form.selected_cliente %}false{% else %}true{% endif %}"
+                            title="{% if form.selected_cliente %}Espandi sezione{% else %}Comprimi sezione{% endif %}">
+                        <i class="ti ti-chevron-down"></i>
+                        <span class="d-none d-sm-inline" data-collapse-label>{% if form.selected_cliente %}Apri{% else %}Chiudi{% endif %}</span>
+                    </button>
+                    <button type="button"
+                            class="btn btn-sm btn-primary"
+                            data-documento-save
+                            tabindex="-1"
+                            disabled>
+                        <i class="ti ti-device-floppy"></i>
+                        Salva documento
+                    </button>
+                </div>
+            </div>
+            <div class="card-body"
+                 id="cliente-documento-body"
+                 {% if form.selected_cliente %}hidden{% endif %}>
+                <div class="alert alert-warning mb-3" data-documento-alert {% if not object or not form.selected_cliente_anagrafica.documento_scaduto %}hidden{% endif %}>{% if object and form.selected_cliente_anagrafica.documento_scaduto %}Documento scaduto: puoi aggiornarlo ora oppure lasciarlo invariato.{% endif %}</div>
+                <div class="st-anagrafica-facts st-cliente-documento-facts">
+                    <div class="st-anagrafica-fact">
+                        <label class="st-anagrafica-fact-label" for="id_doc_documento_tipo">Tipo</label>
+                        <input type="text"
+                               class="form-control form-control-sm"
+                               id="id_doc_documento_tipo"
+                               name="documento_tipo"
+                               form="clienteDocumentoForm"
+                               autocomplete="off"
+                               disabled>
+                    </div>
+                    <div class="st-anagrafica-fact">
+                        <label class="st-anagrafica-fact-label" for="id_doc_documento_numero">Numero</label>
+                        <input type="text"
+                               class="form-control form-control-sm is-mono"
+                               id="id_doc_documento_numero"
+                               name="documento_numero"
+                               form="clienteDocumentoForm"
+                               autocomplete="off"
+                               disabled>
+                    </div>
+                    <div class="st-anagrafica-fact st-anagrafica-fact-wide">
+                        <label class="st-anagrafica-fact-label" for="id_doc_documento_rilasciato_da">Rilasciato da</label>
+                        <input type="text"
+                               class="form-control form-control-sm"
+                               id="id_doc_documento_rilasciato_da"
+                               name="documento_rilasciato_da"
+                               form="clienteDocumentoForm"
+                               autocomplete="off"
+                               disabled>
+                    </div>
+                    <div class="st-anagrafica-fact">
+                        <label class="st-anagrafica-fact-label" for="id_doc_documento_data_rilascio">Data rilascio</label>
+                        <input type="date"
+                               class="form-control form-control-sm"
+                               id="id_doc_documento_data_rilascio"
+                               name="documento_data_rilascio"
+                               form="clienteDocumentoForm"
+                               autocomplete="off"
+                               disabled>
+                    </div>
+                    <div class="st-anagrafica-fact">
+                        <label class="st-anagrafica-fact-label" for="id_doc_documento_data_scadenza">Data scadenza</label>
+                        <input type="date"
+                               class="form-control form-control-sm"
+                               id="id_doc_documento_data_scadenza"
+                               name="documento_data_scadenza"
+                               form="clienteDocumentoForm"
+                               autocomplete="off"
+                               disabled>
+                    </div>
+                    <div class="st-anagrafica-fact">
+                        <span class="st-anagrafica-fact-label">Stampa privacy</span>
+                        <div class="d-flex gap-3 align-items-center mt-1" data-documento-stampa-privacy>
+                            <label class="form-check mb-0">
+                                <input class="form-check-input"
+                                       type="radio"
+                                       name="stampa_privacy"
+                                       form="clienteDocumentoForm"
+                                       value="True"
+                                       tabindex="-1"
+                                       disabled>
+                                <span class="form-check-label">Si</span>
+                            </label>
+                            <label class="form-check mb-0">
+                                <input class="form-check-input"
+                                       type="radio"
+                                       name="stampa_privacy"
+                                       form="clienteDocumentoForm"
+                                       value="False"
+                                       checked
+                                       tabindex="-1"
+                                       disabled>
+                                <span class="form-check-label">No</span>
+                            </label>
                         </div>
                     </div>
                 </div>

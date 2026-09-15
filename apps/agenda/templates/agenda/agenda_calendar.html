@@ -153,7 +153,7 @@ Agenda
                             <div>
                                 <div class="fw-bold">{{ event.titolo }}</div>
                                 <div class="text-secondary small">
-                                    {{ event.get_tipo_display }} · {{ event.data_inizio|date:"d/m/Y" }}
+                                    {{ event.get_tipo_display }} · {{ event.data_inizio|date:"d/m/y" }}
                                     {% if event.ora_inizio %} {{ event.ora_inizio|time:"H:i" }}{% endif %}
                                 </div>
                                 <div class="text-secondary small">{{ event.pratica.codice }}</div>

@@ -1,0 +1,28 @@
+<div class="st-frame-overlay" id="nuovoClienteOverlay" hidden>
+    <div class="st-frame-overlay-dialog"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="nuovoClienteOverlayTitle">
+        <div class="st-frame-overlay-header">
+            <h2 class="st-frame-overlay-title" id="nuovoClienteOverlayTitle" data-nuovo-cliente-title>
+                Nuovo cliente
+            </h2>
+            <button type="button"
+                    class="btn btn-icon btn-ghost-secondary"
+                    data-nuovo-cliente-close
+                    title="Chiudi e torna alla riparazione"
+                    aria-label="Chiudi e torna alla riparazione">
+                <i class="ti ti-x"></i>
+            </button>
+        </div>
+        <div class="st-frame-overlay-error" data-nuovo-cliente-error hidden>
+            Impossibile aprire la scheda cliente in questa finestra.
+            Chiudi e riprova, oppure usa Ctrl+clic su «Nuovo cliente».
+        </div>
+        <iframe class="st-frame-overlay-frame"
+                name="labrepairNuovoClienteFrame"
+                data-nuovo-cliente-frame
+                title="Scheda nuovo cliente"
+                src="about:blank"></iframe>
+    </div>
+</div>

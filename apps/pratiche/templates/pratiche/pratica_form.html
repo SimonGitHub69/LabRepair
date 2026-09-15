@@ -90,18 +90,7 @@
                             {% include "pratiche/partials/form_field.html" with field=form.referente_telefono col="col-6 col-md-4 col-xl-3" %}
                             {% include "pratiche/partials/form_field.html" with field=form.referente_cellulare col="col-6 col-md-4 col-xl-3" %}
                             {% include "pratiche/partials/form_field.html" with field=form.referente_email col="col-12 col-md-8 col-xl-6" %}
-                            {% include "pratiche/partials/form_field.html" with field=form.riparatore col="col-6 col-md-4 col-xl-3" %}
-                            <div class="col-6 col-md-4 col-xl-3" id="centroAssistenzaField" hidden>
-                                <div class="mb-3">
-                                    <label class="form-label" for="{{ form.centro_assistenza.id_for_label }}">{{ form.centro_assistenza.label }}</label>
-                                    {{ form.centro_assistenza }}
-                                    {% if form.centro_assistenza.errors %}
-                                        <div class="invalid-feedback d-block">{{ form.centro_assistenza.errors|join:", " }}</div>
-                                    {% endif %}
-                                </div>
-                            </div>
                             {% include "pratiche/partials/form_field.html" with field=form.data_apertura col="col-6 col-md-4 col-xl-3" %}
-                            {% include "pratiche/partials/form_stato_priorita.html" with stato_col="col-12 col-md-8 col-xl-6" priorita_col="col-6 col-md-4 col-xl-3" %}
                         {% else %}
                             {% include "pratiche/partials/form_field.html" with field=form.operatore col="col-md-6 col-lg-4" %}
                             {% include "pratiche/partials/cliente_search_field.html" with form=form col="col-12" referente_url_template=cliente_referente_url_template %}
@@ -111,18 +100,7 @@
                             {% include "pratiche/partials/form_field.html" with field=form.referente_telefono col="col-md-6 col-lg-4" %}
                             {% include "pratiche/partials/form_field.html" with field=form.referente_cellulare col="col-md-6 col-lg-4" %}
                             {% include "pratiche/partials/form_field.html" with field=form.referente_email col="col-md-6 col-lg-8" %}
-                            {% include "pratiche/partials/form_field.html" with field=form.riparatore col="col-md-6 col-lg-4" %}
-                            <div class="col-md-6 col-lg-4" id="centroAssistenzaField" hidden>
-                                <div class="mb-3">
-                                    <label class="form-label" for="{{ form.centro_assistenza.id_for_label }}">{{ form.centro_assistenza.label }}</label>
-                                    {{ form.centro_assistenza }}
-                                    {% if form.centro_assistenza.errors %}
-                                        <div class="invalid-feedback d-block">{{ form.centro_assistenza.errors|join:", " }}</div>
-                                    {% endif %}
-                                </div>
-                            </div>
                             {% include "pratiche/partials/form_field.html" with field=form.data_apertura col="col-md-6 col-lg-4" %}
-                            {% include "pratiche/partials/form_stato_priorita.html" with stato_col="col-12 col-lg-8" priorita_col="col-md-6 col-lg-4" %}
                         {% endif %}
                     </div>
                 </div>
@@ -138,7 +116,18 @@
                 <div class="card-body">
                     <div class="row">
                         {% if layout_stile == 'compatta' %}
-                            {% include "pratiche/partials/form_field.html" with field=form.tipo_oggetto col="col-6 col-md-4" %}
+                            {% include "pratiche/partials/form_field.html" with field=form.riparatore col="col-6 col-md-4 col-xl-3" hotkey=pratica_tasto_riparatore %}
+                            <div class="col-6 col-md-4 col-xl-3" id="centroAssistenzaField" hidden>
+                                <div class="mb-3">
+                                    <label class="form-label" for="{{ form.centro_assistenza.id_for_label }}">{{ form.centro_assistenza.label }}</label>
+                                    {{ form.centro_assistenza }}
+                                    {% if form.centro_assistenza.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.centro_assistenza.errors|join:", " }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% include "pratiche/partials/form_stato_priorita.html" with stato_col="col-12 col-md-8 col-xl-6" priorita_col="col-6 col-md-4 col-xl-3" %}
+                            {% include "pratiche/partials/form_field.html" with field=form.tipo_oggetto col="col-6 col-md-4" hotkey=pratica_tasto_tipo_oggetto %}
                             {% include "pratiche/partials/form_field.html" with field=form.tipologia col="col-6 col-md-4" %}
                             {% include "pratiche/partials/form_field.html" with field=form.data_scadenza col="col-6 col-md-4" %}
                             {% include "pratiche/partials/form_field.html" with field=form.tipo_metallo col="col-6 col-md-4" %}
@@ -150,7 +139,18 @@
                                 {% include "pratiche/partials/pratica_foto_field.html" with pratica_foto=pratica_foto allow_delete=True %}
                             </div>
                         {% else %}
-                            {% include "pratiche/partials/form_field.html" with field=form.tipo_oggetto col="col-md-6" %}
+                            {% include "pratiche/partials/form_field.html" with field=form.riparatore col="col-md-6 col-lg-4" hotkey=pratica_tasto_riparatore %}
+                            <div class="col-md-6 col-lg-4" id="centroAssistenzaField" hidden>
+                                <div class="mb-3">
+                                    <label class="form-label" for="{{ form.centro_assistenza.id_for_label }}">{{ form.centro_assistenza.label }}</label>
+                                    {{ form.centro_assistenza }}
+                                    {% if form.centro_assistenza.errors %}
+                                        <div class="invalid-feedback d-block">{{ form.centro_assistenza.errors|join:", " }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% include "pratiche/partials/form_stato_priorita.html" with stato_col="col-12 col-lg-8" priorita_col="col-md-6 col-lg-4" %}
+                            {% include "pratiche/partials/form_field.html" with field=form.tipo_oggetto col="col-md-6" hotkey=pratica_tasto_tipo_oggetto %}
                             {% include "pratiche/partials/form_textarea_expandable.html" with field=form.descrizione col="col-12" %}
                             {% include "pratiche/partials/form_field.html" with field=form.data_scadenza col="col-md-6" %}
                             {% include "pratiche/partials/form_field.html" with field=form.tipologia col="col-md-6" %}
@@ -239,20 +239,31 @@
                                                tabindex="-1"
                                                aria-readonly="true"
                                                title="Calcolato: lavorazione + materiale + (peso aggiunto × prezzo al gr/ct).">
-                                        <div class="form-check mt-1 mb-0">
-                                            {{ form.senza_spesa }}
-                                            <label class="form-check-label" for="{{ form.senza_spesa.id_for_label }}">
-                                                {{ form.senza_spesa.label }}
-                                            </label>
-                                        </div>
-                                        {% if form.senza_spesa.errors %}
-                                            <div class="invalid-feedback d-block">{{ form.senza_spesa.errors|join:", " }}</div>
-                                        {% endif %}
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        {% include "pratiche/partials/form_field.html" with field=form.prezzo_al col="col-6" %}
+                        <div class="col-6">
+                            <div class="mb-0">
+                                <label class="form-label" for="{{ form.prezzo_al.id_for_label }}">
+                                    {{ form.prezzo_al.label }}{% if form.prezzo_al.field.required %}<span class="text-danger"> *</span>{% endif %}
+                                </label>
+                                {{ form.prezzo_al }}
+                                <div class="form-check mt-1 mb-0">
+                                    {{ form.senza_spesa }}
+                                    <label class="form-check-label" for="{{ form.senza_spesa.id_for_label }}">
+                                        {{ form.senza_spesa.label }}
+                                    </label>
+                                </div>
+                                {% if form.prezzo_al.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.prezzo_al.errors|join:", " }}</div>
+                                {% endif %}
+                                {% if form.senza_spesa.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.senza_spesa.errors|join:", " }}</div>
+                                {% endif %}
+                                <div class="form-text">Con stato «In consegna»: Prezzo al Pubblico, oppure Senza Spesa.</div>
+                            </div>
+                        </div>
                         {% include "pratiche/partials/form_field.html" with field=form.prezzo_pagato col="col-6" %}
                     </div>
                 </div>
@@ -330,21 +341,31 @@
                                                tabindex="-1"
                                                aria-readonly="true"
                                                title="Calcolato: lavorazione + materiale + (peso aggiunto × prezzo al gr/ct).">
-                                        <div class="form-check mt-2">
-                                            {{ form.senza_spesa }}
-                                            <label class="form-check-label" for="{{ form.senza_spesa.id_for_label }}">
-                                                {{ form.senza_spesa.label }}
-                                            </label>
-                                        </div>
-                                        {% if form.senza_spesa.errors %}
-                                            <div class="invalid-feedback d-block">{{ form.senza_spesa.errors|join:", " }}</div>
-                                        {% endif %}
-                                        <div class="form-text">Con stato «In consegna»: Costo totale e Prezzo al Pubblico, oppure Senza Spesa.</div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        {% include "pratiche/partials/form_field.html" with field=form.prezzo_al col="col-md-6" %}
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label" for="{{ form.prezzo_al.id_for_label }}">
+                                    {{ form.prezzo_al.label }}{% if form.prezzo_al.field.required %}<span class="text-danger"> *</span>{% endif %}
+                                </label>
+                                {{ form.prezzo_al }}
+                                <div class="form-check mt-1 mb-0">
+                                    {{ form.senza_spesa }}
+                                    <label class="form-check-label" for="{{ form.senza_spesa.id_for_label }}">
+                                        {{ form.senza_spesa.label }}
+                                    </label>
+                                </div>
+                                {% if form.prezzo_al.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.prezzo_al.errors|join:", " }}</div>
+                                {% endif %}
+                                {% if form.senza_spesa.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.senza_spesa.errors|join:", " }}</div>
+                                {% endif %}
+                                <div class="form-text">Con stato «In consegna»: Prezzo al Pubblico, oppure Senza Spesa.</div>
+                            </div>
+                        </div>
                         {% include "pratiche/partials/form_field.html" with field=form.prezzo_pagato col="col-md-6" %}
                     </div>
                 </div>
@@ -388,6 +409,7 @@
 {% include "partials/busta_print_modal.html" with busta_return_url=pratica_list_url %}
 {% include "partials/privacy_print_modal.html" %}
 {% include "partials/confirm_dialog.html" %}
+{% include "partials/anagrafica_overlay.html" %}
 
 {# Form esterno: i campi documento usano form="clienteDocumentoForm" (no nested form). #}
 <form id="clienteDocumentoForm" method="post" hidden aria-hidden="true"></form>
@@ -397,19 +419,19 @@
 {% block extra_js %}
 {{ block.super }}
 <script src="{% static 'securtek/js/name_case.js' %}"></script>
-<script src="{% static 'securtek/js/cliente_search.js' %}?v=20260905-documento"></script>
-<script src="{% static 'securtek/js/pratica_required.js' %}?v=20260907-peso-metallo"></script>
+<script src="{% static 'securtek/js/cliente_search.js' %}?v=20260915-overlay"></script>
+<script src="{% static 'securtek/js/anagrafica_overlay.js' %}?v=20260915-overlay3"></script>
+<script src="{% static 'securtek/js/pratica_required.js' %}?v=20260915-consegna-min"></script>
 <script src="{% static 'securtek/js/pratica_importi.js' %}?v=20260907-select"></script>
 <script src="{% static 'securtek/js/pratica_foto.js' %}"></script>
 <script src="{% static 'securtek/js/webcam_capture.js' %}"></script>
 <script src="{% static 'securtek/js/pratica_save_before_print.js' %}?v=20260904-validate"></script>
-<script src="{% static 'securtek/js/busta_print.js' %}?v=20260906-flag"></script>
+<script src="{% static 'securtek/js/busta_print.js' %}?v=20260910-preview-save"></script>
 <script src="{% static 'securtek/js/privacy_print.js' %}?v=20260725b"></script>
 <script src="{% static 'securtek/js/confirm_dialog.js' %}"></script>
-<script src="{% static 'securtek/js/pratica_documento.js' %}?v=20260905-notify"></script>
-<script src="{% static 'securtek/js/pratica_unsaved.js' %}?v=20260904-unsaved"></script>
+<script src="{% static 'securtek/js/pratica_documento.js' %}?v=20260909-scaduto-lista"></script>
+<script src="{% static 'securtek/js/pratica_unsaved.js' %}?v=20260915-annulla1"></script>
 <script src="{% static 'securtek/js/pratica_stato.js' %}?v=20260904-radio"></script>
-<script src="{% static 'securtek/js/pratica_hotkeys.js' %}?v=20260906-busta"></script>
 <script src="{% static 'securtek/js/pratica_textarea_expand.js' %}?v=20260904-autosize"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function () {
@@ -449,7 +471,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!nuovoClienteLink) {
             return;
         }
-        const baseUrl = "{% url 'anagrafiche:anagrafica_create' %}?tipo=cliente";
+        const baseUrl = "{% url 'anagrafiche:anagrafica_create' %}?tipo=cliente&embed=1";
         if (tipologiaField && tipologiaField.value === "prezioso") {
             nuovoClienteLink.href = baseUrl + "&prezioso=1";
             nuovoClienteLink.classList.remove("btn-outline-secondary");
@@ -459,7 +481,7 @@ document.addEventListener("DOMContentLoaded", function () {
             nuovoClienteLink.href = baseUrl;
             nuovoClienteLink.classList.add("btn-outline-secondary");
             nuovoClienteLink.classList.remove("btn-outline-primary");
-            nuovoClienteLink.title = "Apri scheda nuovo cliente";
+            nuovoClienteLink.title = "Nuovo cliente, senza uscire dalla riparazione";
         }
     }
 
@@ -475,6 +497,17 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         if (typeof window.labrepairOnTipologiaDocumentoCheck === "function") {
             window.labrepairOnTipologiaDocumentoCheck();
+        }
+        const clienteField = document.querySelector('input[type="hidden"][name="cliente"]');
+        if (
+            tipologiaField &&
+            tipologiaField.value === "prezioso" &&
+            clienteField &&
+            clienteField.value &&
+            typeof window.labrepairSetSectionCollapsed === "function"
+        ) {
+            window.labrepairSetSectionCollapsed("cliente-anagrafica-body", true, false);
+            window.labrepairSetSectionCollapsed("cliente-documento-body", true, false);
         }
     }
 

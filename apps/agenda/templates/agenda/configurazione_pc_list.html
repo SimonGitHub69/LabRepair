@@ -99,12 +99,23 @@ Parametri PC
                         <td class="fw-bold">{{ pc.nome_pc }}</td>
                         <td>{{ pc.descrizione|default:"-" }}</td>
                         <td>{{ pc.get_negozio_default_display }}</td>
-                        <td>{{ pc.get_layout_stile_display }}</td>
+                        <td>
+                            {{ pc.get_layout_stile_display }}
+                            {% if pc.layout_alto_contrasto %}
+                                <span class="badge bg-blue-lt text-blue">Alto contrasto</span>
+                            {% endif %}
+                        </td>
                         <td>
                             {% if pc.busta_stampa_senza_anteprima %}
                                 <span class="badge bg-azure-lt text-azure">Stampa diretta</span>
                             {% else %}
                                 <span class="text-secondary">Con anteprima</span>
+                            {% endif %}
+                            {% if pc.busta_stampa_salva_scheda %}
+                                <span class="badge bg-green-lt text-green">Salva scheda</span>
+                            {% endif %}
+                            {% if pc.busta_stampa_torna_elenco %}
+                                <span class="badge bg-orange-lt text-orange">Torna elenco</span>
                             {% endif %}
                         </td>
                         <td>

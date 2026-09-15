@@ -176,11 +176,11 @@ Riparazioni
                 </div>
 
                 <div class="st-pratica-filter-actions">
+                    <a href="{% url 'pratiche:pratica_list' %}" class="btn btn-outline-secondary">Pulisci</a>
                     <button type="submit" class="btn btn-secondary">
                         <i class="ti ti-filter"></i>
                         Filtra
                     </button>
-                    <a href="{% url 'pratiche:pratica_list' %}" class="btn btn-outline-secondary">Pulisci</a>
                 </div>
             </div>
 
@@ -331,7 +331,7 @@ Riparazioni
                 <div class="st-pratica-list-apertura">
                     {% if pratica.data_apertura %}
                         <span class="st-data-apertura" title="Data accettazione">
-                            {{ pratica.data_apertura|date:"d/m/Y" }}
+                            {{ pratica.data_apertura|date:"d/m/y" }}
                         </span>
                     {% else %}
                         <span class="text-secondary">-</span>
@@ -344,7 +344,7 @@ Riparazioni
                             {% if pratica.is_scaduta %}
                                 <i class="ti ti-alert-circle"></i>
                             {% endif %}
-                            {{ pratica.data_scadenza|date:"d/m/Y" }}
+                            {{ pratica.data_scadenza|date:"d/m/y" }}
                         </span>
                     {% else %}
                         <span class="text-secondary">-</span>
@@ -392,7 +392,7 @@ Riparazioni
 
 {% block extra_js %}
 {{ block.super }}
-<script src="{% static 'securtek/js/cliente_search.js' %}?v=20260904-cognome"></script>
+<script src="{% static 'securtek/js/cliente_search.js' %}?v=20260915-no-dropdown"></script>
 <script src="{% static 'securtek/js/confirm_dialog.js' %}"></script>
 <script src="{% static 'securtek/js/pratica_list.js' %}"></script>
 {% endblock %}

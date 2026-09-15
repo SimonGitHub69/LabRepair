@@ -139,5 +139,35 @@ class Anagrafica(BaseModel):
             self.cognome = ""
         super().save(*args, **kwargs)
 
+    def get_delete_block_reason(self):
+        """Motivo per cui non si può eliminare (integrità con le riparazioni)."""
+        n_cliente = self.pratiche.filter(is_active=True).count()
+        if n_cliente:
+            if n_cliente == 1:
+                dettaglio = "1 riparazione collegata"
+            else:
+                dettaglio = f"{n_cliente} riparazioni collegate"
+            return (
+                f"Impossibile eliminare «{self.display_name}»: ha {dettaglio}."
+            )
+        n_centro = self.pratiche_centro_assistenza.filter(is_active=True).count()
+        if n_centro:
+            if n_centro == 1:
+                dettaglio = "1 riparazione in cui risulta centro assistenza"
+            else:
+                dettaglio = (
+                    f"{n_centro} riparazioni in cui risulta centro assistenza"
+                )
+            return (
+                f"Impossibile eliminare «{self.display_name}»: ha {dettaglio}."
+            )
+        return ""
+
+    def soft_delete(self, user=None):
+        reason = self.get_delete_block_reason()
+        if reason:
+            raise PermissionError(reason)
+        super().soft_delete(user=user)
+
     def __str__(self):
         return self.display_name
