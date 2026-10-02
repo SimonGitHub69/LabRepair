@@ -48,7 +48,7 @@
                         <form method="post"
                               action="{% url delete_url_name pratica_pk=pratica_pk pk=foto.pk %}"
                               class="st-pratica-foto-delete-form"
-                              onsubmit="return confirm('Eliminare questa foto?');">
+                              data-pratica-foto-delete-confirm>
                             {% csrf_token %}
                             {% if next_url %}
                                 <input type="hidden" name="next" value="{{ next_url }}">

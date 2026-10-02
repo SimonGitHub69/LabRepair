@@ -2,7 +2,9 @@
     <label class="form-label" for="clienteFilterSearchInput">Cliente</label>
     <div class="st-cliente-search-field st-cliente-search-field-compact"
          data-cliente-search-root
-         data-search-url="{% url 'pratiche:cliente_search' %}">
+         data-search-url="{% url 'pratiche:cliente_search' %}"
+         data-search-scope="pratiche"
+         data-search-negozio-field="negozioFilterSelect">
         <input type="hidden"
                name="cliente"
                id="clienteFilterId"
@@ -17,7 +19,7 @@
                            id="clienteFilterSearchInput"
                            class="form-control"
                            value="{% if cliente_filtro %}{{ cliente_filtro.display_name }}{% endif %}"
-                           placeholder="Cerca cliente..."
+                           placeholder="Cliente con riparazioni..."
                            autocomplete="off"
                            data-cliente-search-input
                            {% if cliente_filtro %}data-selected-label="{{ cliente_filtro.display_name }}"{% endif %}>

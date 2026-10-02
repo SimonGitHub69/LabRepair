@@ -26,6 +26,7 @@ from apps.pratiche.views import (
     OperatoreListView,
     OperatoreUpdateView,
     PraticaBustaPrintView,
+    PraticaBustaStampataView,
     PraticaPrivacyPrintView,
     PraticaCreateView,
     PraticaCategoriaAllegatoDeleteView,
@@ -59,6 +60,18 @@ from apps.pratiche.views import (
     TipoOggettoListView,
     TipoOggettoUpdateView,
 )
+from apps.pratiche.views_ddt import (
+    DdtBusteJsonView,
+    DdtCreateView,
+    DdtDeleteView,
+    DdtDetailView,
+    DdtListView,
+    DdtPrintView,
+    DdtRigaAddView,
+    DdtRigaDeleteView,
+    DdtRigheView,
+    DdtUpdateView,
+)
 
 app_name = "pratiche"
 
@@ -68,11 +81,26 @@ urlpatterns = [
     path("clienti/cerca/", ClienteSearchView.as_view(), name="cliente_search"),
     path("cliente/<int:pk>/referente/", ClienteReferenteJsonView.as_view(), name="cliente_referente_json"),
     path("nuova/", PraticaCreateView.as_view(), name="pratica_create"),
+    path("ddt/", DdtListView.as_view(), name="ddt_list"),
+    path("ddt/nuovo/", DdtCreateView.as_view(), name="ddt_create"),
+    path("ddt/buste/", DdtBusteJsonView.as_view(), name="ddt_buste_json"),
+    path("ddt/<int:pk>/", DdtDetailView.as_view(), name="ddt_detail"),
+    path("ddt/<int:pk>/modifica/", DdtUpdateView.as_view(), name="ddt_update"),
+    path("ddt/<int:pk>/modifica-righe/", DdtRigheView.as_view(), name="ddt_righe"),
+    path("ddt/<int:pk>/riga/aggiungi/", DdtRigaAddView.as_view(), name="ddt_riga_add"),
+    path("ddt/<int:pk>/riga/<int:riga_pk>/elimina/", DdtRigaDeleteView.as_view(), name="ddt_riga_delete"),
+    path("ddt/<int:pk>/elimina/", DdtDeleteView.as_view(), name="ddt_delete"),
+    path("ddt/<int:pk>/stampa/", DdtPrintView.as_view(), name="ddt_print"),
     path("cartelle/scegli/", FolderPickerView.as_view(), name="folder_picker"),
     path("cartelle/anteprima/", FolderPreviewView.as_view(), name="folder_preview"),
     path("cartelle/anteprima/file/apri/", FolderPreviewFileOpenView.as_view(), name="folder_preview_file_open"),
     path("cartelle/anteprima/file/elimina/", FolderPreviewFileDeleteView.as_view(), name="folder_preview_file_delete"),
     path("<int:pk>/busta/", PraticaBustaPrintView.as_view(), name="pratica_busta_print"),
+    path(
+        "<int:pk>/busta/stampata/",
+        PraticaBustaStampataView.as_view(),
+        name="pratica_busta_stampata",
+    ),
     path("<int:pk>/privacy/", PraticaPrivacyPrintView.as_view(), name="pratica_privacy_print"),
     path("<int:pk>/", PraticaDetailView.as_view(), name="pratica_detail"),
     path("<int:pk>/modifica/", PraticaUpdateView.as_view(), name="pratica_update"),

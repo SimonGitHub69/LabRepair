@@ -148,6 +148,95 @@ def get_referente_from_cliente_id(cliente_id):
     return get_referente_from_cliente(anagrafica)
 
 
+def sync_referente_telefoni_to_cliente(pratica):
+    """Copia telefono/cellulare/email della riparazione sull'anagrafica cliente collegata."""
+    cliente = getattr(pratica, "cliente", None)
+    if not cliente:
+        return False
+
+    telefono = (getattr(pratica, "referente_telefono", None) or "").strip()
+    cellulare = (getattr(pratica, "referente_cellulare", None) or "").strip()
+    email = (getattr(pratica, "referente_email", None) or "").strip()
+    if not telefono and not cellulare and not email:
+        return False
+
+    update_fields = []
+    if telefono and telefono != (cliente.telefono or "").strip():
+        cliente.telefono = telefono
+        update_fields.append("telefono")
+    if cellulare and cellulare != (cliente.cellulare or "").strip():
+        cliente.cellulare = cellulare
+        update_fields.append("cellulare")
+    if email and email != (cliente.email or "").strip():
+        cliente.email = email
+        update_fields.append("email")
+
+    if not update_fields:
+        return False
+
+    cliente.save(update_fields=update_fields)
+    return True
+
+
+def ensure_cliente_from_referente(pratica, *, user=None):
+    """
+    Se la riparazione ha Cognome+Nome ma nessun cliente, crea (o riusa) l'anagrafica
+    e la collega. Aggiorna comunque telefono/cellulare/email sul cliente.
+    """
+    if not pratica or not getattr(pratica, "pk", None):
+        return None
+
+    cognome = (getattr(pratica, "referente_cognome", None) or "").strip().upper()
+    nome_raw = (getattr(pratica, "referente_nome", None) or "").strip()
+    nome = " ".join(
+        (part[:1].upper() + part[1:].lower()) if part else ""
+        for part in nome_raw.split()
+    )
+    telefono = (getattr(pratica, "referente_telefono", None) or "").strip()
+    cellulare = (getattr(pratica, "referente_cellulare", None) or "").strip()
+    email = (getattr(pratica, "referente_email", None) or "").strip()
+
+    if pratica.cliente_id:
+        sync_referente_telefoni_to_cliente(pratica)
+        return pratica.cliente
+
+    if not cognome or not nome:
+        return None
+
+    cliente = (
+        Anagrafica.objects.filter(
+            is_active=True,
+            tipo=Anagrafica.Tipo.CLIENTE,
+            cognome__iexact=cognome,
+            nome__iexact=nome,
+        )
+        .order_by("id")
+        .first()
+    )
+    created = False
+    if not cliente:
+        cliente = Anagrafica(
+            tipo=Anagrafica.Tipo.CLIENTE,
+            cognome=cognome,
+            nome=nome,
+            telefono=telefono,
+            cellulare=cellulare,
+            email=email,
+            is_active=True,
+        )
+        if user is not None:
+            cliente.created_by = user
+            cliente.updated_by = user
+        cliente.save()
+        created = True
+
+    pratica.cliente = cliente
+    pratica.save(update_fields=["cliente", "updated_at"])
+    if not created:
+        sync_referente_telefoni_to_cliente(pratica)
+    return cliente
+
+
 def cliente_referente_url_template():
     return reverse("pratiche:cliente_referente_json", kwargs={"pk": 0}).replace(
         "/0/", "/__CLIENTE_ID__/"

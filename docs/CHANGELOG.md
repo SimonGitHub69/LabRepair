@@ -9,6 +9,188 @@ La versione corrente è nel file `VERSION` e compare in sidebar, piè di pagina,
 
 ---
 
+# [0.9.30] - 2026-10-02
+
+## Corretto
+
+- Riparazioni in stato Evasa: testata Accettazione bloccata come dopo stampa busta (lucchetto, campi non modificabili).
+
+---
+
+# [0.9.29] - 2026-10-02
+
+## Corretto
+
+- Eliminazione foto riparazione: conferma obbligatoria prima della rimozione (dialogo Elimina/Annulla).
+
+---
+
+# [0.9.28] - 2026-10-02
+
+## Corretto
+
+- Produzione Windows: le foto e gli allegati in `/media/` vengono serviti anche con `DEBUG=False` (`SERVE_MEDIA=True`).
+- Logo sidebar LabRepair riallineato (stesse misure/DPI del logo negozio che risultava leggibile).
+
+## Modificato
+
+- Installer server Windows: download automatico di Python e PostgreSQL se mancanti; messaggio ALLOWED_HOSTS con IP di rete; installazione servizio più robusta.
+
+---
+
+# [0.9.26] - 2026-09-22
+
+## Modificato
+
+- Salvataggio riparazione: telefono e/o cellulare inseriti sulla scheda aggiornano anche l’anagrafica cliente collegata.
+
+---
+
+# [0.9.25] - 2026-09-18
+
+## Aggiunto
+
+- Ordinamento colonne su tutte le liste (click sull’intestazione, asc/desc; preservato con filtri e paginazione).
+
+## Corretto
+
+- Stampa busta/Privacy: annullare la maschera «telefono mancante» non mostra più un errore di stampa; su nuova riparazione la maschera compare anche da «Stampa busta».
+- Stampa busta: la conferma telefono non resta più nascosta sotto il modal (blocco su «Preparazione busta…»).
+- Stampa busta: codice a barre come immagine PNG (non più solo font), così compare anche in stampa tramite agent.
+- Stampa busta: barcode più stretto (barre più dense).
+- Stampa busta: barcode allineato in larghezza al codice pratica sopra.
+- Stampa busta: nel barcode il trattino del codice non viene stampato (es. P26-0039 → P260039).
+
+---
+
+# [0.9.24] - 2026-09-17
+
+## Modificato
+
+- Salvataggio riparazione senza telefono/cellulare: non è più bloccante; compare una maschera per **Inserisci telefono** oppure **Forza salvataggio**.
+- Errori di validazione in scheda riparazione: messaggio mostrato **accanto al campo**, non più come alert in alto «Salvataggio non eseguito».
+- Layout: ridotto lo spazio tra navbar e titolo pagina in tutte le finestre.
+
+---
+
+# [0.9.23] - 2026-09-17
+
+## Aggiunto
+
+- Stampa busta: con priorità **Urgente**, solo sulla parte B compare **URGENTE** in un box rosso centrato tra date e barcode, leggermente ruotato (stile timbro).
+
+## Modificato
+
+- Creazione DDT / bolla centro assistenza: se la riparazione è in **Accettazione**, passa a **dal Riparatore**; se **Data riparatore** è vuota, viene impostata alla data della bolla.
+
+## Corretto
+
+- Elenco riparazioni e ricerca clienti: la ricerca ignora gli **accenti** (es. `Filie` trova `Filiè`).
+
+---
+
+# [0.9.22] - 2026-09-17
+
+## Corretto
+
+- Sync pagamenti cassa: all'apertura scheda/modifica la lettura avviene **prima** del render (con messaggio se aggiorna); in elenco controlla anche Accettazione / Riparatore / Non ritirata, non solo In consegna.
+
+---
+
+# [0.9.21] - 2026-09-17
+
+## Modificato
+
+- **Nuova riparazione + prezioso** con documento scaduto: non blocca più il lavoro; al Salva (o alla selezione cliente) si può scegliere **Forza registrazione** oppure aggiornare il documento.
+
+---
+
+# [0.9.20] - 2026-09-17
+
+## Corretto
+
+- **Data prevista consegna** retroattiva: blocca il Salva **solo** in **Nuova riparazione**; in modifica di una scheda già esistente non è mai bloccante.
+- Modifica scheda: al click su Salva la data consegna retroattiva **non viene più svuotata** dal controllo JS (prima il `change` sul campo data la azzerava e poi la validazione la trovava vuota).
+- Salva scheda: **non azzera** più i dati già memorizzati (N. scontrino, prezzo pagato, data vendita/evasione, data apertura, data consegna) se il POST arriva vuoto o la sync cassa ha aggiornato il DB dopo l'apertura della maschera.
+- Click su Salva/Annulla: evita lo spostamento della maschera per blur sui campi data/nome che costringeva a ripremere.
+
+---
+
+# [0.9.19] - 2026-09-17
+
+## Aggiunto
+
+- Sync pagamenti da **Database Cassa** (`GS_VENDITE_DETTAGLIO`): se `ID_ARTICOLO` coincide con il codice riparazione, aggiorna **Prezzo pagato**, **N. scontrino**, **Data vendita/evasione** e imposta stato **Evasa** (se non lo era già).
+- Controllo automatico all'apertura elenco / scheda riparazione; comando `manage.py sync_pagamenti_cassa` per batch/cron.
+
+## Modificato
+
+- Elenco DDT filtrato per negozio di lavoro (come le riparazioni).
+- Salva riparazione e elenco non restano più in attesa delle sync MS-SQL/cassa (eseguite in background).
+- Salva riparazione: feedback «Salvataggio…», anti doppio-click, sblocco automatico su timeout; apertura scheda non blocca più su MS-SQL.
+- Documento scaduto: blocca il Salva **solo** in **Nuova riparazione** con tipologia **prezioso**; in modifica o non prezioso viene solo segnalato.
+
+---
+
+# [0.9.18] - 2026-09-17
+
+## Modificato
+
+- Client Windows: durante l'auto-update mostra una **finestra di avanzamento** (download %, estrazione, installazione).
+- Client Windows: all'inizio dell'aggiornamento chiude le finestre LabRepair già aperte **senza** il dialogo "Leave app?".
+- Modalità app: nel menu laterale non compare più l'indirizzo del server in basso a sinistra al passaggio sulle voci.
+
+---
+
+# [0.9.14] - 2026-09-16
+
+## Aggiunto
+
+- Tabella **Negozi** (menu Parametri): CRUD sedi con prefisso riparazione, località privacy, **sede operativa** e **numerazione DDT indipendente** per negozio.
+- DDT: possibilità di aggiungere **numeri busta** anche non collegati al centro assistenza (con o senza trattino nel codice).
+
+## Modificato
+
+- La numerazione DDT usa il negozio di sessione (sezionale e progressivo per sede).
+- Stampa DDT: sede operativa in intestazione, tipografia Arial, fincatura più leggera, box destinazione merce regolato.
+- Stampa DDT: stampa dalla scheda/elenco **senza cambiare pagina**; Annulla nel dialogo di stampa più reattivo.
+
+---
+
+# [0.9.13] - 2026-09-16
+
+## Aggiunto
+
+- CRUD completo sui **DDT**: modifica (buste e dati trasporto) ed eliminazione con sblocco delle buste.
+- Client Windows: a ogni avvio controlla sul server se c'è una versione più recente e, se disponibile lo zip in `installazione/`, aggiorna in automatico.
+- API pubbliche `/api/client/version/` e `/api/client/download/` per l'auto-update dei PC client.
+
+## Modificato
+
+- Stampa DDT: contenuto abbassato di **2 mm** per evitare taglio in alto.
+
+---
+
+# [0.9.12] - 2026-09-15
+
+## Aggiunto
+
+- Parametri programma: **Numerazione DDT iniziale** per gestire il progressivo (es. partire da 100 → `100/R`).
+- Alla creazione DDT, su ogni busta inclusa vengono registrati **N. DDT** e **Data DDT** (visibili in scheda riparazione).
+
+---
+
+# [0.9.11] - 2026-09-15
+
+## Aggiunto
+
+- Gestione **DDT** (Documenti di Trasporto) per centri assistenza: elenco, creazione e stampa PDF.
+- Nuovo DDT: selezione centro assistenza, proposta automatica delle **buste aperte** (riparazioni non chiuse e non già in un DDT), dati destinatario dall'anagrafica.
+- Numerazione con sezionale configurabile (es. **100/R**), data odierna, causale/aspetto/vettore predefiniti in Parametri programma.
+- Voce di menu **DDT** in Gestione.
+
+---
+
 # [0.9.10] - 2026-09-15
 
 ## Aggiunto
@@ -33,6 +215,8 @@ La versione corrente è nel file `VERSION` e compare in sidebar, piè di pagina,
 
 ## Corretto
 
+- Elenco riparazioni: filtro **Cliente** — il menu a tendina resta visibile sopra l'elenco; digitando un nome e premendo Filtra/Invio senza selezione si cerca comunque; i select applicano subito il filtro.
+- Elenco riparazioni: ricerca filtro **Cliente** limitata ai clienti che hanno almeno una riparazione (e al negozio selezionato), non all'intera anagrafica.
 - Icona calendario dei campi data: il selettore nativo si riapre (non restava più bloccato da readonly antifill e dal focus sul testo).
 - Maschera **Nuovo cliente** in riparazione: la scheda si apre davvero nell’overlay (non restava più pagina vuota) e **Conferma** seleziona il cliente e torna alla riparazione.
 - Scheda riparazione: **Annulla** non richiede più due pressioni (il blur su nome/date non marca più a torto «modifiche non salvate» né blocca il click).

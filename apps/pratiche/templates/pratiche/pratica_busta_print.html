@@ -5,9 +5,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Busta riparazione · {{ pratica.codice }}</title>
-    <link rel="stylesheet" href="{% static 'securtek/css/busta_print.css' %}?v=20260728-gap2">
+    <link rel="stylesheet" href="{% static 'securtek/css/busta_print.css' %}?v=20260918-barcode-nodash">
 </head>
 <body>
+    {% csrf_token %}
     <div class="toolbar">
         <button type="button" id="bustaPrintBtn">Stampa</button>
         <a href="{% url 'pratiche:pratica_detail' pratica.pk %}">Chiudi</a>
@@ -23,8 +24,22 @@
     (function () {
         var btn = document.getElementById("bustaPrintBtn");
 
+        function markPrinted() {
+            var tokenInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+            var token = tokenInput ? tokenInput.value : "";
+            fetch("{% url 'pratiche:pratica_busta_stampata' pratica.pk %}", {
+                method: "POST",
+                credentials: "same-origin",
+                headers: {
+                    "X-CSRFToken": token,
+                    Accept: "application/json",
+                },
+            }).catch(function () {});
+        }
+
         function doPrint() {
             window.print();
+            markPrinted();
         }
 
         function waitForFonts(callback) {

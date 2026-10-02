@@ -1,0 +1,229 @@
+{% extends "base/layout.html" %}
+{% load list_sorting %}
+
+{% block page_title %}
+DDT
+{% endblock %}
+
+
+{% block content %}
+
+<div class="st-form-page-header st-ddt-page-header d-print-none">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div class="min-w-0">
+            <h2 class="page-title mb-0">DDT</h2>
+            <div class="text-secondary st-ddt-form-subtitle">
+                Documenti di trasporto · {{ negozio_filter_label }} · prossimo
+                <strong>{{ prossimo_numero }}</strong>
+            </div>
+        </div>
+        <a href="{% url 'pratiche:ddt_create' %}" class="btn btn-primary">
+            <i class="ti ti-plus"></i>
+            Nuovo DDT
+        </a>
+    </div>
+</div>
+
+<div class="card mb-3 st-filter-card">
+    <div class="card-body">
+        <form method="get">
+            {% list_sort_hidden %}
+            <div class="row g-2 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label">Ricerca</label>
+                    <input type="text"
+                           name="q"
+                           value="{{ q }}"
+                           class="form-control"
+                           placeholder="Numero, sezionale, centro…">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label" for="negozioFilterSelect">Negozio</label>
+                    <select name="negozio" class="form-select" id="negozioFilterSelect">
+                        {% for value, label in negozi %}
+                        <option value="{{ value }}" {% if negozio_filter == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                        {% endfor %}
+                        <option value="all" {% if negozio_filter_all %}selected{% endif %}>
+                            Tutti i negozi
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Centro assistenza</label>
+                    <select name="centro" class="form-select">
+                        <option value="">Tutti</option>
+                        {% for c in centri %}
+                        <option value="{{ c.pk }}" {% if centro_filter == c.pk|stringformat:"s" %}selected{% endif %}>
+                            {{ c.ragione_sociale }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-secondary">Cerca</button>
+                </div>
+                <div class="col-auto">
+                    <a href="{% url 'pratiche:ddt_list' %}?negozio={{ negozio_filter }}" class="btn btn-outline-secondary">Pulisci</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-vcenter">
+            <thead>
+                <tr>
+                    {% sort_header "numero" "Numero" %}
+                    {% sort_header "data" "Data" %}
+                    {% if negozio_filter_all %}
+                    {% sort_header "negozio" "Negozio" %}
+                    {% endif %}
+                    {% sort_header "centro" "Centro assistenza" %}
+                    {% sort_header "buste" "Buste" %}
+                    {% sort_header "vettore" "Vettore" %}
+                    <th class="text-end">Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ddt in ddt_list %}
+                <tr>
+                    <td>
+                        <a href="{% url 'pratiche:ddt_detail' ddt.pk %}" class="text-reset fw-bold">
+                            {{ ddt.numero_display }}
+                        </a>
+                    </td>
+                    <td>{{ ddt.data_documento|date:"d/m/Y" }}</td>
+                    {% if negozio_filter_all %}
+                    <td>
+                        {% if ddt.negozio %}
+                        <span class="badge bg-azure-lt text-azure">{{ ddt.negozio }}</span>
+                        {% else %}
+                        —
+                        {% endif %}
+                    </td>
+                    {% endif %}
+                    <td>{{ ddt.destinatario_ragione_sociale }}</td>
+                    <td>
+                        <span class="badge bg-blue-lt">{{ ddt.righe_count }}</span>
+                    </td>
+                    <td>{{ ddt.vettore|default:"—" }}</td>
+                    <td class="text-end">
+                        <a href="{% url 'pratiche:ddt_detail' ddt.pk %}"
+                           class="btn btn-icon btn-outline-secondary"
+                           title="Visualizza">
+                            <i class="ti ti-eye"></i>
+                        </a>
+                        <a href="{% url 'pratiche:ddt_update' ddt.pk %}"
+                           class="btn btn-icon btn-outline-primary"
+                           title="Modifica">
+                            <i class="ti ti-edit"></i>
+                        </a>
+                        <a href="{% url 'pratiche:ddt_print' ddt.pk %}?format=pdf"
+                           class="btn btn-icon btn-outline-primary js-ddt-print"
+                           title="Stampa">
+                            <i class="ti ti-printer"></i>
+                        </a>
+                        <button type="button"
+                                class="btn btn-icon btn-outline-danger js-delete-ddt"
+                                title="Elimina"
+                                data-delete-action="{% url 'pratiche:ddt_delete' ddt.pk %}"
+                                data-delete-name="{{ ddt.numero_display }}">
+                            <i class="ti ti-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-secondary py-4">
+                        Nessun DDT presente
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% include "partials/pagination.html" %}
+</div>
+
+<div class="st-confirm" id="deleteDdtModal" hidden>
+    <div class="st-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="deleteDdtTitle">
+        <form method="post" id="deleteDdtForm">
+            {% csrf_token %}
+
+            <div class="st-confirm-body">
+                <div class="st-confirm-icon">
+                    <i class="ti ti-trash"></i>
+                </div>
+
+                <div>
+                    <div class="st-confirm-title" id="deleteDdtTitle">
+                        Eliminare questo DDT?
+                    </div>
+                    <div class="st-confirm-text">
+                        <span class="st-confirm-name" id="deleteDdtName">DDT selezionato</span>
+                        verrà eliminato e le buste torneranno disponibili.
+                    </div>
+                </div>
+            </div>
+
+            <div class="st-confirm-footer">
+                <button type="button" class="btn btn-outline-secondary js-delete-cancel">
+                    Annulla
+                </button>
+                <button type="submit" class="btn btn-danger">
+                    <i class="ti ti-trash"></i>
+                    Elimina
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const modalElement = document.getElementById("deleteDdtModal");
+    const form = document.getElementById("deleteDdtForm");
+    const nameElement = document.getElementById("deleteDdtName");
+    const cancelButton = modalElement ? modalElement.querySelector(".js-delete-cancel") : null;
+
+    if (!modalElement || !form || !nameElement || !cancelButton) {
+        return;
+    }
+
+    function closeModal() {
+        modalElement.hidden = true;
+        form.removeAttribute("action");
+    }
+
+    document.querySelectorAll(".js-delete-ddt").forEach(function (button) {
+        button.addEventListener("click", function () {
+            form.action = button.dataset.deleteAction;
+            nameElement.textContent = button.dataset.deleteName || "DDT selezionato";
+            modalElement.hidden = false;
+        });
+    });
+
+    cancelButton.addEventListener("click", closeModal);
+
+    modalElement.addEventListener("click", function (event) {
+        if (event.target === modalElement) {
+            closeModal();
+        }
+    });
+
+    document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape" && !modalElement.hidden) {
+            closeModal();
+        }
+    });
+});
+</script>
+{% endblock %}

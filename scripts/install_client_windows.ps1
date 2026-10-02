@@ -136,9 +136,12 @@ New-Item -ItemType Directory -Force -Path $CieDir | Out-Null
 New-Item -ItemType Directory -Force -Path $PrinterDir | Out-Null
 New-Item -ItemType Directory -Force -Path $StartMenu | Out-Null
 
-Write-Host "Arresto agent in esecuzione (se presenti)..."
+Write-Host "Arresto agent e finestre LabRepair in esecuzione (se presenti)..."
 Stop-MatchingProcess "cie_reader.exe" "LabRepairCieAgent"
 Stop-MatchingProcess "powershell.exe" "printer_agent.ps1"
+# Chiude Chrome/Edge in modalita' app LabRepair senza dialogo "Leave app?".
+Stop-MatchingProcess "chrome.exe" "LabRepairApp"
+Stop-MatchingProcess "msedge.exe" "LabRepairApp"
 Start-Sleep -Seconds 1
 
 $launcherFiles = @(
@@ -148,7 +151,8 @@ $launcherFiles = @(
     "LabRepairCieAgent.vbs",
     "LabRepairCieAgent.bat",
     "LabRepairPrinterAgent.vbs",
-    "LabRepair.ico"
+    "LabRepair.ico",
+    "check_client_update.ps1"
 )
 foreach ($name in $launcherFiles) {
     $src = Join-Path $ScriptsDir $name
@@ -158,6 +162,16 @@ foreach ($name in $launcherFiles) {
 }
 
 Set-Content -Path (Join-Path $AppDir "origin.txt") -Value $Origin -Encoding ASCII
+
+$versionSrc = Join-Path $Root "VERSION"
+if (-not (Test-Path $versionSrc)) {
+    $versionSrc = Join-Path $ScriptsDir "VERSION"
+}
+if (Test-Path $versionSrc) {
+    Copy-Item $versionSrc (Join-Path $AppDir "VERSION") -Force
+} else {
+    Set-Content -Path (Join-Path $AppDir "VERSION") -Value "0.0.0" -Encoding ASCII
+}
 
 $cieExe = Join-Path $CieSource "cie_reader.exe"
 if (Test-Path $cieExe) {

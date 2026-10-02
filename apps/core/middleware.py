@@ -16,6 +16,7 @@ class RequireNegozioMiddleware:
         "/logout/",
         "/admin/",
         "/static/",
+        "/api/client/",
     )
 
     def __init__(self, get_response):

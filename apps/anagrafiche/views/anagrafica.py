@@ -17,6 +17,7 @@ from apps.anagrafiche.search import (
     build_anagrafica_name_search_q,
 )
 from apps.core.list_pagination import ConfigurablePaginationMixin
+from apps.core.list_sorting import SortableListMixin
 from apps.core.negozi import apply_negozio_queryset_filter, normalize_negozio_code
 from apps.pratiche.cliente_documento import is_documento_identita_scaduto
 from apps.pratiche.cliente_referente import get_referente_from_cliente
@@ -51,11 +52,20 @@ class EmbedFrameMixin:
         return response
 
 
-class AnagraficaListView(LoginRequiredMixin, ConfigurablePaginationMixin, ListView):
+class AnagraficaListView(LoginRequiredMixin, ConfigurablePaginationMixin, SortableListMixin, ListView):
     model = Anagrafica
     template_name = "anagrafiche/anagrafica_list.html"
     context_object_name = "anagrafiche"
     paginate_by = 20
+    sort_fields = {
+        "denominazione": ("cognome", "nome", "ragione_sociale"),
+        "tipo": "tipo",
+        "partita_iva": "partita_iva",
+        "email": "email",
+        "telefono": "telefono",
+    }
+    default_sort = "denominazione"
+    default_dir = "asc"
 
     def get_queryset(self):
         queryset = Anagrafica.objects.filter(is_active=True).annotate(
@@ -82,7 +92,7 @@ class AnagraficaListView(LoginRequiredMixin, ConfigurablePaginationMixin, ListVi
         if tipo:
             queryset = queryset.filter(tipo=tipo)
 
-        return queryset.order_by("cognome", "nome", "ragione_sociale")
+        return self.apply_list_ordering(queryset)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

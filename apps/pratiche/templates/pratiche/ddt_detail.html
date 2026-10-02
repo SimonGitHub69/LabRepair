@@ -1,0 +1,115 @@
+{% extends "base/layout.html" %}
+
+{% block page_title %}DDT {{ ddt.numero_display }}{% endblock %}
+
+{% block content %}
+
+<div class="st-form-page-header st-ddt-page-header d-print-none">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div class="min-w-0">
+            <h2 class="page-title mb-0">DDT {{ ddt.numero_display }}</h2>
+            <div class="text-secondary st-ddt-form-subtitle">
+                {{ ddt.data_documento|date:"d/m/Y" }} · {{ ddt.destinatario_ragione_sociale }}
+            </div>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'pratiche:ddt_update' ddt.pk %}" class="btn btn-outline-primary">
+                <i class="ti ti-edit"></i>
+                Modifica
+            </a>
+            <a href="{% url 'pratiche:ddt_print' ddt.pk %}?format=pdf"
+               class="btn btn-primary js-ddt-print"
+               title="Stampa DDT">
+                <i class="ti ti-printer"></i>
+                Stampa
+            </a>
+            <a href="{% url 'pratiche:ddt_print' ddt.pk %}?format=pdf"
+               class="btn btn-outline-secondary"
+               target="_blank"
+               rel="noopener"
+               title="Apri PDF">
+                <i class="ti ti-file-type-pdf"></i>
+                PDF
+            </a>
+            <a href="{% url 'pratiche:ddt_list' %}" class="btn btn-outline-secondary">
+                Elenco DDT
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row row-cards">
+    <div class="col-lg-5">
+        <div class="card mb-3">
+            <div class="card-header"><h3 class="card-title mb-0">Destinatario</h3></div>
+            <div class="card-body">
+                <div class="mb-2"><strong>{{ ddt.destinatario_ragione_sociale }}</strong></div>
+                <div>{{ ddt.destinatario_indirizzo }}</div>
+                <div>{{ ddt.destinatario_citta_line }}</div>
+                <div class="text-secondary small mt-2">
+                    P.IVA {{ ddt.destinatario_partita_iva|default:"—" }}
+                    · CF {{ ddt.destinatario_codice_fiscale|default:"—" }}
+                    · Cod. {{ ddt.destinatario_codice_cliente|default:"—" }}
+                </div>
+            </div>
+        </div>
+        <div class="card mb-3">
+            <div class="card-header"><h3 class="card-title mb-0">Trasporto</h3></div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-5">Causale</dt><dd class="col-7">{{ ddt.causale }}</dd>
+                    <dt class="col-5">Aspetto beni</dt><dd class="col-7">{{ ddt.aspetto_beni }}</dd>
+                    <dt class="col-5">Trasporto a cura</dt><dd class="col-7">{{ ddt.trasporto_a_cura }}</dd>
+                    <dt class="col-5">Vettore</dt><dd class="col-7">{{ ddt.vettore }}</dd>
+                    <dt class="col-5">Colli</dt><dd class="col-7">{{ ddt.colli }}</dd>
+                    <dt class="col-5">Peso lordo</dt><dd class="col-7">{{ ddt.peso_lordo_kg }} kg</dd>
+                    <dt class="col-5">Inizio trasporto</dt>
+                    <dd class="col-7">{{ ddt.data_inizio_trasporto|date:"d/m/Y"|default:"—" }}</dd>
+                </dl>
+                {% if ddt.note %}
+                <div class="mt-3"><span class="text-secondary">Note:</span> {{ ddt.note }}</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header"><h3 class="card-title mb-0">Buste nel DDT</h3></div>
+            <div class="table-responsive">
+                <table class="table table-vcenter card-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Articolo</th>
+                            <th>Descrizione</th>
+                            <th>UM</th>
+                            <th class="text-end">Qtà</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for riga in ddt.righe.all %}
+                        <tr>
+                            <td>{{ riga.ordine }}</td>
+                            <td>{{ riga.articolo|default:"—" }}</td>
+                            <td>{{ riga.descrizione }}</td>
+                            <td>{{ riga.unita_misura }}</td>
+                            <td class="text-end">{{ riga.quantita }}</td>
+                            <td>
+                                {% if riga.pratica_id %}
+                                <a href="{% url 'pratiche:pratica_detail' riga.pratica_id %}" class="btn btn-sm btn-ghost-secondary">
+                                    Scheda
+                                </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6" class="text-secondary text-center">Nessuna riga</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

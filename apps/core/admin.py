@@ -5,8 +5,28 @@ from apps.core.models import (
     ConfigurazioneMssql,
     ConfigurazionePC,
     ConfigurazioneProgramma,
+    Negozio,
     Stampante,
 )
+
+
+@admin.register(Negozio)
+class NegozioAdmin(admin.ModelAdmin):
+    list_display = (
+        "codice",
+        "denominazione",
+        "comune",
+        "provincia",
+        "prefisso_pratica",
+        "localita_privacy",
+        "ddt_sezionale",
+        "ddt_numero_iniziale",
+        "ordine",
+        "is_active",
+    )
+    search_fields = ("codice", "denominazione", "localita_privacy", "indirizzo", "comune")
+    list_filter = ("is_active", "provincia")
+    ordering = ("ordine", "codice")
 
 
 @admin.register(Azienda)

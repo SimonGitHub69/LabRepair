@@ -43,6 +43,23 @@ function syncConsegnaMinDate(root) {
         return;
     }
 
+    // Snapshot del valore caricato (ripristino se il browser lo svuota).
+    if (!field.hasAttribute("data-initial-value")) {
+        field.setAttribute("data-initial-value", field.value || "");
+    }
+
+    const form = document.getElementById("praticaForm");
+    const isNuova = !!(form && form.getAttribute("data-pratica-nuova") === "1");
+
+    // Blocco «non prima di oggi» solo in Nuova riparazione.
+    if (!isNuova) {
+        field.removeAttribute("data-min");
+        field.removeAttribute("min");
+        field.removeAttribute("data-consegna-not-before-today");
+        delete field.dataset.consegnaMinToday;
+        return;
+    }
+
     const today = todayIsoDate();
     let min = today;
     const yearMin = field.getAttribute("data-date-min-year");
@@ -58,6 +75,28 @@ function syncConsegnaMinDate(root) {
     field.dataset.consegnaMinToday = today;
     field.setAttribute("data-consegna-not-before-today", "1");
 }
+
+function isNuovaRiparazioneForm() {
+    const form = document.getElementById("praticaForm");
+    return !!(form && form.getAttribute("data-pratica-nuova") === "1");
+}
+
+function isConsegnaPastBlocked(nativeField, iso) {
+    if (!isConsegnaDateField(nativeField) || !iso) {
+        return false;
+    }
+    // In modifica (scheda già esistente) la data retroattiva non è mai bloccante.
+    if (!isNuovaRiparazioneForm()) {
+        return false;
+    }
+    const minIso = getDateConstraint(nativeField, "min");
+    const today = todayIsoDate();
+    const limit = minIso || today;
+    return iso < limit;
+}
+
+window.labrepairIsNuovaRiparazioneForm = isNuovaRiparazioneForm;
+window.labrepairIsConsegnaPastBlocked = isConsegnaPastBlocked;
 
 function nowIsoDateTimeLocal() {
     const now = new Date();
@@ -322,16 +361,20 @@ function applyTextDateToNative(nativeField, textField) {
     const minIso = getDateConstraint(nativeField, "min");
     const maxIso = getDateConstraint(nativeField, "max");
     if (minIso && iso < minIso) {
-        textField.setCustomValidity(
-            isConsegnaDateField(nativeField)
-                ? "La data prevista consegna non può essere precedente a oggi."
-                : isBirthDateField(nativeField)
-                  ? "La data di nascita non è coerente. Controlla l'anno."
-                  : "La data deve essere " +
-                    formatIsoDateDisplay(minIso, isFullYearDateField(nativeField)) +
-                    " o successiva."
-        );
-        return false;
+        if (isConsegnaDateField(nativeField) && !isConsegnaPastBlocked(nativeField, iso)) {
+            // Modifica scheda: data retroattiva ammessa.
+        } else {
+            textField.setCustomValidity(
+                isConsegnaDateField(nativeField)
+                    ? "La data prevista consegna non può essere precedente a oggi."
+                    : isBirthDateField(nativeField)
+                      ? "La data di nascita non è coerente. Controlla l'anno."
+                      : "La data deve essere " +
+                        formatIsoDateDisplay(minIso, isFullYearDateField(nativeField)) +
+                        " o successiva."
+            );
+            return false;
+        }
     }
     if (maxIso && iso > maxIso) {
         textField.setCustomValidity(
@@ -516,7 +559,11 @@ function enhanceDateField(nativeField) {
         }
         if (event.key === "Enter") {
             const ok = applyTextDateToNative(nativeField, textField);
-            if (!ok && isConsegnaDateField(nativeField)) {
+            if (
+                !ok &&
+                isConsegnaDateField(nativeField) &&
+                isNuovaRiparazioneForm()
+            ) {
                 event.preventDefault();
                 textField.reportValidity();
             }
@@ -550,6 +597,10 @@ function enhanceDateField(nativeField) {
             fullYear: isFullYearDateField(nativeField),
         });
         const ok = applyTextDateToNative(nativeField, textField);
+        // Se il click e' su Salva/Annulla, non mostrare balloon (sposterebbe il layout e ruberebbe il click).
+        if (window.labrepairSuppressFieldBlurUi) {
+            return;
+        }
         // Consegna / nascita: messaggio subito in uscita dal campo.
         // Differisci: se il blur è per Annulla/Salva, non rubare il click.
         if (
@@ -558,6 +609,9 @@ function enhanceDateField(nativeField) {
             (isConsegnaDateField(nativeField) || isBirthDateField(nativeField))
         ) {
             window.setTimeout(function () {
+                if (window.labrepairSuppressFieldBlurUi) {
+                    return;
+                }
                 const active = document.activeElement;
                 if (
                     active &&
@@ -608,6 +662,11 @@ function enhanceDateField(nativeField) {
 
     function rejectPastConsegnaFromNative() {
         if (!isConsegnaDateField(nativeField)) {
+            textField.setCustomValidity("");
+            return true;
+        }
+        // Solo Nuova riparazione: in modifica non azzerare mai una data retroattiva.
+        if (!isNuovaRiparazioneForm()) {
             textField.setCustomValidity("");
             return true;
         }
@@ -705,8 +764,33 @@ function initShortYearDateFields(root) {
 
 window.labrepairSyncShortYearDates = initShortYearDateFields;
 
-function commitDateFields(root) {
+function ensureConsegnaInitialRestored(root) {
+    const scope = root && root.querySelector ? root : document;
+    const field =
+        scope.querySelector("#id_data_scadenza") ||
+        document.getElementById("id_data_scadenza");
+    if (!(field instanceof HTMLInputElement)) {
+        return;
+    }
+    const initial = field.getAttribute("data-initial-value") || "";
+    if (field.value || !initial) {
+        return;
+    }
+    // Il browser può svuotare una data passata sotto min: ripristina il valore memorizzato.
+    field.value = initial;
+    const wrap = field.closest(".st-date-field");
+    const textField = wrap ? wrap.querySelector(".st-date-text") : null;
+    if (textField) {
+        syncDateTextFromNative(field, textField);
+        textField.setCustomValidity("");
+    }
+}
+
+function commitDateFields(root, options) {
+    options = options || {};
+    const quiet = !!options.quiet;
     const scope = root && root.querySelectorAll ? root : document;
+    ensureConsegnaInitialRestored(scope);
     let ok = true;
     scope.querySelectorAll(".st-date-field").forEach(function (wrap) {
         const nativeField = wrap.querySelector('input[type="date"].st-date-native, input[type="date"]');
@@ -716,7 +800,7 @@ function commitDateFields(root) {
         }
         if (!applyTextDateToNative(nativeField, textField)) {
             ok = false;
-            if (typeof textField.reportValidity === "function") {
+            if (!quiet && typeof textField.reportValidity === "function") {
                 textField.reportValidity();
             }
         }
@@ -1067,6 +1151,11 @@ function disableBrowserFieldSuggestions(root) {
             return;
         }
         if (field.dataset.autofillDecoy === "1") {
+            return;
+        }
+        // Campi bloccati (es. N. scontrino, data apertura): non scramble.
+        if (field.disabled || field.readOnly) {
+            field.setAttribute("autocomplete", "off");
             return;
         }
 
@@ -1650,8 +1739,35 @@ document.addEventListener("DOMContentLoaded", function () {
         backdrop.addEventListener("click", closeSidebar);
     }
 
+    // In modalita' App nasconde il palloncino URL in basso a sinistra (status bubble)
+    // togliendo href al hover/focus; la navigazione resta gestita al click.
+    const hideSidebarUrlBalloon = document.body.dataset.logoutOnClose === "1";
+
     document.querySelectorAll(".st-sidebar .st-nav-link").forEach(function (link) {
-        link.addEventListener("click", function () {
+        const realHref = link.getAttribute("href") || "";
+        const canHideBalloon =
+            hideSidebarUrlBalloon && realHref && realHref.charAt(0) !== "#";
+
+        if (canHideBalloon) {
+            link.dataset.stNavHref = realHref;
+
+            function stripHrefForBalloon() {
+                link.removeAttribute("href");
+            }
+
+            function restoreHrefAfterBalloon() {
+                if (link.dataset.stNavHref) {
+                    link.setAttribute("href", link.dataset.stNavHref);
+                }
+            }
+
+            link.addEventListener("pointerenter", stripHrefForBalloon);
+            link.addEventListener("pointerleave", restoreHrefAfterBalloon);
+            link.addEventListener("focus", stripHrefForBalloon);
+            link.addEventListener("blur", restoreHrefAfterBalloon);
+        }
+
+        link.addEventListener("click", function (event) {
             if (typeof window.markLabRepairLeavingPage === "function") {
                 window.markLabRepairLeavingPage();
             }
@@ -1659,11 +1775,29 @@ document.addEventListener("DOMContentLoaded", function () {
             if (window.matchMedia("(max-width: 991.98px)").matches) {
                 closeSidebar();
             }
+
+            if (!canHideBalloon) {
+                return;
+            }
+            if (
+                event.defaultPrevented ||
+                event.button !== 0 ||
+                event.metaKey ||
+                event.ctrlKey ||
+                event.shiftKey ||
+                event.altKey
+            ) {
+                return;
+            }
+
+            const url = link.dataset.stNavHref;
+            if (!url) {
+                return;
+            }
+            event.preventDefault();
+            window.location.assign(url);
         });
     });
-
-    // Non rimuovere href al hover: in modalita' App faceva scattare "Uscire dall'app?"
-    // sui click del menu. Il palloncino URL non compare comunque nella finestra --app.
 
     window.addEventListener("pagehide", saveSidebarScroll);
 });

@@ -45,6 +45,23 @@ class PraticaAdmin(admin.ModelAdmin):
         "centro_assistenza",
     )
 
+    def get_readonly_fields(self, request, obj=None):
+        readonly = list(super().get_readonly_fields(request, obj))
+        if obj and obj.testata_bloccata:
+            readonly.extend(
+                [
+                    "cliente",
+                    "operatore",
+                    "referente_cognome",
+                    "referente_nome",
+                    "referente_telefono",
+                    "referente_cellulare",
+                    "referente_email",
+                    "data_apertura",
+                ]
+            )
+        return readonly
+
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
         result = sync_pratica_to_gs_articoli(obj, request.user)

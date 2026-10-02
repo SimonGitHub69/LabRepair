@@ -97,6 +97,53 @@ Parametri programma
     <div class="card mb-3">
         <div class="card-header">
             <h3 class="card-title mb-0">
+                <i class="ti ti-truck-delivery me-1"></i>
+                DDT
+            </h3>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label" for="{{ form.ddt_sezionale.id_for_label }}">{{ form.ddt_sezionale.label }}</label>
+                    {{ form.ddt_sezionale }}
+                    {% if form.ddt_sezionale.errors %}
+                        <div class="invalid-feedback d-block">{{ form.ddt_sezionale.errors|join:", " }}</div>
+                    {% endif %}
+                    <div class="form-hint mt-2">Es. <strong>R</strong> produce numerazione tipo <strong>100/R</strong>.</div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="{{ form.ddt_numero_iniziale.id_for_label }}">{{ form.ddt_numero_iniziale.label }}</label>
+                    {{ form.ddt_numero_iniziale }}
+                    {% if form.ddt_numero_iniziale.errors %}
+                        <div class="invalid-feedback d-block">{{ form.ddt_numero_iniziale.errors|join:", " }}</div>
+                    {% endif %}
+                    <div class="form-hint mt-2">
+                        Progressivo minimo. Se già esistono DDT con numero superiore, continua da lì.
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="{{ form.ddt_causale.id_for_label }}">{{ form.ddt_causale.label }}</label>
+                    {{ form.ddt_causale }}
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="{{ form.ddt_aspetto_beni.id_for_label }}">{{ form.ddt_aspetto_beni.label }}</label>
+                    {{ form.ddt_aspetto_beni }}
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="{{ form.ddt_trasporto_a_cura.id_for_label }}">{{ form.ddt_trasporto_a_cura.label }}</label>
+                    {{ form.ddt_trasporto_a_cura }}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="{{ form.ddt_vettore.id_for_label }}">{{ form.ddt_vettore.label }}</label>
+                    {{ form.ddt_vettore }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header">
+            <h3 class="card-title mb-0">
                 <i class="ti ti-camera me-1"></i>
                 Webcam
             </h3>

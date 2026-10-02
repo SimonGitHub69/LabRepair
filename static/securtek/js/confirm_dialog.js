@@ -48,6 +48,13 @@
             return Promise.resolve(false);
         }
 
+        // Chiude eventuali dialog aperti (evita Promise appese e overlay bloccante).
+        if (resolver) {
+            const previous = resolver;
+            resolver = null;
+            previous(false);
+        }
+
         titleElement.textContent = options.title || "Conferma operazione";
         messageElement.innerHTML = options.message || "";
         acceptButton.textContent = options.confirmLabel || "Conferma";

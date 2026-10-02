@@ -55,8 +55,10 @@
     </div>
 </div>
 
-<form method="post" enctype="multipart/form-data" autocomplete="off" id="praticaForm" class="st-form-stack{% if layout_stile == 'compatta' %} st-form-layout-compact{% endif %}" data-block-suggestions="1" data-lpignore="true">
+<form method="post" enctype="multipart/form-data" autocomplete="off" id="praticaForm" class="st-form-stack{% if layout_stile == 'compatta' %} st-form-layout-compact{% endif %}" data-block-suggestions="1" data-lpignore="true"{% if not object %} data-pratica-nuova="1"{% endif %}>
     {% csrf_token %}
+    {{ form.forza_documento_scaduto }}
+    {{ form.forza_senza_telefono }}
     {% if preview_codice %}
         <input type="hidden" name="codice_riservato" value="{{ preview_codice }}">
     {% endif %}
@@ -72,10 +74,19 @@
 
     <div class="row {% if layout_stile == 'compatta' %}g-2 align-items-start{% else %}g-3{% endif %}">
         <div class="col-lg-7 d-grid {% if layout_stile == 'compatta' %}gap-2{% else %}gap-3{% endif %}">
-            <div class="card st-form-section">
+            <div class="card st-form-section{% if form.testata_bloccata %} is-testata-locked{% endif %}"
+                 data-pratica-testata
+                 {% if form.testata_bloccata %}data-testata-locked="1"{% endif %}>
                 <div class="card-header">
-                    <div class="st-form-section-icon">
-                        <i class="ti ti-users"></i>
+                    <div class="st-form-section-icon{% if form.testata_bloccata %} is-locked{% endif %}">
+                        {% if form.testata_bloccata %}
+                            <i class="ti ti-lock"
+                               data-testata-locked-hint
+                               title="Testata bloccata: busta stampata oppure riparazione evasa"
+                               aria-label="Testata bloccata"></i>
+                        {% else %}
+                            <i class="ti ti-users"></i>
+                        {% endif %}
                     </div>
                     <h3 class="card-title mb-0">Accettazione</h3>
                 </div>
@@ -179,6 +190,7 @@
                         {% include "pratiche/partials/form_field.html" with field=form.data_riparatore col="col-6" %}
                         {% include "pratiche/partials/form_field.html" with field=form.data_rientro col="col-6" %}
                         {% include "pratiche/partials/form_field.html" with field=form.data_vendita col="col-6" %}
+                        {% include "pratiche/partials/pratica_ddt_fields.html" with col_numero="col-6" col_data="col-6" %}
                     </div>
                 </div>
             </div>
@@ -265,6 +277,7 @@
                             </div>
                         </div>
                         {% include "pratiche/partials/form_field.html" with field=form.prezzo_pagato col="col-6" %}
+                        {% include "pratiche/partials/form_field.html" with field=form.numero_scontrino col="col-6" %}
                     </div>
                 </div>
             </div>
@@ -281,6 +294,7 @@
                         {% include "pratiche/partials/form_field.html" with field=form.data_riparatore col="col-md-6" %}
                         {% include "pratiche/partials/form_field.html" with field=form.data_rientro col="col-md-6" %}
                         {% include "pratiche/partials/form_field.html" with field=form.data_vendita col="col-md-6" %}
+                        {% include "pratiche/partials/pratica_ddt_fields.html" with col_numero="col-md-6" col_data="col-md-6" %}
                     </div>
                 </div>
             </div>
@@ -367,6 +381,7 @@
                             </div>
                         </div>
                         {% include "pratiche/partials/form_field.html" with field=form.prezzo_pagato col="col-md-6" %}
+                        {% include "pratiche/partials/form_field.html" with field=form.numero_scontrino col="col-md-6" %}
                     </div>
                 </div>
             </div>
@@ -418,20 +433,21 @@
 
 {% block extra_js %}
 {{ block.super }}
-<script src="{% static 'securtek/js/name_case.js' %}"></script>
-<script src="{% static 'securtek/js/cliente_search.js' %}?v=20260915-overlay"></script>
+<script src="{% static 'securtek/js/name_case.js' %}?v={{ app_version }}-case1"></script>
+<script src="{% static 'securtek/js/cliente_search.js' %}?v={{ app_version }}-cliente-lock11"></script>
 <script src="{% static 'securtek/js/anagrafica_overlay.js' %}?v=20260915-overlay3"></script>
-<script src="{% static 'securtek/js/pratica_required.js' %}?v=20260915-consegna-min"></script>
+<script src="{% static 'securtek/js/pratica_required.js' %}?v={{ app_version }}-req8"></script>
+<script src="{% static 'securtek/js/pratica_save.js' %}?v={{ app_version }}-save8"></script>
 <script src="{% static 'securtek/js/pratica_importi.js' %}?v=20260907-select"></script>
-<script src="{% static 'securtek/js/pratica_foto.js' %}"></script>
+<script src="{% static 'securtek/js/confirm_dialog.js' %}?v={{ app_version }}-confirm1"></script>
+<script src="{% static 'securtek/js/pratica_foto.js' %}?v={{ app_version }}-foto-confirm1"></script>
 <script src="{% static 'securtek/js/webcam_capture.js' %}"></script>
-<script src="{% static 'securtek/js/pratica_save_before_print.js' %}?v=20260904-validate"></script>
-<script src="{% static 'securtek/js/busta_print.js' %}?v=20260910-preview-save"></script>
-<script src="{% static 'securtek/js/privacy_print.js' %}?v=20260725b"></script>
-<script src="{% static 'securtek/js/confirm_dialog.js' %}"></script>
-<script src="{% static 'securtek/js/pratica_documento.js' %}?v=20260909-scaduto-lista"></script>
+<script src="{% static 'securtek/js/pratica_save_before_print.js' %}?v={{ app_version }}-sbp4"></script>
+<script src="{% static 'securtek/js/busta_print.js' %}?v={{ app_version }}-busta6"></script>
+<script src="{% static 'securtek/js/privacy_print.js' %}?v={{ app_version }}-priv2"></script>
+<script src="{% static 'securtek/js/pratica_documento.js' %}?v={{ app_version }}-doc2"></script>
 <script src="{% static 'securtek/js/pratica_unsaved.js' %}?v=20260915-annulla1"></script>
-<script src="{% static 'securtek/js/pratica_stato.js' %}?v=20260904-radio"></script>
+<script src="{% static 'securtek/js/pratica_stato.js' %}?v={{ app_version }}-stato-lock1"></script>
 <script src="{% static 'securtek/js/pratica_textarea_expand.js' %}?v=20260904-autosize"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function () {

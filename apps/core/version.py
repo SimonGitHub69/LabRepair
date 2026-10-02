@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from functools import lru_cache
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -17,7 +16,6 @@ _HEADING_RE = re.compile(
 )
 
 
-@lru_cache(maxsize=1)
 def get_version() -> str:
     try:
         value = VERSION_FILE.read_text(encoding="utf-8").strip()

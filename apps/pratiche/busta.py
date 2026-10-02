@@ -1,3 +1,7 @@
+import base64
+import io
+
+
 def format_busta_date(value):
     if not value:
         return "00/00/00"
@@ -26,6 +30,32 @@ def _format_cliente_busta(pratica):
     return ""
 
 
+def _build_barcode_data_uri(codice):
+    """PNG Code39 inline: affidabile in anteprima e stampa agent (senza font)."""
+    from barcode import Code39
+    from barcode.writer import ImageWriter
+
+    # Sul barcode niente trattino (P26-0039 → P260039); il testo sopra resta invariato.
+    text = "".join(ch for ch in (codice or "").strip() if ch != "-")
+    if not text:
+        return ""
+
+    buffer = io.BytesIO()
+    Code39(text, writer=ImageWriter(), add_checksum=False).write(
+        buffer,
+        options={
+            # Barre più strette (prima 0.28): densità più alta, barcode più corto
+            "module_width": 0.16,
+            "module_height": 10,
+            "quiet_zone": 0.3,
+            "write_text": False,
+            "dpi": 300,
+        },
+    )
+    encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
+    return f"data:image/png;base64,{encoded}"
+
+
 def build_busta_context(pratica):
     from apps.pratiche.riparatori import is_assistenza_riparatore
 
@@ -51,12 +81,15 @@ def build_busta_context(pratica):
         riparatore = ""
         centro_assistenza = ""
 
+    codice = pratica.codice or ""
+    barcode_text = "".join(ch for ch in codice if ch != "-")
     return {
         "compilatore": pratica.operatore.nominativo if pratica.operatore_id else "",
         "arrivato_il": format_busta_date(pratica.data_apertura),
         "consegna_prevista": format_busta_date(pratica.data_scadenza),
-        "codice": pratica.codice,
-        "barcode_value": f"*{pratica.codice}*",
+        "codice": codice,
+        "barcode_value": f"*{barcode_text}*" if barcode_text else "",
+        "barcode_data_uri": _build_barcode_data_uri(codice),
         "cliente": _format_cliente_busta(pratica),
         "descrizione": pratica.descrizione or "",
         "peso": _format_peso(pratica.peso_grammi),
@@ -64,4 +97,7 @@ def build_busta_context(pratica):
         "riparatore": riparatore,
         "centro_assistenza": centro_assistenza,
         "is_assistenza": is_assistenza,
+        "ddt_numero": (pratica.ddt_numero or "").strip(),
+        "ddt_data": format_busta_date(pratica.ddt_data) if pratica.ddt_data else "",
+        "urgente": pratica.priorita == pratica.Priorita.URGENTE,
     }

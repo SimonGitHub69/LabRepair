@@ -1,0 +1,580 @@
+{% extends "base/layout.html" %}
+
+{% block page_title %}{% if is_edit %}Modifica DDT {{ ddt.numero_display }}{% else %}Nuovo DDT {{ numero_previsto }}{% endif %}{% endblock %}
+
+{% block content %}
+<form method="post"
+      id="ddtCreateForm"
+      class="st-form-stack st-ddt-form"
+      action="{% if is_edit %}{% url 'pratiche:ddt_update' ddt.pk %}{% else %}{% url 'pratiche:ddt_create' %}{% endif %}">
+    {% csrf_token %}
+
+    <div class="st-form-page-header st-ddt-form-header d-print-none">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div class="min-w-0">
+                <h2 class="page-title mb-0">
+                    {% if is_edit %}
+                    Modifica DDT {{ ddt.numero_display }}
+                    {% else %}
+                    Nuovo DDT&nbsp;<span id="ddtNumeroTitolo" class="st-ddt-numero-titolo">{{ numero_previsto }}</span>
+                    {% endif %}
+                </h2>
+                {% if not is_edit %}
+                <div class="text-secondary st-ddt-form-subtitle">
+                    Seleziona il centro, le buste proposte e/o aggiungi numeri busta di altri centri
+                </div>
+                {% endif %}
+            </div>
+            {% if is_edit %}
+            <a href="{% url 'pratiche:ddt_print' ddt.pk %}?format=pdf" class="btn btn-outline-primary js-ddt-print">
+                <i class="ti ti-printer"></i>
+                Stampa DDT
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <div class="card mb-3 st-form-section">
+        <div class="card-header">
+            <div class="st-form-section-icon">
+                <i class="ti ti-building"></i>
+            </div>
+            <h3 class="card-title mb-0">Centro assistenza</h3>
+        </div>
+        <div class="card-body">
+            <div class="row g-2 align-items-end">
+                <div class="{% if is_edit %}col-md-8{% else %}col-md-5{% endif %}">
+                    {% if is_edit %}
+                    <label class="form-label mb-1">Centro assistenza</label>
+                    <div class="fw-semibold lh-sm">{{ centro.ragione_sociale }}</div>
+                    {% else %}
+                    <label class="form-label" for="{{ form.centro_assistenza.id_for_label }}">{{ form.centro_assistenza.label }}</label>
+                    {{ form.centro_assistenza }}
+                    {% if form.centro_assistenza.errors %}
+                    <div class="invalid-feedback d-block">{{ form.centro_assistenza.errors|join:", " }}</div>
+                    {% endif %}
+                    {% endif %}
+                </div>
+                {% if not is_edit %}
+                <div class="col-md-3">
+                    <label class="form-label mb-1">N. documento</label>
+                    <div class="form-control-plaintext fw-semibold lh-sm py-1" id="ddtNumeroPrevisto">{{ numero_previsto }}</div>
+                </div>
+                {% endif %}
+                <div class="col-md-2">
+                    {% if is_edit %}
+                    <label class="form-label mb-1">Sezionale</label>
+                    <div class="fw-semibold lh-sm">{{ ddt.sezionale }}</div>
+                    {% else %}
+                    <label class="form-label" for="{{ form.sezionale.id_for_label }}">{{ form.sezionale.label }}</label>
+                    {{ form.sezionale }}
+                    {% endif %}
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label" for="{{ form.data_documento.id_for_label }}">{{ form.data_documento.label }}</label>
+                    {{ form.data_documento }}
+                </div>
+            </div>
+
+            <div class="st-ddt-destinatario mt-2" id="ddtDestinatarioBox">
+                <div class="d-flex flex-wrap align-items-start justify-content-between gap-2">
+                    <div class="st-ddt-destinatario-body min-w-0">
+                        <div class="text-secondary small">Dati destinatario</div>
+                        <div class="st-ddt-destinatario-line">
+                            <strong id="ddtDestNome">{{ snapshot.destinatario_ragione_sociale|default:"—" }}</strong>
+                            <span class="text-secondary">·</span>
+                            <span id="ddtDestIndirizzo">{{ snapshot.destinatario_indirizzo|default:"" }}</span>
+                            <span id="ddtDestCitta">
+                                {{ snapshot.destinatario_cap|default:"" }}
+                                {{ snapshot.destinatario_comune|default:"" }}
+                                {{ snapshot.destinatario_provincia|default:"" }}
+                            </span>
+                        </div>
+                        <div class="small text-secondary">
+                            P.IVA <span id="ddtDestPiva">{{ snapshot.destinatario_partita_iva|default:"—" }}</span>
+                            · CF <span id="ddtDestCf">{{ snapshot.destinatario_codice_fiscale|default:"—" }}</span>
+                            · Cod. <span id="ddtDestCod">{{ snapshot.destinatario_codice_cliente|default:"—" }}</span>
+                        </div>
+                    </div>
+                    {% if is_edit %}
+                    <label class="form-check mb-0 st-ddt-destinatario-check">
+                        {{ form.refresh_destinatario }}
+                        <span class="form-check-label">{{ form.refresh_destinatario.label }}</span>
+                    </label>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3 st-form-section">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2">
+                <div class="st-form-section-icon">
+                    <i class="ti ti-package"></i>
+                </div>
+                <h3 class="card-title mb-0">{% if is_edit %}Buste nel DDT{% else %}Buste aperte{% endif %}</h3>
+            </div>
+            {% if not is_edit %}
+            <div class="card-actions d-flex align-items-center gap-2">
+                <span class="text-secondary small" id="ddtSelectedCount">0 selezionate</span>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="ddtSelectAll">Seleziona tutte</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="ddtSelectNone">Nessuna</button>
+            </div>
+            {% else %}
+            <div class="card-actions d-flex align-items-center gap-2">
+                <span class="text-secondary small">{{ righe|length }} riga{{ righe|length|pluralize }}</span>
+                <a href="{% url 'pratiche:ddt_righe' ddt.pk %}" class="btn btn-outline-primary">
+                    <i class="ti ti-list-details"></i>
+                    Modifica Righe del DDT
+                </a>
+            </div>
+            {% endif %}
+        </div>
+        <div class="table-responsive">
+            <table class="table table-vcenter card-table" id="ddtBusteTable">
+                <thead>
+                    <tr>
+                        {% if not is_edit %}<th style="width:2.5rem;"></th>{% endif %}
+                        {% if is_edit %}<th>#</th>{% endif %}
+                        <th>Codice</th>
+                        <th>Cliente</th>
+                        <th>Centro</th>
+                        <th>Oggetto</th>
+                        <th>Stato</th>
+                        <th>Articolo</th>
+                        <th>Descrizione DDT</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if is_edit %}
+                        {% for riga in righe %}
+                        <tr>
+                            <td>{{ riga.ordine }}</td>
+                            <td><strong>{% if riga.pratica %}{{ riga.pratica.codice }}{% else %}{{ riga.articolo }}{% endif %}</strong></td>
+                            <td>{% if riga.pratica %}{{ riga.pratica.cliente_label }}{% else %}—{% endif %}</td>
+                            <td class="text-secondary">{% if riga.pratica and riga.pratica.centro_assistenza %}{{ riga.pratica.centro_assistenza.ragione_sociale }}{% else %}—{% endif %}</td>
+                            <td>{% if riga.pratica %}{{ riga.pratica.titolo }}{% else %}—{% endif %}</td>
+                            <td>{% if riga.pratica %}{{ riga.pratica.get_stato_display }}{% else %}—{% endif %}</td>
+                            <td class="text-secondary">{{ riga.articolo }}</td>
+                            <td class="text-secondary">{{ riga.descrizione }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-secondary text-center py-4">
+                                Nessuna busta associata a questo DDT.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        {% for busta in buste %}
+                        <tr data-extra="{% if busta.centro_assistenza_id and centro and busta.centro_assistenza_id != centro.pk %}1{% else %}0{% endif %}">
+                            <td>
+                                <input type="checkbox" name="pratiche" value="{{ busta.pk }}" class="form-check-input ddt-busta-check"
+                                       {% if busta.pk in selected_ids %}checked{% endif %}>
+                            </td>
+                            <td><strong>{{ busta.codice }}</strong></td>
+                            <td>{{ busta.cliente_label }}</td>
+                            <td class="text-secondary">{% if busta.centro_assistenza %}{{ busta.centro_assistenza.ragione_sociale }}{% else %}—{% endif %}</td>
+                            <td>{{ busta.titolo }}</td>
+                            <td>{{ busta.get_stato_display }}</td>
+                            <td class="text-secondary">{{ busta.codice }}</td>
+                            <td class="text-secondary">BUSTA {{ busta.cliente_label|upper }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr id="ddtBusteEmpty">
+                            <td colspan="8" class="text-secondary text-center py-4">
+                                {% if centro %}
+                                Nessuna busta disponibile per questo centro assistenza.
+                                {% else %}
+                                Seleziona un centro assistenza per caricare le buste aperte, oppure aggiungi un numero busta sotto.
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+        {% if not is_edit %}
+        <div class="card-footer">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label" for="ddtAddCodice">Aggiungi numero busta</label>
+                    <div class="input-group">
+                        <input type="text" id="ddtAddCodice" class="form-control"
+                               placeholder="Es. P26-0123 o P260123" autocomplete="off">
+                        <button type="button" class="btn btn-outline-primary" id="ddtAddCodiceBtn">
+                            <i class="ti ti-plus"></i>
+                            Aggiungi
+                        </button>
+                    </div>
+                    <div class="form-text">Anche buste non collegate al centro assistenza. Con o senza trattino.</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="{{ form.buste_codici.id_for_label }}">{{ form.buste_codici.label }}</label>
+                    {{ form.buste_codici }}
+                    {% if form.buste_codici.help_text %}
+                    <div class="form-text">{{ form.buste_codici.help_text }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            {% if form.pratiche.errors or form.buste_codici.errors or form.non_field_errors %}
+            <div class="text-danger mt-2">
+                {{ form.pratiche.errors|join:", " }}
+                {{ form.buste_codici.errors|join:", " }}
+            </div>
+            {% endif %}
+            <div class="text-danger mt-2 d-none" id="ddtAddCodiceError"></div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="card mb-3 st-form-section">
+        <div class="card-header">
+            <div class="st-form-section-icon icon-orange">
+                <i class="ti ti-truck-delivery"></i>
+            </div>
+            <h3 class="card-title mb-0">Trasporto</h3>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label" for="{{ form.causale.id_for_label }}">{{ form.causale.label }}</label>
+                    {{ form.causale }}
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="{{ form.aspetto_beni.id_for_label }}">{{ form.aspetto_beni.label }}</label>
+                    {{ form.aspetto_beni }}
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="{{ form.trasporto_a_cura.id_for_label }}">{{ form.trasporto_a_cura.label }}</label>
+                    {{ form.trasporto_a_cura }}
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="{{ form.vettore.id_for_label }}">{{ form.vettore.label }}</label>
+                    {{ form.vettore }}
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label" for="{{ form.colli.id_for_label }}">{{ form.colli.label }}</label>
+                    {{ form.colli }}
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label" for="{{ form.peso_lordo_kg.id_for_label }}">{{ form.peso_lordo_kg.label }}</label>
+                    {{ form.peso_lordo_kg }}
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="{{ form.data_inizio_trasporto.id_for_label }}">{{ form.data_inizio_trasporto.label }}</label>
+                    {{ form.data_inizio_trasporto }}
+                </div>
+                <div class="col-12">
+                    <label class="form-label" for="{{ form.note.id_for_label }}">{{ form.note.label }}</label>
+                    {{ form.note }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="st-form-actions">
+        {% if is_edit %}
+        <a href="{% url 'pratiche:ddt_detail' ddt.pk %}" class="btn btn-outline-secondary">
+            Annulla
+        </a>
+        <a href="{% url 'pratiche:ddt_print' ddt.pk %}?format=pdf" class="btn btn-outline-primary js-ddt-print">
+            <i class="ti ti-printer"></i>
+            Stampa DDT
+        </a>
+        {% else %}
+        <a href="{% url 'pratiche:ddt_list' %}" class="btn btn-outline-secondary">
+            Annulla
+        </a>
+        {% endif %}
+        <button type="submit" class="btn btn-primary">
+            <i class="ti ti-device-floppy"></i>
+            Conferma
+        </button>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    var isEdit = {{ is_edit|yesno:"true,false" }};
+    if (isEdit) return;
+
+    var centroSelect = document.getElementById("id_centro_assistenza");
+    var table = document.getElementById("ddtBusteTable");
+    var addInput = document.getElementById("ddtAddCodice");
+    var addBtn = document.getElementById("ddtAddCodiceBtn");
+    var addError = document.getElementById("ddtAddCodiceError");
+
+    function setText(id, value) {
+        var el = document.getElementById(id);
+        if (el) el.textContent = value || "—";
+    }
+
+    function selectedChecks() {
+        return Array.prototype.slice.call(document.querySelectorAll(".ddt-busta-check:checked"));
+    }
+
+    function syncSelectionUi() {
+        var selected = selectedChecks();
+        var countEl = document.getElementById("ddtSelectedCount");
+        if (countEl) {
+            var n = selected.length;
+            countEl.textContent = n === 1 ? "1 selezionata" : n + " selezionate";
+        }
+        var colli = document.getElementById("id_colli");
+        if (colli) {
+            colli.value = selected.length ? String(selected.length) : "";
+        }
+    }
+
+    function escapeHtml(value) {
+        return String(value == null ? "" : value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+    }
+
+    function collectExtraBuste() {
+        var extras = [];
+        document.querySelectorAll("#ddtBusteTable tbody tr[data-extra='1']").forEach(function (tr) {
+            var check = tr.querySelector(".ddt-busta-check");
+            if (!check) return;
+            extras.push({
+                id: check.value,
+                codice: (tr.children[1] && tr.children[1].textContent || "").trim(),
+                cliente: (tr.children[2] && tr.children[2].textContent || "").trim(),
+                centro: (tr.children[3] && tr.children[3].textContent || "").trim(),
+                oggetto: (tr.children[4] && tr.children[4].textContent || "").trim(),
+                stato: (tr.children[5] && tr.children[5].textContent || "").trim(),
+                articolo: (tr.children[6] && tr.children[6].textContent || "").trim(),
+                descrizione: (tr.children[7] && tr.children[7].textContent || "").trim(),
+                extra: true,
+                checked: check.checked,
+            });
+        });
+        return extras;
+    }
+
+    function buildRow(b, checked) {
+        var tr = document.createElement("tr");
+        tr.setAttribute("data-extra", b.extra ? "1" : "0");
+        tr.innerHTML =
+            '<td><input type="checkbox" name="pratiche" value="' + b.id + '" class="form-check-input ddt-busta-check"' +
+            (checked ? " checked" : "") + "></td>" +
+            "<td><strong>" + escapeHtml(b.codice || "") + "</strong></td>" +
+            "<td>" + escapeHtml(b.cliente || "") + "</td>" +
+            '<td class="text-secondary">' + escapeHtml(b.centro || "—") + "</td>" +
+            "<td>" + escapeHtml(b.oggetto || "") + "</td>" +
+            "<td>" + escapeHtml(b.stato || "") + "</td>" +
+            '<td class="text-secondary">' + escapeHtml(b.articolo || b.codice || "") + "</td>" +
+            '<td class="text-secondary">' + escapeHtml(b.descrizione || "") + "</td>";
+        return tr;
+    }
+
+    function renderBuste(buste) {
+        var tbody = document.querySelector("#ddtBusteTable tbody");
+        if (!tbody) return;
+        var extras = collectExtraBuste();
+        var centroIds = {};
+        tbody.innerHTML = "";
+        (buste || []).forEach(function (b) {
+            centroIds[String(b.id)] = true;
+            tbody.appendChild(buildRow(b, true));
+        });
+        extras.forEach(function (b) {
+            if (centroIds[String(b.id)]) return;
+            tbody.appendChild(buildRow(b, b.checked !== false));
+        });
+        if (!tbody.children.length) {
+            tbody.innerHTML =
+                '<tr id="ddtBusteEmpty"><td colspan="8" class="text-secondary text-center py-4">' +
+                (centroSelect && centroSelect.value
+                    ? "Nessuna busta aperta per questo centro assistenza."
+                    : "Seleziona un centro assistenza per caricare le buste aperte, oppure aggiungi un numero busta sotto.") +
+                "</td></tr>";
+        }
+        syncSelectionUi();
+    }
+
+    function appendBusta(b) {
+        var tbody = document.querySelector("#ddtBusteTable tbody");
+        if (!tbody) return;
+        var existing = tbody.querySelector('.ddt-busta-check[value="' + b.id + '"]');
+        if (existing) {
+            existing.checked = true;
+            syncSelectionUi();
+            return;
+        }
+        var empty = document.getElementById("ddtBusteEmpty");
+        if (empty) empty.remove();
+        b.extra = true;
+        tbody.appendChild(buildRow(b, true));
+        syncSelectionUi();
+    }
+
+    function setNumero(value) {
+        setText("ddtNumeroPrevisto", value || "—");
+        setText("ddtNumeroTitolo", value || "");
+    }
+
+    function showAddError(msg) {
+        if (!addError) return;
+        if (msg) {
+            addError.textContent = msg;
+            addError.classList.remove("d-none");
+        } else {
+            addError.textContent = "";
+            addError.classList.add("d-none");
+        }
+    }
+
+    function addByCodice() {
+        if (!addInput) return;
+        var codice = (addInput.value || "").trim();
+        if (!codice) {
+            showAddError("Inserisci un numero busta.");
+            return;
+        }
+        showAddError("");
+        var url = "{% url 'pratiche:ddt_buste_json' %}?codice=" + encodeURIComponent(codice);
+        fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+            .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+            .then(function (res) {
+                if (!res.ok || !res.data.ok || !res.data.busta) {
+                    showAddError((res.data && res.data.error) || "Busta non trovata.");
+                    return;
+                }
+                appendBusta(res.data.busta);
+                addInput.value = "";
+                addInput.focus();
+            })
+            .catch(function () {
+                showAddError("Errore di ricerca busta.");
+            });
+    }
+
+    function loadCentro() {
+        if (!centroSelect) return;
+        var id = centroSelect.value;
+        var sezionaleEl = document.getElementById("id_sezionale");
+        var sezionale = sezionaleEl ? (sezionaleEl.value || "").trim() : "";
+        if (!id) {
+            renderBuste([]);
+            setText("ddtDestNome", "—");
+            setText("ddtDestIndirizzo", "");
+            setText("ddtDestCitta", "");
+            setText("ddtDestPiva", "—");
+            setText("ddtDestCf", "—");
+            setText("ddtDestCod", "—");
+            refreshNumero();
+            return;
+        }
+        var url = "{% url 'pratiche:ddt_buste_json' %}?centro=" + encodeURIComponent(id);
+        if (sezionale) {
+            url += "&sezionale=" + encodeURIComponent(sezionale);
+        }
+        fetch(url, {
+            headers: { "X-Requested-With": "XMLHttpRequest" },
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!data.ok) return;
+                renderBuste(data.buste || []);
+                var d = data.destinatario || {};
+                setText("ddtDestNome", d.destinatario_ragione_sociale);
+                setText("ddtDestIndirizzo", d.destinatario_indirizzo);
+                setText(
+                    "ddtDestCitta",
+                    [d.destinatario_cap, d.destinatario_comune, d.destinatario_provincia]
+                        .filter(Boolean)
+                        .join(" ")
+                );
+                setText("ddtDestPiva", d.destinatario_partita_iva || "—");
+                setText("ddtDestCf", d.destinatario_codice_fiscale || "—");
+                setText("ddtDestCod", d.destinatario_codice_cliente || "—");
+                if (data.prossimo_numero) {
+                    setNumero(data.prossimo_numero);
+                }
+            });
+    }
+
+    function refreshNumero() {
+        var sezionaleEl = document.getElementById("id_sezionale");
+        var sezionale = sezionaleEl ? (sezionaleEl.value || "").trim() : "";
+        var url = "{% url 'pratiche:ddt_buste_json' %}?";
+        if (centroSelect && centroSelect.value) {
+            url += "centro=" + encodeURIComponent(centroSelect.value) + "&";
+        }
+        if (sezionale) {
+            url += "sezionale=" + encodeURIComponent(sezionale);
+        }
+        fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data && data.prossimo_numero) {
+                    setNumero(data.prossimo_numero);
+                }
+            });
+    }
+
+    if (centroSelect) {
+        centroSelect.addEventListener("change", function () {
+            var url = new URL(window.location.href);
+            if (centroSelect.value) {
+                url.searchParams.set("centro", centroSelect.value);
+            } else {
+                url.searchParams.delete("centro");
+            }
+            window.history.replaceState({}, "", url);
+            loadCentro();
+        });
+    }
+
+    var sezionaleInput = document.getElementById("id_sezionale");
+    if (sezionaleInput) {
+        sezionaleInput.addEventListener("change", refreshNumero);
+        sezionaleInput.addEventListener("blur", refreshNumero);
+    }
+
+    if (table) {
+        table.addEventListener("change", function (event) {
+            if (event.target && event.target.classList.contains("ddt-busta-check")) {
+                syncSelectionUi();
+            }
+        });
+    }
+
+    document.getElementById("ddtSelectAll")?.addEventListener("click", function () {
+        document.querySelectorAll(".ddt-busta-check").forEach(function (el) { el.checked = true; });
+        syncSelectionUi();
+    });
+    document.getElementById("ddtSelectNone")?.addEventListener("click", function () {
+        document.querySelectorAll(".ddt-busta-check").forEach(function (el) { el.checked = false; });
+        syncSelectionUi();
+    });
+
+    if (addBtn) {
+        addBtn.addEventListener("click", addByCodice);
+    }
+    if (addInput) {
+        addInput.addEventListener("keydown", function (event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                addByCodice();
+            }
+        });
+    }
+
+    syncSelectionUi();
+})();
+</script>
+{% endblock %}

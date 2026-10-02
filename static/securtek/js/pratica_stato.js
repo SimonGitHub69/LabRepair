@@ -146,6 +146,13 @@
                     dataRientroField.value = today;
                 }
 
+                if (
+                    pendingStato === "evasa" &&
+                    typeof window.labrepairLockTestata === "function"
+                ) {
+                    window.labrepairLockTestata({});
+                }
+
                 previousStato = pendingStato;
             });
         });

@@ -142,8 +142,11 @@ Verifica:
 - Stampa busta / sync casse se usati
 
 Sui PC client (app, lettore CIE, stampanti locali):
-  estrai installazione\LabRepair_client_windows_*.zip
-  doppio clic su INSTALLA.bat
+  1. Genera il pacchetto client aggiornato:
+       .\.scripts\make_client_package.ps1
+  2. Lascia LabRepair_client_windows_*.zip in installazione\
+     (il client lo scarica da /api/client/download/ a ogni avvio se più nuovo)
+  3. Oppure installazione manuale: estrai lo zip e doppio clic su INSTALLA.bat
 
 NOTA: non copiare .env dal pacchetto. Mantieni quello del server.
 "@

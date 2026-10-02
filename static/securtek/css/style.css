@@ -41,14 +41,17 @@ body {
 }
 
 .page-header {
-    margin-bottom: 0.65rem;
+    margin-bottom: 0.5rem;
+    margin-top: 0.15rem;
+    min-height: 0;
+    padding-top: 0;
 }
 
 .page-header.mb-3,
 .card.mb-3,
 .alert.mb-3,
 .st-attenzione-grid.mb-3 {
-    margin-bottom: 0.65rem !important;
+    margin-bottom: 0.5rem !important;
 }
 
 .page-title {
@@ -57,6 +60,41 @@ body {
     letter-spacing: -0.02em;
     line-height: 1.2;
     margin-bottom: 0.15rem;
+}
+
+/* Ordinamento colonne liste */
+.st-sort-link {
+    align-items: center;
+    color: inherit;
+    display: inline-flex;
+    gap: 0.25rem;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.st-sort-link:hover {
+    color: var(--st-primary);
+    text-decoration: none;
+}
+
+.st-sort-link .ti {
+    font-size: 0.85em;
+    opacity: 0.55;
+}
+
+.st-sort-link.is-active {
+    color: var(--st-primary);
+}
+
+.st-sort-link.is-active .ti {
+    opacity: 1;
+}
+
+.st-pratica-list-head .st-sort-link {
+    font-size: inherit;
+    font-weight: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
 }
 
 .card {

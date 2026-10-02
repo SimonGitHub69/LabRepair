@@ -88,8 +88,14 @@
     }
 
     function isInConsegna() {
-        const statoField = document.getElementById("id_stato");
-        return Boolean(statoField && statoField.value === "in_consegna");
+        const select = document.getElementById("id_stato");
+        if (select && select.tagName === "SELECT") {
+            return select.value === "in_consegna";
+        }
+        const checked = document.querySelector(
+            '#praticaForm input[type="radio"][name="stato"]:checked'
+        );
+        return Boolean(checked && checked.value === "in_consegna");
     }
 
     function isSenzaSpesa() {
@@ -125,6 +131,22 @@
         );
     }
 
+    function getForzaSenzaTelefonoField() {
+        return document.getElementById("id_forza_senza_telefono");
+    }
+
+    function isForzaSenzaTelefono() {
+        const field = getForzaSenzaTelefonoField();
+        return !!(field && String(field.value || "").trim() === "1");
+    }
+
+    function setForzaSenzaTelefono(on) {
+        const field = getForzaSenzaTelefonoField();
+        if (field) {
+            field.value = on ? "1" : "";
+        }
+    }
+
     function clearTelefonoCellulareValidity() {
         ["id_referente_telefono", "id_referente_cellulare"].forEach(function (id) {
             const field = document.getElementById(id);
@@ -132,6 +154,71 @@
                 field.setCustomValidity("");
             }
         });
+    }
+
+    function focusTelefonoFields() {
+        const telefono = document.getElementById("id_referente_telefono");
+        const cellulare = document.getElementById("id_referente_cellulare");
+        const target =
+            telefono && !String(telefono.value || "").trim()
+                ? telefono
+                : cellulare || telefono;
+        if (!target) {
+            return;
+        }
+        target.focus({ preventScroll: true });
+        if (!window.labrepairSuppressFieldBlurUi) {
+            target.scrollIntoView({ behavior: "auto", block: "center" });
+        }
+    }
+
+    function buildSenzaTelefonoMessage() {
+        return (
+            "Non è stato inserito un <strong>telefono</strong> o un <strong>cellulare</strong>." +
+            "<br><br>Puoi tornare alla riparazione per inserirlo, oppure " +
+            "<strong>forzare il salvataggio</strong> senza telefono."
+        );
+    }
+
+    function promptSenzaTelefonoForce() {
+        if (hasTelefonoOrCellulare()) {
+            setForzaSenzaTelefono(false);
+            return Promise.resolve(true);
+        }
+        if (isForzaSenzaTelefono()) {
+            return Promise.resolve(true);
+        }
+
+        const ask =
+            window.LabRepairConfirm && typeof window.LabRepairConfirm.ask === "function"
+                ? window.LabRepairConfirm.ask.bind(window.LabRepairConfirm)
+                : null;
+
+        if (typeof ask !== "function") {
+            setForzaSenzaTelefono(true);
+            return Promise.resolve(true);
+        }
+
+        return ask({
+            title: "Telefono mancante",
+            message: buildSenzaTelefonoMessage(),
+            confirmLabel: "Forza salvataggio",
+            cancelLabel: "Inserisci telefono",
+            confirmClass: "btn btn-warning",
+            variant: "danger",
+        }).then(function (forza) {
+            if (forza) {
+                setForzaSenzaTelefono(true);
+                return true;
+            }
+            setForzaSenzaTelefono(false);
+            focusTelefonoFields();
+            return false;
+        });
+    }
+
+    function needsSenzaTelefonoForce() {
+        return !hasTelefonoOrCellulare() && !isForzaSenzaTelefono();
     }
 
     function getRequiredFields() {
@@ -163,6 +250,19 @@
         if (!field) {
             return true;
         }
+        // Solo Nuova riparazione: in modifica la data retroattiva non blocca.
+        if (
+            typeof window.labrepairIsNuovaRiparazioneForm === "function"
+                ? !window.labrepairIsNuovaRiparazioneForm()
+                : !(
+                      document.getElementById("praticaForm") &&
+                      document
+                          .getElementById("praticaForm")
+                          .getAttribute("data-pratica-nuova") === "1"
+                  )
+        ) {
+            return true;
+        }
         const value = String(field.value || "").trim();
         if (!value) {
             return true;
@@ -188,6 +288,9 @@
         }
 
         if (config.optionalIfTelefonoOrCellulare) {
+            if (isForzaSenzaTelefono()) {
+                return true;
+            }
             return hasTelefonoOrCellulare();
         }
 
@@ -271,8 +374,10 @@
             window.labrepairRevealImportiDettaglio();
         }
 
-        target.focus({ preventScroll: false });
-        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        target.focus({ preventScroll: true });
+        if (!window.labrepairSuppressFieldBlurUi) {
+            target.scrollIntoView({ behavior: "auto", block: "center" });
+        }
     }
 
     function findFirstMissing() {
@@ -303,6 +408,104 @@
         return null;
     }
 
+    function clearClientFieldErrors(scope) {
+        const root = scope || document.getElementById("praticaForm") || document;
+        root.querySelectorAll("[data-pratica-client-error]").forEach(function (el) {
+            el.remove();
+        });
+        root.querySelectorAll(".is-invalid[data-pratica-client-invalid]").forEach(
+            function (el) {
+                el.classList.remove("is-invalid");
+                el.removeAttribute("data-pratica-client-invalid");
+                el.removeAttribute("aria-invalid");
+            }
+        );
+    }
+
+    function getFieldErrorContainer(target) {
+        if (!target) {
+            return null;
+        }
+        const dateWrap = target.closest(".st-date-field");
+        if (dateWrap) {
+            return dateWrap.parentElement || dateWrap;
+        }
+        return (
+            target.closest(".mb-3, .st-cliente-search-field, .st-anagrafica-fact") ||
+            target.parentElement
+        );
+    }
+
+    function showInlineFieldError(target, message) {
+        if (!target || !message) {
+            return;
+        }
+        clearClientFieldErrors();
+
+        const markInvalid = function (el) {
+            if (!el) {
+                return;
+            }
+            el.classList.add("is-invalid");
+            el.setAttribute("data-pratica-client-invalid", "1");
+            el.setAttribute("aria-invalid", "true");
+        };
+
+        markInvalid(target);
+        const dateWrap = target.closest(".st-date-field");
+        if (dateWrap) {
+            const text = dateWrap.querySelector(".st-date-text");
+            const native = dateWrap.querySelector(".st-date-native");
+            markInvalid(text);
+            markInvalid(native);
+        }
+
+        const container = getFieldErrorContainer(target);
+        if (!container) {
+            return;
+        }
+
+        const feedback = document.createElement("div");
+        feedback.className = "invalid-feedback d-block";
+        feedback.setAttribute("data-pratica-client-error", "1");
+        feedback.setAttribute("role", "alert");
+        feedback.textContent = message;
+        container.appendChild(feedback);
+
+        function clearOnEdit() {
+            clearClientFieldErrors();
+            target.removeEventListener("input", clearOnEdit);
+            target.removeEventListener("change", clearOnEdit);
+            if (dateWrap) {
+                const text = dateWrap.querySelector(".st-date-text");
+                const native = dateWrap.querySelector(".st-date-native");
+                if (text) {
+                    text.removeEventListener("input", clearOnEdit);
+                    text.removeEventListener("change", clearOnEdit);
+                }
+                if (native) {
+                    native.removeEventListener("input", clearOnEdit);
+                    native.removeEventListener("change", clearOnEdit);
+                }
+            }
+        }
+
+        target.addEventListener("input", clearOnEdit);
+        target.addEventListener("change", clearOnEdit);
+        if (dateWrap) {
+            const text = dateWrap.querySelector(".st-date-text");
+            const native = dateWrap.querySelector(".st-date-native");
+            if (text) {
+                text.addEventListener("input", clearOnEdit);
+                text.addEventListener("change", clearOnEdit);
+            }
+            if (native) {
+                native.addEventListener("input", clearOnEdit);
+                native.addEventListener("change", clearOnEdit);
+            }
+        }
+    }
+
     function showFieldMessage(config) {
         focusField(config);
         let target = getFocusTarget(config);
@@ -313,36 +516,41 @@
             target = prezzoAl || senzaSpesa || target;
         }
 
-        if (!target || typeof target.reportValidity !== "function") {
+        if (
+            config.optionalIfTelefonoOrCellulare &&
+            !hasTelefonoOrCellulare()
+        ) {
+            if (!fieldTrimmedValue("id_referente_telefono")) {
+                target = document.getElementById("id_referente_telefono") || target;
+            } else {
+                target = document.getElementById("id_referente_cellulare") || target;
+            }
+        }
+
+        if (!target) {
             return;
         }
 
         let message = config.message;
-        if (
-            config.notBeforeToday &&
-            target.value &&
-            !isConsegnaNotBeforeToday(target) &&
-            config.notBeforeTodayMessage
-        ) {
-            message = config.notBeforeTodayMessage;
+        if (config.notBeforeToday) {
+            const field = getField(config);
+            const dateTarget = field || target;
+            if (
+                dateTarget &&
+                dateTarget.value &&
+                !isConsegnaNotBeforeToday(dateTarget) &&
+                config.notBeforeTodayMessage
+            ) {
+                message = config.notBeforeTodayMessage;
+            }
         }
 
-        target.setCustomValidity(message);
-
-        function clearValidity() {
-            target.setCustomValidity("");
-            target.removeEventListener("input", clearValidity);
-            target.removeEventListener("change", clearValidity);
-        }
-
-        target.addEventListener("input", clearValidity);
-        target.addEventListener("change", clearValidity);
-        target.reportValidity();
+        showInlineFieldError(target, message);
     }
 
     /**
      * Stessa validazione usata da Salva e da Stampa Busta/Privacy.
-     * @returns {{ok: boolean, message?: string}}
+     * @returns {{ok: boolean, message?: string, reason?: string}}
      */
     window.labrepairValidatePraticaForm = function () {
         const form = document.getElementById("praticaForm");
@@ -351,7 +559,32 @@
         }
         if (typeof window.labrepairCommitDateFields === "function") {
             if (!window.labrepairCommitDateFields(form || document)) {
-                return { ok: false, message: "Controlla le date inserite (gg/mm/aa)." };
+                const invalidDate = (form || document).querySelector(
+                    ".st-date-text:invalid, .st-date-text[aria-invalid='true']"
+                );
+                let dateHint = "Controlla le date inserite (formato gg/mm/aa).";
+                if (invalidDate && invalidDate.validationMessage) {
+                    dateHint = invalidDate.validationMessage;
+                }
+                if (invalidDate) {
+                    showInlineFieldError(invalidDate, dateHint);
+                    try {
+                        invalidDate.focus({ preventScroll: true });
+                        if (!window.labrepairSuppressFieldBlurUi) {
+                            invalidDate.scrollIntoView({
+                                behavior: "auto",
+                                block: "center",
+                            });
+                        }
+                    } catch (error) {
+                        // ignore
+                    }
+                }
+                return {
+                    ok: false,
+                    reason: "date",
+                    message: dateHint,
+                };
             }
         }
 
@@ -365,15 +598,64 @@
         if (!missing) {
             return { ok: true };
         }
+        if (missing.optionalIfTelefonoOrCellulare) {
+            return {
+                ok: false,
+                reason: "telefono",
+                message:
+                    "Impossibile salvare la scheda: inserisci il telefono o il cellulare, oppure conferma «Forza salvataggio».",
+            };
+        }
         showFieldMessage(missing);
-        let message = missing.message;
+        let detail = missing.message;
         if (missing.notBeforeToday) {
             const field = getField(missing);
             if (field && field.value && !isConsegnaNotBeforeToday(field)) {
-                message = missing.notBeforeTodayMessage || message;
+                detail = missing.notBeforeTodayMessage || detail;
             }
         }
-        return { ok: false, message: message };
+        return {
+            ok: false,
+            reason: missing.id || "required",
+            message: detail,
+        };
+    };
+
+    window.labrepairShowSaveBlockReason = function (message, options) {
+        options = options || {};
+        const form = document.getElementById("praticaForm");
+        const existing = document.getElementById("praticaSaveClientAlert");
+        if (existing) {
+            existing.remove();
+        }
+        if (!message) {
+            return;
+        }
+
+        // Preferisci messaggi accanto al campo; l'alert in alto solo se richiesto.
+        if (!options.forceTop && options.target) {
+            showInlineFieldError(options.target, String(message).replace(
+                /^Impossibile salvare la scheda:\s*/i,
+                ""
+            ));
+            return;
+        }
+        if (!options.forceTop) {
+            return;
+        }
+        if (!form) {
+            return;
+        }
+        const detail = String(message).replace(
+            /^Impossibile salvare la scheda:\s*/i,
+            ""
+        );
+        const alert = document.createElement("div");
+        alert.id = "praticaSaveClientAlert";
+        alert.className = "alert alert-danger";
+        alert.setAttribute("role", "alert");
+        alert.textContent = detail;
+        form.parentNode.insertBefore(alert, form);
     };
 
     function initPraticaRequiredOrder() {
@@ -385,12 +667,84 @@
         form.addEventListener(
             "submit",
             function (event) {
+                if (needsSenzaTelefonoForce()) {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    promptSenzaTelefonoForce().then(function (forza) {
+                        if (forza) {
+                            if (typeof form.requestSubmit === "function") {
+                                form.requestSubmit();
+                            } else {
+                                form.submit();
+                            }
+                        }
+                    });
+                    return;
+                }
+
                 const result = window.labrepairValidatePraticaForm();
                 if (result.ok) {
                     return;
                 }
                 event.preventDefault();
-                event.stopPropagation();
+                event.stopImmediatePropagation();
+                if (result.reason === "telefono") {
+                    promptSenzaTelefonoForce().then(function (forza) {
+                        if (forza) {
+                            if (typeof form.requestSubmit === "function") {
+                                form.requestSubmit();
+                            } else {
+                                form.submit();
+                            }
+                        }
+                    });
+                    return;
+                }
+                // Messaggio già mostrato accanto al campo in labrepairValidatePraticaForm.
+            },
+            true
+        );
+
+        ["id_referente_telefono", "id_referente_cellulare"].forEach(function (id) {
+            const field = document.getElementById(id);
+            if (!field) {
+                return;
+            }
+            field.addEventListener("input", function () {
+                if (hasTelefonoOrCellulare()) {
+                    setForzaSenzaTelefono(false);
+                }
+            });
+            field.addEventListener("change", function () {
+                if (hasTelefonoOrCellulare()) {
+                    setForzaSenzaTelefono(false);
+                }
+            });
+        });
+
+        // Validazione HTML5 nativa (campi required del browser).
+        form.addEventListener(
+            "invalid",
+            function (event) {
+                event.preventDefault();
+                const target = event.target;
+                const detail =
+                    (target && target.validationMessage) ||
+                    "Valore non valido.";
+                if (target) {
+                    showInlineFieldError(target, detail);
+                    try {
+                        target.focus({ preventScroll: true });
+                        if (!window.labrepairSuppressFieldBlurUi) {
+                            target.scrollIntoView({
+                                behavior: "auto",
+                                block: "center",
+                            });
+                        }
+                    } catch (error) {
+                        // ignore
+                    }
+                }
             },
             true
         );
@@ -400,6 +754,9 @@
             focusField(serverError);
         }
     }
+
+    window.labrepairNeedsSenzaTelefonoForce = needsSenzaTelefonoForce;
+    window.labrepairPromptSenzaTelefonoForce = promptSenzaTelefonoForce;
 
     document.addEventListener("DOMContentLoaded", initPraticaRequiredOrder);
 })();

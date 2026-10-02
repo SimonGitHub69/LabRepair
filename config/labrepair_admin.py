@@ -71,6 +71,7 @@ ADMIN_MENU_SECTIONS = (
         "models": (
             ("__link__", "Operatori", "pratiche:operatore_list"),
             ("__link__", "Tipi di oggetto", "pratiche:tipo_oggetto_list"),
+            ("__link__", "Negozi", "dashboard:negozio_list"),
             (
                 "__link__",
                 "Parametri PC",

@@ -3,6 +3,20 @@
         return [file.name, file.size, file.lastModified].join(":");
     }
 
+    function askRemoveFoto() {
+        if (window.LabRepairConfirm && typeof window.LabRepairConfirm.ask === "function") {
+            return window.LabRepairConfirm.ask({
+                title: "Eliminare la foto?",
+                message: "La foto verrà rimossa dalla riparazione.",
+                confirmLabel: "Elimina",
+                cancelLabel: "Annulla",
+                confirmClass: "btn btn-danger",
+                variant: "danger",
+            });
+        }
+        return Promise.resolve(window.confirm("Eliminare questa foto?"));
+    }
+
     function createPendingItem(file, key) {
         const item = document.createElement("div");
         item.className = "st-pratica-foto-item";
@@ -139,14 +153,37 @@
         gallery.addEventListener("click", function (event) {
             const pendingButton = event.target.closest("[data-remove-pending]");
             if (pendingButton) {
-                removePending(pendingButton.dataset.removePending);
+                event.preventDefault();
+                askRemoveFoto().then(function (confirmed) {
+                    if (confirmed) {
+                        removePending(pendingButton.dataset.removePending);
+                    }
+                });
                 return;
             }
 
             const existingButton = event.target.closest("[data-remove-existing]");
             if (existingButton) {
-                removeExisting(existingButton.dataset.removeExisting);
+                event.preventDefault();
+                askRemoveFoto().then(function (confirmed) {
+                    if (confirmed) {
+                        removeExisting(existingButton.dataset.removeExisting);
+                    }
+                });
             }
+        });
+
+        gallery.addEventListener("submit", function (event) {
+            const form = event.target.closest("[data-pratica-foto-delete-confirm]");
+            if (!form || !gallery.contains(form)) {
+                return;
+            }
+            event.preventDefault();
+            askRemoveFoto().then(function (confirmed) {
+                if (confirmed) {
+                    form.submit();
+                }
+            });
         });
 
         const controller = {

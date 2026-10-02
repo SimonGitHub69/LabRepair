@@ -133,6 +133,8 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 # Su installazione Windows senza IIS/nginx, Django può servire i media.
 SERVE_MEDIA = env.bool("SERVE_MEDIA", default=True)
+# Cartella con LabRepair_client_windows_*.zip per auto-update dei PC client.
+CLIENT_PACKAGE_DIR = Path(env("CLIENT_PACKAGE_DIR", default=str(BASE_DIR / "installazione")))
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

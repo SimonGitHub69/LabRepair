@@ -1,5 +1,6 @@
 {% extends "base/layout.html" %}
 {% load static %}
+{% load list_sorting %}
 
 {% block page_title %}
 Riparazioni
@@ -92,6 +93,7 @@ Riparazioni
 <div class="card mb-3 st-filter-card st-pratica-filter-card">
     <div class="card-body">
         <form method="get" action="{% url 'pratiche:pratica_list' %}">
+            {% list_sort_hidden %}
             {% if attenzione %}
                 <input type="hidden" name="attenzione" value="{{ attenzione }}">
             {% endif %}
@@ -212,13 +214,17 @@ Riparazioni
 
     <div class="st-pratica-list-body">
         <div class="st-pratica-list-head">
-            <div>Codice</div>
-            <div>Cliente</div>
-            <div>{% if attenzione %}Contatti{% else %}Oggetto{% endif %}</div>
-            <div>Stato</div>
-            <div>Accettazione</div>
-            <div>Consegna</div>
-            <div class="text-end">Prezzo</div>
+            {% sort_header "codice" "Codice" "" "div" %}
+            {% sort_header "cliente" "Cliente" "" "div" %}
+            {% if attenzione %}
+            <div>Contatti</div>
+            {% else %}
+            {% sort_header "oggetto" "Oggetto" "" "div" %}
+            {% endif %}
+            {% sort_header "stato" "Stato" "" "div" %}
+            {% sort_header "data_apertura" "Accettazione" "" "div" %}
+            {% sort_header "data_scadenza" "Consegna" "" "div" %}
+            {% sort_header "prezzo" "Prezzo" "text-end" "div" %}
             <div class="text-end">Azioni</div>
         </div>
 
@@ -234,8 +240,15 @@ Riparazioni
                         <span class="badge bg-azure-lt text-azure ms-1" title="{{ pratica.get_negozio_display }}">{{ pratica.negozio }}</span>
                     {% endif %}
                     {% if pratica.priorita == "urgente" or pratica.priorita == "alta" %}
-                        <span class="st-priorita-dot st-priorita-{{ pratica.priorita }}"
-                              title="Priorità {{ pratica.get_priorita_display }}"></span>
+                        <span class="st-priorita-badge st-priorita-{{ pratica.priorita }}"
+                              title="Priorità {{ pratica.get_priorita_display }}">
+                            {% if pratica.priorita == "urgente" %}
+                                <i class="ti ti-bolt" aria-hidden="true"></i>
+                            {% else %}
+                                <i class="ti ti-arrow-up" aria-hidden="true"></i>
+                            {% endif %}
+                            <span>{{ pratica.get_priorita_display }}</span>
+                        </span>
                     {% endif %}
                 </div>
 
@@ -392,7 +405,7 @@ Riparazioni
 
 {% block extra_js %}
 {{ block.super }}
-<script src="{% static 'securtek/js/cliente_search.js' %}?v=20260915-no-dropdown"></script>
+<script src="{% static 'securtek/js/cliente_search.js' %}?v=20260916-scope-pratiche"></script>
 <script src="{% static 'securtek/js/confirm_dialog.js' %}"></script>
-<script src="{% static 'securtek/js/pratica_list.js' %}"></script>
+<script src="{% static 'securtek/js/pratica_list.js' %}?v=20260916-filter-form"></script>
 {% endblock %}

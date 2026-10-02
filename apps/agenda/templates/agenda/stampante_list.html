@@ -1,4 +1,5 @@
 {% extends "base/layout.html" %}
+{% load list_sorting %}
 
 {% block page_title %}
 Stampanti · {{ postazione.nome_pc }}
@@ -46,6 +47,7 @@ Stampanti · {{ postazione.nome_pc }}
 <div class="card mb-3">
     <div class="card-body">
         <form method="get">
+            {% list_sort_hidden %}
             <div class="row g-2 align-items-end">
                 <div class="col-md-5">
                     <label class="form-label">Ricerca</label>
@@ -71,12 +73,12 @@ Stampanti · {{ postazione.nome_pc }}
         <table class="table table-vcenter">
             <thead>
                 <tr>
-                    <th>Nome stampante</th>
-                    <th>Descrizione</th>
-                    <th>Ruolo</th>
-                    <th class="text-end">Gap superiore (mm)</th>
-                    <th class="text-end">Gap inferiore (mm)</th>
-                    <th>Porta</th>
+                    {% sort_header "nome" "Nome stampante" %}
+                    {% sort_header "descrizione" "Descrizione" %}
+                    {% sort_header "ruolo" "Ruolo" %}
+                    {% sort_header "gap_sup" "Gap superiore (mm)" "text-end" %}
+                    {% sort_header "gap_inf" "Gap inferiore (mm)" "text-end" %}
+                    {% sort_header "porta" "Porta" %}
                     <th class="text-end">Azioni</th>
                 </tr>
             </thead>
@@ -168,6 +170,7 @@ Stampanti · {{ postazione.nome_pc }}
 
 {% block extra_js %}
 {% load static %}
+{% load list_sorting %}
 {{ block.super }}
 <script src="{% static 'securtek/js/stampante_sync.js' %}?v=20260909-lna"></script>
 <script>

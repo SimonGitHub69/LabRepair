@@ -1,0 +1,66 @@
+{# Campi solo lettura N. DDT / Data DDT — non modificabili dalla scheda riparazione. #}
+{% if object %}
+<div class="{{ col_numero|default:'col-md-6' }}">
+    <div class="mb-3">
+        <label class="form-label">
+            N. DDT
+            <span class="st-ddt-field-lock-hint" title="Campo non modificabile">
+                <i class="ti ti-lock" aria-hidden="true"></i>
+            </span>
+        </label>
+        <div class="form-control st-ddt-field{% if object.ddt_numero %} has-value{% endif %}"
+             id="praticaDdtNumero"
+             role="text"
+             aria-readonly="true"
+             aria-label="N. DDT, non modificabile"
+             title="Non modificabile — valorizzato dal DDT">
+            {% if object.ddt_numero %}
+                {% with ddt=ddt_collegato|default:object.ddt_collegato %}
+                {% if ddt %}
+                <a href="{% url 'pratiche:ddt_detail' ddt.pk %}"
+                   class="st-ddt-field-link"
+                   title="Apri DDT"
+                   tabindex="-1">
+                    <i class="ti ti-truck-delivery"></i>
+                    <span>{{ object.ddt_numero }}</span>
+                </a>
+                {% else %}
+                <span class="st-ddt-field-value">
+                    <i class="ti ti-truck-delivery"></i>
+                    {{ object.ddt_numero }}
+                </span>
+                {% endif %}
+                {% endwith %}
+            {% else %}
+                <span class="st-ddt-field-empty">—</span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+<div class="{{ col_data|default:'col-md-6' }}">
+    <div class="mb-3">
+        <label class="form-label" for="praticaDdtData">
+            Data DDT
+            <span class="st-ddt-field-lock-hint" title="Campo non modificabile">
+                <i class="ti ti-lock" aria-hidden="true"></i>
+            </span>
+        </label>
+        <div class="form-control st-ddt-field{% if object.ddt_data %} has-value{% endif %}"
+             id="praticaDdtData"
+             role="textbox"
+             aria-readonly="true"
+             aria-label="Data DDT, non modificabile"
+             title="Non modificabile — valorizzato dal DDT"
+             tabindex="-1">
+            {% if object.ddt_data %}
+                <span class="st-ddt-field-value">
+                    <i class="ti ti-calendar-event"></i>
+                    {{ object.ddt_data|date:"d/m/Y" }}
+                </span>
+            {% else %}
+                <span class="st-ddt-field-empty">—</span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}

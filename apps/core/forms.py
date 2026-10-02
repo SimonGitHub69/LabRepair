@@ -148,6 +148,12 @@ class ConfigurazioneProgrammaForm(forms.ModelForm):
             "comunicazioni_formato_data",
             "mailto_oggetto",
             "mailto_corpo",
+            "ddt_sezionale",
+            "ddt_numero_iniziale",
+            "ddt_causale",
+            "ddt_aspetto_beni",
+            "ddt_trasporto_a_cura",
+            "ddt_vettore",
             "privacy_testo_dichiarazione",
             "privacy_testo_diritti",
             "note",
@@ -186,6 +192,22 @@ class ConfigurazioneProgrammaForm(forms.ModelForm):
                     ),
                 }
             ),
+            "ddt_sezionale": forms.TextInput(
+                attrs={"class": "form-control text-uppercase", "maxlength": "10", "style": "max-width: 6rem;"}
+            ),
+            "ddt_numero_iniziale": forms.NumberInput(
+                attrs={
+                    "class": "form-control",
+                    "min": "1",
+                    "step": "1",
+                    "inputmode": "numeric",
+                    "style": "max-width: 8rem;",
+                }
+            ),
+            "ddt_causale": forms.TextInput(attrs={"class": "form-control"}),
+            "ddt_aspetto_beni": forms.TextInput(attrs={"class": "form-control"}),
+            "ddt_trasporto_a_cura": forms.TextInput(attrs={"class": "form-control"}),
+            "ddt_vettore": forms.TextInput(attrs={"class": "form-control"}),
             "privacy_testo_dichiarazione": forms.Textarea(
                 attrs={
                     "class": "form-control",

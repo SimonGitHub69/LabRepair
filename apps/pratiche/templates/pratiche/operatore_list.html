@@ -1,4 +1,5 @@
 {% extends "base/layout.html" %}
+{% load list_sorting %}
 
 {% block page_title %}
 Operatori
@@ -25,6 +26,7 @@ Operatori
 <div class="card mb-3">
     <div class="card-body">
         <form method="get">
+            {% list_sort_hidden %}
             <div class="row g-2 align-items-end">
                 <div class="col-md-5">
                     <label class="form-label">Ricerca</label>
@@ -50,8 +52,8 @@ Operatori
         <table class="table table-vcenter">
             <thead>
                 <tr>
-                    <th>Nominativo</th>
-                    <th>Riparazioni</th>
+                    {% sort_header "nominativo" "Nominativo" %}
+                    {% sort_header "pratiche" "Riparazioni" %}
                     <th>Note</th>
                     <th class="text-end">Azioni</th>
                 </tr>

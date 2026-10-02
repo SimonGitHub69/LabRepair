@@ -37,11 +37,11 @@
         }
     </style>
 
-    <link rel="stylesheet" href="{% static 'securtek/css/variables.css' %}?v={{ app_version }}-density14">
-    <link rel="stylesheet" href="{% static 'securtek/css/style.css' %}?v={{ app_version }}-density25">
+    <link rel="stylesheet" href="{% static 'securtek/css/variables.css' %}?v={{ app_version }}-density15">
+    <link rel="stylesheet" href="{% static 'securtek/css/style.css' %}?v={{ app_version }}-density27">
     <link rel="stylesheet" href="{% static 'securtek/css/sidebar.css' %}?v={{ app_version }}-density2">
-    <link rel="stylesheet" href="{% static 'securtek/css/navbar.css' %}?v={{ app_version }}-density">
-    <link rel="stylesheet" href="{% static 'securtek/css/components.css' %}?v={{ app_version }}-pw-toggle2">
+    <link rel="stylesheet" href="{% static 'securtek/css/navbar.css' %}?v={{ app_version }}-density2">
+    <link rel="stylesheet" href="{% static 'securtek/css/components.css' %}?v={{ app_version }}-lock-gray6">
     <link rel="stylesheet" href="{% static 'securtek/css/dashboard.css' %}?v={{ app_version }}-density">
 
     {% block extra_css %}{% endblock %}
@@ -103,8 +103,9 @@
 <script src="{% static 'vendor/tabler/js/tabler.min.js' %}"></script>
 <script defer src="{% static 'vendor/alpinejs/cdn.min.js' %}"></script>
 <script src="{% static 'vendor/htmx/htmx.min.js' %}"></script>
-<script src="{% static 'securtek/js/app.js' %}?v={{ app_version }}-annulla1"></script>
+<script src="{% static 'securtek/js/app.js' %}?v={{ app_version }}-consegna-clear1"></script>
 <script src="{% static 'securtek/js/pratica_hotkeys.js' %}?v={{ app_version }}-salva-global"></script>
+<script src="{% static 'securtek/js/ddt_print.js' %}?v={{ app_version }}-ddtprint2"></script>
 {% if comandi_voce_attivi and user.is_authenticated and not embed_layout %}
 {{ comandi_voce_mappa|json_script:"labrepair-voice-commands" }}
 {{ comandi_voce_extra|json_script:"labrepair-voice-extra" }}

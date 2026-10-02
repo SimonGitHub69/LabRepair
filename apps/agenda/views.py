@@ -19,6 +19,7 @@ from apps.core.forms import (
     StampanteForm,
 )
 from apps.core.list_pagination import ConfigurablePaginationMixin
+from apps.core.list_sorting import SortableListMixin
 from apps.core.mail import config_email_from_post, parse_email_destinatari, send_smtp_email
 from apps.core.models import ConfigurazioneMssql, ConfigurazionePC, ConfigurazioneProgramma, Stampante
 from apps.core.mssql import config_from_post, test_mssql_cassa_connection, test_mssql_connection
@@ -623,13 +624,21 @@ class ParametriComandiVoceView(LoginRequiredMixin, PermissionRequiredMixin, View
         return render(request, self.template_name, self.get_context(form=form))
 
 
-class ConfigurazionePCListView(LoginRequiredMixin, PermissionRequiredMixin, ConfigurablePaginationMixin, ListView):
+class ConfigurazionePCListView(LoginRequiredMixin, PermissionRequiredMixin, ConfigurablePaginationMixin, SortableListMixin, ListView):
     model = ConfigurazionePC
     template_name = "agenda/configurazione_pc_list.html"
     context_object_name = "postazioni"
     paginate_by = 20
     permission_required = "dashboard.access_parametri_pc"
     raise_exception = True
+    sort_fields = {
+        "nome_pc": "nome_pc",
+        "descrizione": "descrizione",
+        "negozio": "negozio_default",
+        "layout": "layout_stile",
+    }
+    default_sort = "nome_pc"
+    default_dir = "asc"
 
     def get_queryset(self):
         queryset = ConfigurazionePC.objects.filter(is_active=True)
@@ -640,7 +649,7 @@ class ConfigurazionePCListView(LoginRequiredMixin, PermissionRequiredMixin, Conf
                 | Q(descrizione__icontains=q)
                 | Q(note__icontains=q)
             )
-        return queryset.order_by("nome_pc")
+        return self.apply_list_ordering(queryset)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -683,13 +692,23 @@ class ConfigurazionePCSyncStampantiView(LoginRequiredMixin, PermissionRequiredMi
         return redirect("agenda:configurazione_pc_list")
 
 
-class StampanteListView(LoginRequiredMixin, PermissionRequiredMixin, ConfigurablePaginationMixin, ListView):
+class StampanteListView(LoginRequiredMixin, PermissionRequiredMixin, ConfigurablePaginationMixin, SortableListMixin, ListView):
     model = Stampante
     template_name = "agenda/stampante_list.html"
     context_object_name = "stampanti"
     paginate_by = 50
     permission_required = "dashboard.access_parametri_pc"
     raise_exception = True
+    sort_fields = {
+        "nome": "nome",
+        "descrizione": "descrizione",
+        "ruolo": "stampante_buste",
+        "gap_sup": "gap_busta_superiore",
+        "gap_inf": "gap_busta_inferiore",
+        "porta": "porta",
+    }
+    default_sort = "nome"
+    default_dir = "asc"
 
     def dispatch(self, request, *args, **kwargs):
         self.postazione = get_object_or_404(
@@ -713,7 +732,7 @@ class StampanteListView(LoginRequiredMixin, PermissionRequiredMixin, Configurabl
                 | Q(driver__icontains=q)
                 | Q(note__icontains=q)
             )
-        return queryset.order_by("nome")
+        return self.apply_list_ordering(queryset)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

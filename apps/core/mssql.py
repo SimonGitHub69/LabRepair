@@ -177,6 +177,14 @@ def _open_mssql_raw(config, timeout, database=None):
     raise RuntimeError(format_mssql_error(driver, error_text))
 
 
+def _apply_query_timeout(connection, timeout):
+    """Timeout operazioni SQL (secondi). Login timeout e' gia' su connect()."""
+    try:
+        connection.timeout = max(1, int(timeout or 2))
+    except Exception:
+        pass
+
+
 @contextmanager
 def open_mssql_connection(config=None, timeout=2):
     config = config or get_mssql_config()
@@ -184,6 +192,7 @@ def open_mssql_connection(config=None, timeout=2):
         raise RuntimeError("Collegamento MS-SQL non attivo o incompleto.")
 
     connection = _open_mssql_raw(config, timeout)
+    _apply_query_timeout(connection, timeout)
     try:
         yield connection
     finally:
@@ -199,6 +208,7 @@ def open_mssql_cassa_connection(config=None, timeout=2):
 
     database = (config.nome_database_cassa or "").strip()
     connection = _open_mssql_raw(config, timeout, database=database)
+    _apply_query_timeout(connection, timeout)
     try:
         yield connection
     finally:

@@ -18,8 +18,9 @@ from django.contrib import admin
 from django.conf import settings
 from django.conf.urls.static import static
 from django.templatetags.static import static as static_url
-from django.urls import include, path
+from django.urls import include, path, re_path
 from django.views.generic import RedirectView
+from django.views.static import serve
 
 from config.labrepair_admin import apply_labrepair_admin
 
@@ -38,11 +39,23 @@ urlpatterns = [
     path("anagrafiche/", include("apps.anagrafiche.urls")),
     path("agenda/", include("apps.agenda.urls")),
     path("pratiche/", include("apps.pratiche.urls")),
+    path("", include("apps.core.urls_client")),
     path("", include("apps.dashboard.urls")),
 ]
 
-if settings.DEBUG or getattr(settings, "SERVE_MEDIA", False):
+# django.conf.urls.static.static() e' no-op se DEBUG=False: in produzione LAN
+# serviamo i media esplicitamente quando SERVE_MEDIA=True.
+if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+elif getattr(settings, "SERVE_MEDIA", False):
+    media_prefix = settings.MEDIA_URL.lstrip("/")
+    urlpatterns += [
+        re_path(
+            rf"^{media_prefix}(?P<path>.*)$",
+            serve,
+            {"document_root": settings.MEDIA_ROOT},
+        ),
+    ]
 
 handler403 = "apps.core.error_views.permission_denied"
 

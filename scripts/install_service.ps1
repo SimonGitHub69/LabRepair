@@ -13,15 +13,25 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-function Assert-Admin {
+function Test-IsAdmin {
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
     $principal = New-Object Security.Principal.WindowsPrincipal($identity)
-    if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-        Write-Error "Esegui PowerShell come Amministratore."
-    }
+    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
-Assert-Admin
+if (-not (Test-IsAdmin)) {
+    $argList = @(
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-File", $PSCommandPath,
+        "-ServiceName", $ServiceName,
+        "-ListenHost", $ListenHost,
+        "-Port", $Port,
+        "-Threads", $Threads
+    )
+    $p = Start-Process -FilePath "powershell.exe" -Verb RunAs -ArgumentList $argList -Wait -PassThru
+    exit $p.ExitCode
+}
 
 if ($PSScriptRoot) {
     $Root = Split-Path -Parent $PSScriptRoot
@@ -49,9 +59,27 @@ if (-not (Test-Path $NssmExe)) {
     Write-Host "Download NSSM..."
     $zipPath = Join-Path $env:TEMP "nssm-labrepair.zip"
     $extractPath = Join-Path $env:TEMP "nssm-labrepair"
-    # Build 2.24-101 consigliato per Windows 10/Server 2016+
-    $url = "https://nssm.cc/ci/nssm-2.24-101-g897c7ad.zip"
-    Invoke-WebRequest -Uri $url -OutFile $zipPath
+    $urls = @(
+        "https://nssm.cc/ci/nssm-2.24-101-g897c7ad.zip",
+        "https://nssm.cc/release/nssm-2.24.zip"
+    )
+    $downloaded = $false
+    foreach ($url in $urls) {
+        try {
+            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+            Write-Host "  $url"
+            Invoke-WebRequest -Uri $url -OutFile $zipPath -UseBasicParsing
+            if ((Test-Path $zipPath) -and ((Get-Item $zipPath).Length -gt 100KB)) {
+                $downloaded = $true
+                break
+            }
+        } catch {
+            Write-Warning "Download NSSM fallito da $url : $_"
+        }
+    }
+    if (-not $downloaded) {
+        Write-Error "Impossibile scaricare NSSM. Metti nssm.exe in tools\nssm\nssm.exe e riprova."
+    }
     if (Test-Path $extractPath) {
         Remove-Item $extractPath -Recurse -Force
     }
@@ -60,7 +88,11 @@ if (-not (Test-Path $NssmExe)) {
         Where-Object { $_.FullName -match '\\win64\\nssm\.exe$' } |
         Select-Object -First 1
     if (-not $found) {
-        Write-Error "nssm.exe (win64) non trovato nello zip scaricato."
+        $found = Get-ChildItem -Path $extractPath -Recurse -Filter "nssm.exe" |
+            Select-Object -First 1
+    }
+    if (-not $found) {
+        Write-Error "nssm.exe non trovato nello zip scaricato."
     }
     Copy-Item $found.FullName $NssmExe -Force
     Write-Host "NSSM installato in $NssmExe"

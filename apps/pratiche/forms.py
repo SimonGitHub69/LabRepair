@@ -30,6 +30,18 @@ from apps.pratiche.models import (
     StudioTecnico,
     TipoOggetto,
 )
+from apps.pratiche.ddt_service import (
+    DDT_ASPETTO_DEFAULT,
+    DDT_CAUSALE_DEFAULT,
+    DDT_TRASPORTO_DEFAULT,
+    DDT_VETTORE_DEFAULT,
+    buste_aperte_queryset,
+    find_busta_aperta_by_codice,
+    get_ddt_sezionale_default,
+    get_next_ddt_numero,
+    parse_busta_codici,
+)
+from apps.core.programma import get_configurazione_programma
 
 PRATICA_DATE_FIELDS = (
     "data_apertura",
@@ -38,6 +50,37 @@ PRATICA_DATE_FIELDS = (
     "data_rientro",
     "data_vendita",
 )
+
+CLIENTE_BLOCCATO_MSG = (
+    "Il cliente non è modificabile dopo la stampa della busta "
+    "o se la riparazione è evasa."
+)
+TESTATA_BLOCCATA_MSG = (
+    "I campi di testata non sono modificabili dopo la stampa della busta "
+    "o se la riparazione è evasa."
+)
+TESTATA_BLOCCATA_TITLE = (
+    "Testata bloccata: busta stampata oppure riparazione evasa"
+)
+
+# Sezione Accettazione: bloccati dopo stampa busta.
+PRATICA_TESTATA_FIELDS = (
+    "cliente",
+    "operatore",
+    "referente_cognome",
+    "referente_nome",
+    "referente_telefono",
+    "referente_cellulare",
+    "referente_email",
+    "data_apertura",
+)
+
+
+def _format_referente_nome(value):
+    return " ".join(
+        (part[:1].upper() + part[1:].lower()) if part else ""
+        for part in (value or "").strip().split()
+    )
 
 
 class OptionalClienteChoiceField(forms.ModelChoiceField):
@@ -57,6 +100,16 @@ class PraticaForm(forms.ModelForm):
         queryset=Anagrafica.objects.none(),
         required=False,
         widget=forms.HiddenInput(attrs={"id": "id_cliente"}),
+    )
+    forza_documento_scaduto = forms.BooleanField(
+        required=False,
+        initial=False,
+        widget=forms.HiddenInput(attrs={"id": "id_forza_documento_scaduto"}),
+    )
+    forza_senza_telefono = forms.BooleanField(
+        required=False,
+        initial=False,
+        widget=forms.HiddenInput(attrs={"id": "id_forza_senza_telefono"}),
     )
 
     class Meta:
@@ -87,6 +140,7 @@ class PraticaForm(forms.ModelForm):
             "prezzo_unita",
             "prezzo_al",
             "prezzo_pagato",
+            "numero_scontrino",
             "senza_spesa",
             "data_vendita",
             "priorita",
@@ -136,6 +190,7 @@ class PraticaForm(forms.ModelForm):
             "prezzo_unita": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "min": "0"}),
             "prezzo_al": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "min": "0"}),
             "prezzo_pagato": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "min": "0"}),
+            "numero_scontrino": forms.TextInput(attrs={"class": "form-control"}),
             "senza_spesa": forms.CheckboxInput(attrs={"class": "form-check-input", "id": "id_senza_spesa"}),
         }
 
@@ -206,6 +261,19 @@ class PraticaForm(forms.ModelForm):
                 ),
             }
         )
+        self.cliente_bloccato = bool(
+            self.instance.pk and getattr(self.instance, "testata_bloccata", False)
+        )
+        self.testata_bloccata = self.cliente_bloccato
+        if self.testata_bloccata:
+            for field_name in PRATICA_TESTATA_FIELDS:
+                field = self.fields.get(field_name)
+                if not field:
+                    continue
+                # disabled: Django ignora il POST e tiene il valore dell'istanza.
+                field.disabled = True
+                field.widget.attrs["readonly"] = "readonly"
+                field.widget.attrs["aria-disabled"] = "true"
         for field_name in (
             "referente_cognome",
             "referente_nome",
@@ -216,8 +284,8 @@ class PraticaForm(forms.ModelForm):
             self.fields[field_name].required = False
         self.fields["referente_telefono"].label = "Telefono"
         self.fields["referente_cellulare"].label = "Cellulare"
-        self.fields["referente_telefono"].widget.attrs["placeholder"] = "Telefono o cellulare obbligatorio"
-        self.fields["referente_cellulare"].widget.attrs["placeholder"] = "Telefono o cellulare obbligatorio"
+        self.fields["referente_telefono"].widget.attrs["placeholder"] = "Telefono o cellulare consigliato"
+        self.fields["referente_cellulare"].widget.attrs["placeholder"] = "Telefono o cellulare consigliato"
         self.fields["operatore"].queryset = Operatore.objects.filter(is_active=True)
         self.fields["operatore"].required = True
         self.fields["operatore"].empty_label = "Seleziona operatore"
@@ -264,7 +332,12 @@ class PraticaForm(forms.ModelForm):
             date_field.widget.format = "%Y-%m-%d"
             date_field.input_formats = ["%Y-%m-%d"]
             instance_value = getattr(self.instance, field_name, None) if self.instance.pk else None
-            min_date = timezone.localdate() if field_name == "data_scadenza" else None
+            # Min = oggi solo in creazione: in modifica una data retroattiva è ammissibile.
+            min_date = (
+                timezone.localdate()
+                if field_name == "data_scadenza" and not self.instance.pk
+                else None
+            )
             apply_pratica_date_widget(
                 date_field,
                 min_date=min_date,
@@ -281,6 +354,13 @@ class PraticaForm(forms.ModelForm):
         self.fields["data_rientro"].required = False
         self.fields["data_vendita"].required = False
         self.fields["data_vendita"].label = "Data vendita/evasione"
+        self.fields["numero_scontrino"].required = False
+        self.fields["numero_scontrino"].label = "N. scontrino"
+        # readonly (non disabled): il valore resta in POST e non viene azzerato al Salva.
+        self.fields["numero_scontrino"].disabled = False
+        self.fields["numero_scontrino"].widget.attrs["readonly"] = True
+        self.fields["numero_scontrino"].widget.attrs["tabindex"] = "-1"
+        self.fields["numero_scontrino"].help_text = "Valorizzato automaticamente dalla cassa."
         self.fields["prezzo_al"].label = "Prezzo al Pubblico"
         self.tipo_oggetto_um_map = {
             str(tipo.pk): tipo.um for tipo in self.fields["tipo_oggetto"].queryset
@@ -344,6 +424,7 @@ class PraticaForm(forms.ModelForm):
                 "prezzo_unita",
                 "prezzo_al",
                 "prezzo_pagato",
+                "numero_scontrino",
                 "senza_spesa",
                 "data_vendita",
             ]
@@ -379,11 +460,7 @@ class PraticaForm(forms.ModelForm):
         tipologia = cleaned_data.get("tipologia")
         cliente = cleaned_data.get("cliente")
         referente_cognome = (cleaned_data.get("referente_cognome") or "").strip().upper()
-        nome_raw = (cleaned_data.get("referente_nome") or "").strip()
-        referente_nome = " ".join(
-            (part[:1].upper() + part[1:].lower()) if part else ""
-            for part in nome_raw.split()
-        )
+        referente_nome = _format_referente_nome(cleaned_data.get("referente_nome"))
         referente_telefono = (cleaned_data.get("referente_telefono") or "").strip()
         referente_cellulare = (cleaned_data.get("referente_cellulare") or "").strip()
         cleaned_data["referente_nome"] = referente_nome
@@ -392,6 +469,25 @@ class PraticaForm(forms.ModelForm):
         cleaned_data["referente_cellulare"] = referente_cellulare
         self.documento_scaduto_cliente = None
 
+        if self.testata_bloccata:
+            # Valori POST ignorati: ripristina sempre la testata salvata in DB.
+            cleaned_data["cliente"] = self.instance.cliente
+            cliente = self.instance.cliente
+            cleaned_data["operatore"] = self.instance.operatore
+            cleaned_data["data_apertura"] = self.instance.data_apertura
+            cleaned_data["referente_cognome"] = (self.instance.referente_cognome or "").strip().upper()
+            cleaned_data["referente_nome"] = _format_referente_nome(self.instance.referente_nome)
+            cleaned_data["referente_telefono"] = (self.instance.referente_telefono or "").strip()
+            cleaned_data["referente_cellulare"] = (self.instance.referente_cellulare or "").strip()
+            cleaned_data["referente_email"] = (self.instance.referente_email or "").strip()
+            referente_cognome = cleaned_data["referente_cognome"]
+            referente_nome = cleaned_data["referente_nome"]
+            referente_telefono = cleaned_data["referente_telefono"]
+            referente_cellulare = cleaned_data["referente_cellulare"]
+            posted_id = (self.data.get("cliente") or "").strip()
+            if posted_id and str(self.instance.cliente_id or "") != posted_id:
+                self.add_error("cliente", CLIENTE_BLOCCATO_MSG)
+
         if not cliente and not (referente_nome and referente_cognome):
             self.add_error(
                 "cliente",
@@ -399,14 +495,15 @@ class PraticaForm(forms.ModelForm):
             )
 
         if not referente_telefono and not referente_cellulare:
-            self.add_error(
-                "referente_telefono",
-                "Inserisci il telefono o il cellulare.",
-            )
-            self.add_error(
-                "referente_cellulare",
-                "Inserisci il telefono o il cellulare.",
-            )
+            if not cleaned_data.get("forza_senza_telefono"):
+                self.add_error(
+                    "referente_telefono",
+                    "Inserisci il telefono o il cellulare, oppure conferma «Forza salvataggio».",
+                )
+                self.add_error(
+                    "referente_cellulare",
+                    "Inserisci il telefono o il cellulare, oppure conferma «Forza salvataggio».",
+                )
 
         if tipologia == Pratica.Tipologia.PREZIOSO:
             tipo_metallo = (cleaned_data.get("tipo_metallo") or "").strip()
@@ -428,8 +525,13 @@ class PraticaForm(forms.ModelForm):
                     "Con stato «In consegna» inserisci un Prezzo al Pubblico oppure seleziona Senza Spesa.",
                 )
 
-        if tipologia == Pratica.Tipologia.PREZIOSO and cliente:
-            # Ricarica i dati aggiornati del cliente (date documento).
+        if (
+            tipologia == Pratica.Tipologia.PREZIOSO
+            and cliente
+            and not self.instance.pk
+            and not cleaned_data.get("forza_documento_scaduto")
+        ):
+            # Nuova riparazione + prezioso: documento scaduto avvisa, ma si può forzare.
             cliente = (
                 Anagrafica.objects.filter(pk=cliente.pk, is_active=True)
                 .only(
@@ -447,7 +549,8 @@ class PraticaForm(forms.ModelForm):
                     "cliente",
                     (
                         "Documento di identità scaduto: aggiorna i dati nella sezione "
-                        "«Documento di identità» e premi «Salva documento» prima di proseguire."
+                        "«Documento di identità» e premi «Salva documento», oppure "
+                        "conferma «Forza registrazione» per proseguire comunque."
                     ),
                 )
 
@@ -468,12 +571,78 @@ class PraticaForm(forms.ModelForm):
             instance=self.instance,
             field_name="data_scadenza",
         )
-        validate_not_before_today(
-            value,
-            instance=self.instance,
-            field_name="data_scadenza",
-        )
+        # Retroattiva bloccante solo in Nuova riparazione.
+        if not self.instance.pk:
+            validate_not_before_today(
+                value,
+                instance=self.instance,
+                field_name="data_scadenza",
+            )
         return value
+
+    def save(self, commit=True):
+        """Non azzerare valori già in anagrafica/DB (cassa sync, date, campi bloccati)."""
+        instance = super().save(commit=False)
+        if instance.pk:
+            stored = (
+                Pratica.objects.filter(pk=instance.pk)
+                .only(
+                    "data_apertura",
+                    "data_scadenza",
+                    "data_vendita",
+                    "numero_scontrino",
+                    "prezzo_pagato",
+                    "cliente_id",
+                    "operatore_id",
+                    "stato",
+                    "busta_stampata_il",
+                    "referente_cognome",
+                    "referente_nome",
+                    "referente_telefono",
+                    "referente_cellulare",
+                    "referente_email",
+                )
+                .first()
+            )
+            if stored and stored.testata_bloccata:
+                instance.cliente_id = stored.cliente_id
+                instance.operatore_id = stored.operatore_id
+                instance.data_apertura = stored.data_apertura
+                instance.referente_cognome = stored.referente_cognome
+                instance.referente_nome = stored.referente_nome
+                instance.referente_telefono = stored.referente_telefono
+                instance.referente_cellulare = stored.referente_cellulare
+                instance.referente_email = stored.referente_email
+            if stored:
+                # Campi automatici: sempre la copia DB più aggiornata.
+                if stored.data_apertura:
+                    instance.data_apertura = stored.data_apertura
+                stored_scontrino = (stored.numero_scontrino or "").strip()
+                if stored_scontrino:
+                    # Sempre il valore DB (readonly + sync cassa può essere più recente).
+                    instance.numero_scontrino = stored.numero_scontrino
+
+                stored_pagato = stored.prezzo_pagato or 0
+                form_pagato = instance.prezzo_pagato or 0
+                if stored_pagato and not form_pagato:
+                    instance.prezzo_pagato = stored.prezzo_pagato
+
+                if stored.data_vendita and not instance.data_vendita:
+                    instance.data_vendita = stored.data_vendita
+
+                if stored.data_scadenza and not instance.data_scadenza:
+                    instance.data_scadenza = stored.data_scadenza
+
+        if commit:
+            instance.save()
+            self.save_m2m()
+            from apps.pratiche.cliente_referente import ensure_cliente_from_referente
+
+            user = getattr(instance, "updated_by", None) or getattr(
+                instance, "created_by", None
+            )
+            ensure_cliente_from_referente(instance, user=user)
+        return instance
 
 
 class StudioTecnicoForm(forms.ModelForm):
@@ -840,3 +1009,235 @@ PraticaCategoriaFormSet = inlineformset_factory(
     extra=1,
     can_delete=True,
 )
+
+
+class DdtCreateForm(forms.Form):
+    centro_assistenza = forms.ModelChoiceField(
+        label="Centro assistenza",
+        queryset=Anagrafica.objects.none(),
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+    pratiche = forms.ModelMultipleChoiceField(
+        label="Buste aperte",
+        queryset=Pratica.objects.none(),
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
+    )
+    buste_codici = forms.CharField(
+        label="Numeri busta aggiuntivi",
+        required=False,
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Es. P26-0123, P260045",
+                "autocomplete": "off",
+            }
+        ),
+        help_text="Anche buste di altri centri; con o senza trattino; codici separati da virgola o spazio.",
+    )
+    sezionale = forms.CharField(
+        label="Sezionale",
+        max_length=10,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control text-uppercase", "style": "max-width: 6rem;"}),
+    )
+    data_documento = forms.DateField(
+        label="Data documento",
+        widget=forms.DateInput(
+            attrs={"class": "form-control", "type": "date"},
+            format="%Y-%m-%d",
+        ),
+        input_formats=["%Y-%m-%d"],
+    )
+    causale = forms.CharField(
+        label="Causale",
+        max_length=80,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+    aspetto_beni = forms.CharField(
+        label="Aspetto beni",
+        max_length=80,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+    trasporto_a_cura = forms.CharField(
+        label="Trasporto a cura",
+        max_length=80,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+    vettore = forms.CharField(
+        label="Vettore",
+        max_length=120,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+    colli = forms.IntegerField(
+        label="Colli",
+        min_value=1,
+        required=False,
+        widget=forms.NumberInput(attrs={"class": "form-control", "min": "1", "style": "max-width: 8rem;"}),
+    )
+    peso_lordo_kg = forms.DecimalField(
+        label="Peso lordo (kg)",
+        max_digits=10,
+        decimal_places=2,
+        required=False,
+        widget=forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "style": "max-width: 10rem;"}),
+    )
+    data_inizio_trasporto = forms.DateField(
+        label="Data inizio trasporto",
+        required=False,
+        widget=forms.DateInput(
+            attrs={"class": "form-control", "type": "date"},
+            format="%Y-%m-%d",
+        ),
+        input_formats=["%Y-%m-%d"],
+    )
+    note = forms.CharField(
+        label="Note",
+        required=False,
+        widget=forms.Textarea(attrs={"class": "form-control", "rows": 2}),
+    )
+
+    def __init__(self, *args, centri_queryset=None, pratiche_queryset=None, negozio=None, **kwargs):
+        self.negozio = negozio
+        super().__init__(*args, **kwargs)
+        oggi = timezone.localdate()
+        cfg = get_configurazione_programma()
+
+        self.fields["centro_assistenza"].queryset = centri_queryset or Anagrafica.objects.filter(
+            is_active=True,
+            tipo=Anagrafica.Tipo.CENTRO_ASSISTENZA,
+        ).order_by("ragione_sociale")
+        # Accetta anche buste di altri centri (aggiunte per codice).
+        self.fields["pratiche"].queryset = pratiche_queryset or buste_aperte_queryset()
+
+        if not self.is_bound:
+            self.fields["sezionale"].initial = get_ddt_sezionale_default(self.negozio)
+            self.fields["data_documento"].initial = oggi
+            self.fields["data_inizio_trasporto"].initial = oggi
+            self.fields["causale"].initial = (cfg.ddt_causale or DDT_CAUSALE_DEFAULT).strip() or DDT_CAUSALE_DEFAULT
+            self.fields["aspetto_beni"].initial = (
+                (cfg.ddt_aspetto_beni or DDT_ASPETTO_DEFAULT).strip() or DDT_ASPETTO_DEFAULT
+            )
+            self.fields["trasporto_a_cura"].initial = (
+                (cfg.ddt_trasporto_a_cura or DDT_TRASPORTO_DEFAULT).strip() or DDT_TRASPORTO_DEFAULT
+            )
+            self.fields["vettore"].initial = (cfg.ddt_vettore or DDT_VETTORE_DEFAULT).strip() or DDT_VETTORE_DEFAULT
+
+        numero, sezionale = get_next_ddt_numero(
+            (self.data.get("sezionale") if self.is_bound else self.fields["sezionale"].initial)
+            or get_ddt_sezionale_default(self.negozio),
+            negozio=self.negozio,
+        )
+        self.numero_previsto = f"{numero}/{sezionale}"
+
+    def clean_sezionale(self):
+        value = (self.cleaned_data.get("sezionale") or get_ddt_sezionale_default(self.negozio)).strip().upper()
+        if not value:
+            raise forms.ValidationError("Indica un sezionale.")
+        return value
+
+    def clean(self):
+        cleaned = super().clean()
+        pratiche = list(cleaned.get("pratiche") or [])
+        by_id = {p.pk: p for p in pratiche}
+        missing = []
+        for code in parse_busta_codici(cleaned.get("buste_codici")):
+            pratica = find_busta_aperta_by_codice(code)
+            if not pratica:
+                missing.append(code)
+                continue
+            by_id[pratica.pk] = pratica
+        if missing:
+            raise forms.ValidationError(
+                "Buste non trovate o già in DDT / chiuse: " + ", ".join(missing)
+            )
+        if not by_id:
+            raise forms.ValidationError("Seleziona o inserisci almeno una busta aperta.")
+        cleaned["pratiche"] = list(by_id.values())
+        return cleaned
+
+
+class DdtUpdateForm(forms.Form):
+    data_documento = forms.DateField(
+        label="Data documento",
+        widget=forms.DateInput(
+            attrs={"class": "form-control", "type": "date"},
+            format="%Y-%m-%d",
+        ),
+        input_formats=["%Y-%m-%d"],
+    )
+    causale = forms.CharField(
+        label="Causale",
+        max_length=80,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+    aspetto_beni = forms.CharField(
+        label="Aspetto beni",
+        max_length=80,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+    trasporto_a_cura = forms.CharField(
+        label="Trasporto a cura",
+        max_length=80,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+    vettore = forms.CharField(
+        label="Vettore",
+        max_length=120,
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+    colli = forms.IntegerField(
+        label="Colli",
+        min_value=1,
+        required=False,
+        widget=forms.NumberInput(attrs={"class": "form-control", "min": "1", "style": "max-width: 8rem;"}),
+    )
+    peso_lordo_kg = forms.DecimalField(
+        label="Peso lordo (kg)",
+        max_digits=10,
+        decimal_places=2,
+        required=False,
+        widget=forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "style": "max-width: 10rem;"}),
+    )
+    data_inizio_trasporto = forms.DateField(
+        label="Data inizio trasporto",
+        required=False,
+        widget=forms.DateInput(
+            attrs={"class": "form-control", "type": "date"},
+            format="%Y-%m-%d",
+        ),
+        input_formats=["%Y-%m-%d"],
+    )
+    note = forms.CharField(
+        label="Note",
+        required=False,
+        widget=forms.Textarea(attrs={"class": "form-control", "rows": 2}),
+    )
+    refresh_destinatario = forms.BooleanField(
+        label="Aggiorna destinatario dall'anagrafica",
+        required=False,
+        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
+    )
+
+    def __init__(self, *args, ddt=None, **kwargs):
+        kwargs.pop("pratiche_queryset", None)
+        super().__init__(*args, **kwargs)
+        self.ddt = ddt
+        if ddt and not self.is_bound:
+            self.fields["data_documento"].initial = ddt.data_documento
+            self.fields["causale"].initial = ddt.causale
+            self.fields["aspetto_beni"].initial = ddt.aspetto_beni
+            self.fields["trasporto_a_cura"].initial = ddt.trasporto_a_cura
+            self.fields["vettore"].initial = ddt.vettore
+            self.fields["colli"].initial = ddt.colli
+            self.fields["peso_lordo_kg"].initial = ddt.peso_lordo_kg
+            self.fields["data_inizio_trasporto"].initial = ddt.data_inizio_trasporto
+            self.fields["note"].initial = ddt.note

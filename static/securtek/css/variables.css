@@ -9,7 +9,9 @@
     --st-sidebar-width: 228px;
     --st-navbar-height: 52px;
     --st-page-pad-x: 0.85rem;
-    --st-page-pad-y: 0.25rem;
+    --st-page-pad-y: 0.15rem;
+    /* Tabler: riduce lo spazio sotto la navbar in tutte le pagine */
+    --tblr-page-padding-y: 0.2rem;
     --st-bg: #f4f6fa;
     --st-surface: #ffffff;
     --st-border: #e6e8eb;

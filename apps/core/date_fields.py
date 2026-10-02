@@ -126,7 +126,7 @@ def validate_pratica_date(value, *, instance=None, field_name=None):
 
 
 def validate_not_before_today(value, *, instance=None, field_name=None, message=None):
-    """Rifiuta date precedenti a oggi."""
+    """Rifiuta date precedenti a oggi (usata solo in creazione Nuova riparazione)."""
     check = normalize_date_value(value)
     if check is None:
         return

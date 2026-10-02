@@ -47,11 +47,17 @@
 
         if (cognome) {
             cognome.addEventListener("blur", function () {
+                if (window.labrepairSuppressFieldBlurUi) {
+                    return;
+                }
                 applyToInput(cognome, formatCognome);
             });
         }
         if (nome) {
             nome.addEventListener("blur", function () {
+                if (window.labrepairSuppressFieldBlurUi) {
+                    return;
+                }
                 applyToInput(nome, formatNome);
             });
         }

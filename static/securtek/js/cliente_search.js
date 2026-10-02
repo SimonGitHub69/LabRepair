@@ -12,10 +12,27 @@ function initClienteSearch(root) {
     const reopenButton = root.querySelector("[data-cliente-search-reopen]");
     const canCollapse = root.dataset.clienteSearchCollapse === "1";
     const searchUrl = root.dataset.searchUrl;
+    const searchScope = (root.dataset.searchScope || "").trim();
+    const searchNegozioFieldId = (root.dataset.searchNegozioField || "").trim();
     const referenteUrlTemplate = root.dataset.referenteUrlTemplate || "";
 
     if (!hiddenField || !searchInput || !resultsBox || !searchUrl) {
         return;
+    }
+
+    function buildSearchParams(extra) {
+        const params = Object.assign({}, extra || {});
+        if (searchScope) {
+            params.scope = searchScope;
+        }
+        if (searchNegozioFieldId) {
+            const negozioField = document.getElementById(searchNegozioFieldId);
+            const negozioValue = negozioField ? String(negozioField.value || "").trim() : "";
+            if (negozioValue && negozioValue.toLowerCase() !== "all") {
+                params.negozio = negozioValue;
+            }
+        }
+        return params;
     }
 
     function getReferenteFields() {
@@ -225,13 +242,28 @@ function initClienteSearch(root) {
             return;
         }
         searchPanel.hidden = true;
-        summaryBox.hidden = false;
+        if (isClienteLocked()) {
+            // Con testata bloccata non mostrare «Cambia cliente».
+            summaryBox.hidden = true;
+            if (reopenButton) {
+                reopenButton.hidden = true;
+            }
+            if (clearButton) {
+                clearButton.hidden = true;
+            }
+        } else {
+            summaryBox.hidden = false;
+        }
         closeResults();
         root.classList.add("is-cliente-selected");
     }
 
+    function isClienteLocked() {
+        return root.dataset.clienteLocked === "1";
+    }
+
     function expandSearch(options) {
-        if (!canCollapse || !searchPanel || !summaryBox) {
+        if (isClienteLocked() || !canCollapse || !searchPanel || !summaryBox) {
             return;
         }
         options = options || {};
@@ -319,6 +351,7 @@ function initClienteSearch(root) {
         resultsBox.hidden = true;
         resultsBox.innerHTML = "";
         setResultsOpen(false);
+        clearResultsPosition();
     }
 
     function renderMessage(message) {
@@ -326,6 +359,7 @@ function initClienteSearch(root) {
         resultsBox.innerHTML = `<div class="st-cliente-search-empty">${message}</div>`;
         resultsBox.hidden = false;
         setResultsOpen(true);
+        positionFilterResults();
     }
 
     function escapeHtml(value) {
@@ -376,17 +410,66 @@ function initClienteSearch(root) {
         resultsBox.hidden = false;
         resultsBox.setAttribute("role", "listbox");
         setResultsOpen(true);
+        positionFilterResults();
         setActiveIndex(0);
     }
 
     function getFilterForm() {
-        return root.closest(".st-pratica-filter-card form");
+        // Il form è dentro .st-pratica-filter-card; non esiste un elemento
+        // che sia contemporaneamente card e form (closest(".card form") fallisce).
+        if (!root.closest(".st-pratica-filter-card")) {
+            return null;
+        }
+        return root.closest("form");
     }
 
     function submitFilterForm() {
         const filterForm = getFilterForm();
         if (filterForm) {
             filterForm.requestSubmit();
+        }
+    }
+
+    function clearResultsPosition() {
+        resultsBox.style.position = "";
+        resultsBox.style.left = "";
+        resultsBox.style.top = "";
+        resultsBox.style.width = "";
+        resultsBox.style.right = "";
+        resultsBox.style.zIndex = "";
+    }
+
+    function positionFilterResults() {
+        if (!getFilterForm()) {
+            clearResultsPosition();
+            return;
+        }
+        const anchor = searchInput.getBoundingClientRect();
+        const width = Math.max(anchor.width, 280);
+        let left = anchor.left;
+        if (left + width > window.innerWidth - 8) {
+            left = Math.max(8, window.innerWidth - width - 8);
+        }
+        resultsBox.style.position = "fixed";
+        resultsBox.style.left = left + "px";
+        resultsBox.style.top = anchor.bottom + 4 + "px";
+        resultsBox.style.width = width + "px";
+        resultsBox.style.right = "auto";
+        resultsBox.style.zIndex = "2400";
+    }
+
+    function syncFilterSubmitFromText() {
+        const filterForm = getFilterForm();
+        if (!filterForm || hiddenField.value) {
+            return;
+        }
+        const text = searchInput.value.trim();
+        if (!text) {
+            return;
+        }
+        const qField = filterForm.querySelector('input[name="q"]');
+        if (qField && !String(qField.value || "").trim()) {
+            qField.value = text;
         }
     }
 
@@ -407,6 +490,9 @@ function initClienteSearch(root) {
     }
 
     function selectCliente(id, label) {
+        if (isClienteLocked()) {
+            return;
+        }
         hiddenField.value = id;
         searchInput.value = label;
         searchInput.dataset.selectedLabel = label;
@@ -422,6 +508,9 @@ function initClienteSearch(root) {
     root.__labrepairSelectCliente = selectCliente;
 
     function clearCliente(options) {
+        if (isClienteLocked()) {
+            return;
+        }
         options = options || {};
         hiddenField.value = "";
         searchInput.value = "";
@@ -481,6 +570,9 @@ function initClienteSearch(root) {
     }
 
     function handleSearchInput() {
+        if (isClienteLocked()) {
+            return;
+        }
         const query = searchInput.value.trim();
 
         if (hiddenField.value && query !== (searchInput.dataset.selectedLabel || "")) {
@@ -498,7 +590,7 @@ function initClienteSearch(root) {
 
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(function () {
-            fetchResults({q: query});
+            fetchResults(buildSearchParams({q: query}));
         }, 250);
     }
 
@@ -608,15 +700,78 @@ function initClienteSearch(root) {
     }
 
     document.addEventListener("click", function (event) {
-        if (!root.contains(event.target)) {
+        if (!root.contains(event.target) && !resultsBox.contains(event.target)) {
             closeResults();
         }
     });
+
+    window.addEventListener(
+        "scroll",
+        function () {
+            if (!resultsBox.hidden) {
+                positionFilterResults();
+            }
+        },
+        true
+    );
+    window.addEventListener("resize", function () {
+        if (!resultsBox.hidden) {
+            positionFilterResults();
+        }
+    });
+
+    const filterFormForSubmit = getFilterForm();
+    if (filterFormForSubmit) {
+        filterFormForSubmit.addEventListener("submit", function () {
+            syncFilterSubmitFromText();
+        });
+    }
 
     toggleClearButton();
     if (canCollapse && hiddenField.value) {
         collapseSearch();
     }
+    if (isClienteLocked()) {
+        root.classList.add("is-cliente-locked");
+        const col = root.closest("[data-cliente-search-col]");
+        if (col) {
+            col.hidden = true;
+        }
+        if (searchPanel) {
+            searchPanel.hidden = true;
+        }
+        if (summaryBox) {
+            summaryBox.hidden = true;
+        }
+        if (reopenButton) {
+            reopenButton.hidden = true;
+        }
+        if (clearButton) {
+            clearButton.hidden = true;
+        }
+        searchInput.readOnly = true;
+        root.querySelectorAll("[data-cliente-locked-name], .mb-2").forEach(function (el) {
+            if (el.querySelector && el.querySelector('input[readonly], input[aria-disabled="true"]')) {
+                const label = el.querySelector("label");
+                if (label && (label.textContent || "").trim() === "Cliente") {
+                    el.remove();
+                }
+            }
+        });
+    }
+
+    // Rimuove banner «Testata bloccata» residui da cache/vecchie versioni.
+    document.querySelectorAll("[data-pratica-testata] [data-testata-locked-hint]").forEach(function (el) {
+        if (el.tagName === "I" && el.closest(".st-form-section-icon")) {
+            return;
+        }
+        el.remove();
+    });
+    document.querySelectorAll("[data-pratica-testata] .alert").forEach(function (el) {
+        if ((el.textContent || "").indexOf("Testata bloccata") >= 0) {
+            el.remove();
+        }
+    });
 
     const initialScript = document.getElementById("cliente-anagrafica-initial");
     if (initialScript) {
@@ -639,8 +794,143 @@ document.addEventListener("DOMContentLoaded", function () {
 
 window.labrepairSelectCliente = function (id, label) {
     const root = document.querySelector("#praticaForm [data-cliente-search-root], [data-cliente-search-root]");
-    if (!root || typeof root.__labrepairSelectCliente !== "function") {
+    if (!root || root.dataset.clienteLocked === "1" || typeof root.__labrepairSelectCliente !== "function") {
         return;
     }
     root.__labrepairSelectCliente(String(id), String(label || ""));
 };
+
+window.labrepairLockTestata = function (payload) {
+    payload = payload || {};
+    const fieldIds = [
+        "id_operatore",
+        "id_referente_cognome",
+        "id_referente_nome",
+        "id_referente_telefono",
+        "id_referente_cellulare",
+        "id_referente_email",
+        "id_data_apertura",
+    ];
+    const valueById = {
+        id_referente_cognome: payload.referente_cognome,
+        id_referente_nome: payload.referente_nome,
+        id_referente_telefono: payload.referente_telefono,
+        id_referente_cellulare: payload.referente_cellulare,
+        id_referente_email: payload.referente_email,
+        id_operatore: payload.operatore_id,
+        id_data_apertura: payload.data_apertura,
+    };
+
+    fieldIds.forEach(function (id) {
+        const field = document.getElementById(id);
+        if (!field) {
+            return;
+        }
+        if (valueById[id] != null && valueById[id] !== "") {
+            field.value = valueById[id];
+        }
+        field.readOnly = true;
+        field.disabled = true;
+        field.setAttribute("aria-disabled", "true");
+
+        const dateWrap = field.closest(".st-date-field");
+        if (dateWrap) {
+            dateWrap.classList.add("is-locked");
+            const textField = dateWrap.querySelector(".st-date-text");
+            if (textField) {
+                textField.readOnly = true;
+                textField.disabled = true;
+                textField.setAttribute("aria-disabled", "true");
+            }
+            const calBtn = dateWrap.querySelector(".st-date-calendar-btn");
+            if (calBtn) {
+                calBtn.hidden = true;
+            }
+        }
+    });
+
+    const testata = document.querySelector("[data-pratica-testata]");
+    if (testata) {
+        testata.dataset.testataLocked = "1";
+        testata.classList.add("is-testata-locked");
+        // Rimuove eventuali banner testo residui da versioni precedenti.
+        testata.querySelectorAll("[data-testata-locked-hint]").forEach(function (el) {
+            if (el.tagName !== "I" || !el.closest(".st-form-section-icon")) {
+                el.remove();
+            }
+        });
+        const iconWrap = testata.querySelector(".st-form-section-icon");
+        if (iconWrap) {
+            iconWrap.classList.add("is-locked");
+            let hint = iconWrap.querySelector("[data-testata-locked-hint]");
+            if (!hint) {
+                iconWrap.innerHTML = "";
+                hint = document.createElement("i");
+                hint.className = "ti ti-lock";
+                hint.setAttribute("data-testata-locked-hint", "1");
+                hint.setAttribute("title", "Testata bloccata: busta stampata oppure riparazione evasa");
+                hint.setAttribute("aria-label", "Testata bloccata");
+                iconWrap.appendChild(hint);
+            }
+        }
+    }
+
+    document.querySelectorAll("[data-cliente-search-root]").forEach(function (root) {
+        root.dataset.clienteLocked = "1";
+        root.classList.add("is-cliente-locked");
+        root.querySelectorAll("[data-cliente-locked-name]").forEach(function (el) {
+            el.remove();
+        });
+        const col = root.closest("[data-cliente-search-col]");
+        if (col) {
+            col.hidden = true;
+        }
+        const hidden = root.querySelector('input[type="hidden"][name="cliente"]');
+        if (hidden && payload.cliente_id != null) {
+            hidden.value = payload.cliente_id ? String(payload.cliente_id) : "";
+        }
+        const reopen = root.querySelector("[data-cliente-search-reopen]");
+        if (reopen) {
+            reopen.hidden = true;
+        }
+        const summary = root.querySelector("[data-cliente-search-summary]");
+        if (summary) {
+            summary.hidden = true;
+        }
+        const clearButton = root.querySelector("[data-cliente-search-clear]");
+        if (clearButton) {
+            clearButton.hidden = true;
+        }
+        const nuovo = root.querySelector(".js-nuovo-cliente-link");
+        if (nuovo) {
+            nuovo.hidden = true;
+        }
+        const panel = root.querySelector("[data-cliente-search-panel]");
+        if (panel) {
+            panel.hidden = true;
+        }
+        const searchInput = root.querySelector("[data-cliente-search-input]");
+        if (searchInput) {
+            searchInput.readOnly = true;
+        }
+    });
+};
+
+window.labrepairLockCliente = window.labrepairLockTestata;
+
+document.addEventListener("DOMContentLoaded", function () {
+    const testata = document.querySelector("[data-pratica-testata]");
+    if (!testata || testata.dataset.testataLocked === "1") {
+        return;
+    }
+    const evasaChecked = document.querySelector(
+        'input[type="radio"][name="stato"][value="evasa"]:checked'
+    );
+    const statoSelect = document.getElementById("id_stato");
+    const evasaSelected =
+        !!evasaChecked ||
+        (statoSelect && statoSelect.tagName === "SELECT" && statoSelect.value === "evasa");
+    if (evasaSelected && typeof window.labrepairLockTestata === "function") {
+        window.labrepairLockTestata({});
+    }
+});

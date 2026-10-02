@@ -257,7 +257,7 @@ def sync_pratica_to_gs_articoli(pratica, user):
         )
 
     try:
-        with open_mssql_connection(config) as connection:
+        with open_mssql_connection(config, timeout=2) as connection:
             cursor = connection.cursor()
             iva_id, iva_aliquota = resolve_iva_cassa(cursor, config)
             created = not exists_by_codart(cursor, codart)

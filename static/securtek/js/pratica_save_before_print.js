@@ -1,4 +1,10 @@
 (function () {
+    function cancelledError(message) {
+        var err = new Error(message || "Operazione annullata.");
+        err.labrepairCancelled = true;
+        return err;
+    }
+
     /**
      * Salva #praticaForm via AJAX se presente (pagina modifica).
      * Usa la stessa validazione del pulsante Salva.
@@ -17,9 +23,55 @@
             }
 
             if (!options.skipClientValidation) {
+                if (
+                    typeof window.labrepairNeedsSenzaTelefonoForce === "function" &&
+                    window.labrepairNeedsSenzaTelefonoForce()
+                ) {
+                    var promptTelefono =
+                        typeof window.labrepairPromptSenzaTelefonoForce === "function"
+                            ? window.labrepairPromptSenzaTelefonoForce()
+                            : Promise.resolve(false);
+                    promptTelefono.then(function (forza) {
+                        if (!forza) {
+                            reject(cancelledError());
+                            return;
+                        }
+                        window
+                            .labrepairSavePraticaForm(
+                                Object.assign({}, options, {
+                                    skipClientValidation: false,
+                                    _telefonoForced: true,
+                                })
+                            )
+                            .then(resolve, reject);
+                    });
+                    return;
+                }
                 if (typeof window.labrepairValidatePraticaForm === "function") {
                     var validation = window.labrepairValidatePraticaForm();
                     if (!validation.ok) {
+                        if (
+                            validation.reason === "telefono" &&
+                            typeof window.labrepairPromptSenzaTelefonoForce ===
+                                "function"
+                        ) {
+                            window
+                                .labrepairPromptSenzaTelefonoForce()
+                                .then(function (forza) {
+                                    if (!forza) {
+                                        reject(cancelledError());
+                                        return;
+                                    }
+                                    window
+                                        .labrepairSavePraticaForm(
+                                            Object.assign({}, options, {
+                                                skipClientValidation: false,
+                                            })
+                                        )
+                                        .then(resolve, reject);
+                                });
+                            return;
+                        }
                         reject(
                             new Error(
                                 validation.message ||
@@ -86,6 +138,16 @@
                             )
                         );
                         return;
+                    }
+
+                    if (
+                        payload.cliente_id &&
+                        typeof window.labrepairSelectCliente === "function"
+                    ) {
+                        window.labrepairSelectCliente(
+                            payload.cliente_id,
+                            payload.cliente_label || ""
+                        );
                     }
 
                     resolve(payload);

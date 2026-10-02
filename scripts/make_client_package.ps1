@@ -48,6 +48,7 @@ $scriptNames = @(
     "uninstall_client_windows.ps1",
     "install_cie_agent_client.ps1",
     "install_printer_agent_client.ps1",
+    "check_client_update.ps1",
     "LabRepairApp.vbs",
     "LabRepairApp.bat",
     "LabRepairApp-browser.bat",
@@ -63,6 +64,10 @@ foreach ($name in $scriptNames) {
     if (Test-Path $src) {
         Copy-Item $src (Join-Path $stagingScripts $name) -Force
     }
+}
+if (Test-Path $versionFile) {
+    Copy-Item $versionFile (Join-Path $Staging "VERSION") -Force
+    Copy-Item $versionFile (Join-Path $stagingScripts "VERSION") -Force
 }
 
 $cieDest = Join-Path $Staging "tools\cie_reader\publish"
@@ -171,10 +176,19 @@ Server predefinito: $Origin
 
 INSTALLAZIONE (un doppio clic)
 ------------------------------
-1. Copia questa cartella sul PC cassa/banco (NON sul server).
-2. Controlla origin.txt (URL del server LabRepair) e se serve modificalo.
+1. Estrai lo ZIP in una cartella (Esplora risorse -> Estrai tutto).
+   Devi vedere INSTALLA.bat, origin.txt, LEGGIMI.txt, cartelle scripts\ e tools\.
+   Se la cartella resta VUOTA: non usare 'Apri con' sullo zip; estrailo, oppure usa
+   il file .exe di setup.
+2. Apri origin.txt e imposta l'URL del server LabRepair (una sola riga).
 3. Doppio clic su INSTALLA.bat
 4. Usa il collegamento Desktop "LabRepair".
+
+IMPORTANTE: l'installazione NON resta nella cartella estratta.
+I file vanno in:
+  %LOCALAPPDATA%\LabRepair
+  (es. C:\Users\<utente>\AppData\Local\LabRepair)
+Li trovi origin.txt, VERSION e i launcher dopo l'installazione.
 
 Installazione silenziosa:
   INSTALLA.bat http://192.168.200.30:8000
@@ -218,7 +232,25 @@ Get-ChildItem -Path $cieDest -Filter "*.pdb" -ErrorAction SilentlyContinue | Rem
 if (Test-Path $ZipPath) {
     Remove-Item $ZipPath -Force
 }
-Compress-Archive -Path (Join-Path $Staging "*") -DestinationPath $ZipPath -Force
+
+# Compress-Archive usa path con "\" che Explorer a volte non estrae (cartella vuota).
+# Creiamo lo zip con System.IO.Compression e slash "/".
+Add-Type -AssemblyName System.IO.Compression
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$zip = [System.IO.Compression.ZipFile]::Open($ZipPath, [System.IO.Compression.ZipArchiveMode]::Create)
+try {
+    Get-ChildItem -Path $Staging -Recurse -Force | Where-Object { -not $_.PSIsContainer } | ForEach-Object {
+        $rel = $_.FullName.Substring($Staging.Length).TrimStart("\").Replace("\", "/")
+        [void][System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile(
+            $zip,
+            $_.FullName,
+            $rel,
+            [System.IO.Compression.CompressionLevel]::Optimal
+        )
+    }
+} finally {
+    $zip.Dispose()
+}
 
 $sfxPath = [System.IO.Path]::ChangeExtension($ZipPath, ".exe")
 $madeSfx = $false

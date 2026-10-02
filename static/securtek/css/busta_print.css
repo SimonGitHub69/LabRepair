@@ -106,8 +106,43 @@ body {
 .busta-header {
     align-items: flex-start;
     display: grid;
-    grid-template-columns: 1fr 48mm;
+    grid-template-columns: 1fr auto 48mm;
     min-height: 24mm;
+}
+
+.busta-header-right {
+    align-items: flex-end;
+    display: flex;
+    flex-direction: column;
+    gap: 3mm;
+    grid-column: 3;
+    padding-right: 14mm;
+    text-align: right;
+    /* zona codice/barcode: +1 cm a destra rispetto a -15mm */
+    transform: translateX(-5mm);
+}
+
+.busta-code-stack {
+    align-items: stretch;
+    display: inline-flex;
+    flex-direction: column;
+    gap: 1.5mm;
+    transform: translateX(10mm);
+}
+
+.busta-barcode {
+    display: block;
+    line-height: 0;
+    margin-top: 0;
+    width: 100%;
+}
+
+.busta-barcode img {
+    display: block;
+    height: 10mm;
+    max-width: none;
+    object-fit: fill;
+    width: 100%;
 }
 
 .busta-header-left {
@@ -148,35 +183,25 @@ body {
     margin-left: 1.5mm;
 }
 
-.busta-header-right {
-    align-items: flex-end;
-    display: flex;
-    flex-direction: column;
-    gap: 3mm;
-    padding-right: 14mm;
-    text-align: right;
-    /* zona codice/barcode: +1 cm a destra rispetto a -15mm */
-    transform: translateX(-5mm);
-}
-
-.busta-barcode {
+/* Fallback se manca l'immagine PNG (font Libre Barcode 39) */
+.busta-barcode--font {
     display: inline-block;
     font-family: "Libre Barcode 39", cursive;
-    font-size: 41.58pt; /* -20% rispetto a 51.98pt */
+    font-size: 41.58pt;
     line-height: 0.85;
-    margin-top: 0;
-    transform: translateX(10mm) scaleX(0.45125) scaleY(0.832); /* allineato al codice */
+    transform: scaleX(0.45125) scaleY(0.832);
     transform-origin: top right;
     white-space: nowrap;
+    width: auto;
 }
 
 .busta-code {
+    display: block;
     font-family: Arial, "Segoe UI", Helvetica, sans-serif;
     font-size: 19.2pt; /* -20% rispetto a 24pt */
     font-weight: 700;
     letter-spacing: 0.02em;
     line-height: 1;
-    transform: translate(10mm, 1mm);
     white-space: nowrap;
 }
 
@@ -295,6 +320,25 @@ body {
     padding-right: 14mm;
     white-space: pre-wrap;
     word-break: break-word;
+}
+
+.busta-urgente {
+    align-self: center;
+    border: 2.5pt solid #b00000;
+    color: #b00000;
+    display: inline-block;
+    font-size: 15pt;
+    font-weight: 700;
+    grid-column: 2;
+    justify-self: center;
+    letter-spacing: 0.08em;
+    line-height: 1;
+    margin: 0;
+    padding: 1.6mm 3.2mm;
+    text-transform: uppercase;
+    /* centrato tra date e barcode, leggera rotazione stile timbro */
+    transform: translate(1.5mm, -2mm) rotate(-12deg);
+    transform-origin: center center;
 }
 
 @media print {

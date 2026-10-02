@@ -19,6 +19,12 @@ from urllib.parse import quote, unquote, urlparse
 from urllib.parse import urlencode
 
 from apps.core.list_pagination import ConfigurablePaginationMixin
+from apps.core.list_sorting import SortableListMixin
+from apps.core.accents import (
+    annotate_accent_folds,
+    build_accent_search_q,
+    fold_accents,
+)
 from apps.core.negozi import (
     NEGOZI,
     NEGOZIO_FILTER_ALL,
@@ -48,7 +54,12 @@ from apps.pratiche.cliente_referente import (
     get_referente_from_cliente_id,
 )
 from apps.pratiche.foto import delete_pratica_foto_ids, save_pratica_foto_uploads
-from apps.pratiche.gs_articoli import sync_pratica_to_gs_articoli
+from apps.pratiche.gs_sync_async import (
+    schedule_gs_articolo_sync,
+    schedule_pagamento_da_cassa,
+    schedule_pagamenti_cassa_pending,
+)
+from apps.pratiche.gs_vendite import sync_pagamento_da_cassa
 from apps.pratiche.codice import get_next_pratica_codice, reserve_pratica_codice
 
 
@@ -573,6 +584,10 @@ def form_first_error_message(form):
     return "Controlla i campi del form."
 
 
+def pratica_save_blocked_message(form):
+    return f"Impossibile salvare la scheda: {form_first_error_message(form)}"
+
+
 def documento_scaduto_json_response(request, cliente, return_url=""):
     update_url = reverse("anagrafiche:anagrafica_update", kwargs={"pk": cliente.pk})
     params = {"prezioso": "1", "documento_scaduto": "1"}
@@ -589,30 +604,76 @@ def documento_scaduto_json_response(request, cliente, return_url=""):
 
 
 def notify_gs_articolo_sync(request, pratica):
-    """Sincronizza la riparazione su TB_PREZZICASSE; in caso di errore mostra un avviso."""
+    """Avvia sync TB_PREZZICASSE in background (non blocca Salva)."""
+    user = getattr(request, "user", None)
+    schedule_gs_articolo_sync(
+        getattr(pratica, "pk", None),
+        getattr(user, "pk", None),
+    )
+    return None
+
+
+def notify_pagamento_da_cassa(request, pratica, *, show_message=True):
+    """Legge scontrino da Database Cassa e aggiorna Prezzo pagato / Evasa."""
     import logging
 
     logger = logging.getLogger(__name__)
     try:
-        result = sync_pratica_to_gs_articoli(pratica, request.user)
+        result = sync_pagamento_da_cassa(pratica)
     except Exception as exc:
-        logger.exception("Sync TB_PREZZICASSE fallita per pratica %s", getattr(pratica, "pk", None))
-        messages.warning(request, f"Sincronizzazione casse non riuscita: {exc}")
+        logger.exception(
+            "Sync pagamento cassa fallita per pratica %s", getattr(pratica, "pk", None)
+        )
+        if show_message:
+            messages.warning(request, f"Lettura pagamento cassa non riuscita: {exc}")
         return None
 
     if not result.ok:
-        logger.warning("Sync TB_PREZZICASSE: %s", result.message)
-        messages.warning(request, result.message)
+        logger.warning("Sync pagamento cassa: %s", result.message)
+        if show_message:
+            messages.warning(request, result.message)
         return result
 
+    if result.updated:
+        # Ricarica i campi aggiornati (prezzo, scontrino, stato, data vendita).
+        try:
+            pratica.refresh_from_db(
+                fields=[
+                    "prezzo_pagato",
+                    "numero_scontrino",
+                    "data_vendita",
+                    "stato",
+                    "updated_at",
+                ]
+            )
+        except Exception:
+            pratica.refresh_from_db()
+        if show_message:
+            messages.info(request, result.message)
     return result
 
 
-class PraticaListView(LoginRequiredMixin, ConfigurablePaginationMixin, ListView):
+class PraticaListView(LoginRequiredMixin, ConfigurablePaginationMixin, SortableListMixin, ListView):
     model = Pratica
     template_name = "pratiche/pratica_list.html"
     context_object_name = "pratiche"
     paginate_by = 20
+    sort_fields = {
+        "codice": "codice",
+        "cliente": (
+            "cliente__cognome",
+            "cliente__nome",
+            "referente_cognome",
+            "referente_nome",
+        ),
+        "oggetto": "tipo_oggetto__denominazione",
+        "stato": "stato",
+        "data_apertura": "data_apertura",
+        "data_scadenza": "data_scadenza",
+        "prezzo": "prezzo_al",
+    }
+    default_sort = "data_apertura"
+    default_dir = "desc"
 
     ATTENZIONE_NON_RITIRATE = "non_ritirate"
     ATTENZIONE_RITARDO_LAVORAZIONE = "ritardo_lavorazione"
@@ -620,6 +681,39 @@ class PraticaListView(LoginRequiredMixin, ConfigurablePaginationMixin, ListView)
         ATTENZIONE_NON_RITIRATE: "Non ritirate",
         ATTENZIONE_RITARDO_LAVORAZIONE: "Ritardo lavorazione",
     }
+
+    def get_default_sort(self):
+        if self.get_attenzione():
+            return "data_scadenza"
+        return "data_apertura"
+
+    def get_default_dir(self):
+        if self.get_attenzione():
+            return "asc"
+        return "desc"
+
+    def get(self, request, *args, **kwargs):
+        try:
+            import time
+
+            now = int(time.time())
+            last = int(request.session.get("labrepair_cassa_sync_ts") or 0)
+            if now - last >= 60:
+                negozio_filter = self.get_negozio_filter()
+                request.session["labrepair_cassa_sync_ts"] = now
+                schedule_pagamenti_cassa_pending(
+                    negozio=None
+                    if negozio_filter == NEGOZIO_FILTER_ALL
+                    else negozio_filter,
+                    limit=200,
+                )
+        except Exception:
+            import logging
+
+            logging.getLogger(__name__).exception(
+                "Avvio sync pagamenti cassa in elenco riparazioni fallito"
+            )
+        return super().get(request, *args, **kwargs)
 
     def get_cliente_id(self):
         cliente_pk = self.kwargs.get("cliente_pk")
@@ -761,25 +855,29 @@ class PraticaListView(LoginRequiredMixin, ConfigurablePaginationMixin, ListView)
             stato = ""
 
         if q:
-            search_filter = (
-                Q(codice__icontains=q)
-                | Q(titolo__icontains=q)
-                | Q(tipo_oggetto__denominazione__icontains=q)
-                | Q(riparatore__denominazione__icontains=q)
-                | Q(operatore__nominativo__icontains=q)
-                | Q(cliente__ragione_sociale__icontains=q)
-                | Q(cliente__cognome__icontains=q)
-                | Q(cliente__nome__icontains=q)
-                | Q(referente_cognome__icontains=q)
-                | Q(referente_nome__icontains=q)
-            )
+            folded = fold_accents(q)
+            field_map = {
+                "_af_codice": "codice",
+                "_af_titolo": "titolo",
+                "_af_tipo_oggetto": "tipo_oggetto__denominazione",
+                "_af_riparatore": "riparatore__denominazione",
+                "_af_operatore": "operatore__nominativo",
+                "_af_cliente_rs": "cliente__ragione_sociale",
+                "_af_cliente_cognome": "cliente__cognome",
+                "_af_cliente_nome": "cliente__nome",
+                "_af_ref_cognome": "referente_cognome",
+                "_af_ref_nome": "referente_nome",
+            }
             if len(q) >= 3:
-                search_filter |= Q(categoria_collegamenti__categoria__denominazione__icontains=q)
-                search_filter |= Q(
-                    macro_categoria_collegamenti__macro_categoria__denominazione__icontains=q
+                field_map["_af_categoria"] = "categoria_collegamenti__categoria__denominazione"
+                field_map["_af_macro"] = (
+                    "macro_categoria_collegamenti__macro_categoria__denominazione"
                 )
                 needs_distinct = True
-            queryset = queryset.filter(search_filter)
+            queryset = annotate_accent_folds(queryset, field_map)
+            queryset = queryset.filter(
+                build_accent_search_q(folded, list(field_map.keys()))
+            )
 
         if stato:
             queryset = queryset.filter(stato=stato)
@@ -802,13 +900,9 @@ class PraticaListView(LoginRequiredMixin, ConfigurablePaginationMixin, ListView)
             except (TypeError, ValueError):
                 pass
 
-        if attenzione:
-            queryset = queryset.order_by("data_scadenza", "id")
-        else:
-            queryset = queryset.order_by("-data_apertura", "-id")
         if needs_distinct:
             queryset = queryset.distinct()
-        return queryset
+        return self.apply_list_ordering(queryset)
 
     def get_tipi_oggetto_filtro(self):
         return TipoOggetto.objects.filter(is_active=True).order_by("denominazione")
@@ -919,6 +1013,16 @@ class PraticaDetailView(LoginRequiredMixin, DetailView):
         )
     )
 
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        # Sync prima del render: altrimenti la maschera resta con i dati vecchi
+        # (il thread in background aggiornava il DB dopo che la pagina era già servita).
+        result = notify_pagamento_da_cassa(request, self.object, show_message=True)
+        if result is not None and getattr(result, "updated", False):
+            self.object.refresh_from_db()
+        context = self.get_context_data(object=self.object)
+        return self.render_to_response(context)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["eventi_agenda"] = self.object.eventi_agenda.filter(is_active=True).order_by(
@@ -992,11 +1096,13 @@ class PraticaBustaPrintView(LoginRequiredMixin, DetailView):
                     "sheet_html": sheet_html,
                     "css_url": request.build_absolute_uri(
                         static("securtek/css/busta_print.css")
-                    )
-                    + "?v=20260728-gap2",
+                    ) + "?v=20260918-barcode-nodash",
                     "stampante_nome": (stampante_flag.nome if stampante_flag else ""),
                     "stampante_buste": bool(stampante_flag),
                     "agent_url": "http://127.0.0.1:17346",
+                    "stampata_url": reverse(
+                        "pratiche:pratica_busta_stampata", args=[pratica.pk]
+                    ),
                 }
             )
 
@@ -1016,6 +1122,32 @@ class PraticaBustaPrintView(LoginRequiredMixin, DetailView):
         context["stampante_busta"] = stampante
         context.update(busta_gap_css_vars(stampante))
         return context
+
+
+class PraticaBustaStampataView(LoginRequiredMixin, View):
+    """Segna la busta come stampata: da quel momento la testata non è modificabile."""
+
+    def post(self, request, pk):
+        pratica = get_object_or_404(Pratica, pk=pk, is_active=True)
+        if not pratica.busta_stampata_il:
+            pratica.busta_stampata_il = timezone.now()
+            pratica.save(update_fields=["busta_stampata_il", "updated_at"])
+        return JsonResponse(
+            {
+                "ok": True,
+                "busta_stampata": True,
+                "cliente_id": pratica.cliente_id or "",
+                "operatore_id": pratica.operatore_id or "",
+                "data_apertura": (
+                    pratica.data_apertura.isoformat() if pratica.data_apertura else ""
+                ),
+                "referente_cognome": pratica.referente_cognome or "",
+                "referente_nome": pratica.referente_nome or "",
+                "referente_telefono": pratica.referente_telefono or "",
+                "referente_cellulare": pratica.referente_cellulare or "",
+                "referente_email": pratica.referente_email or "",
+            }
+        )
 
 
 class PraticaPrivacyPrintView(LoginRequiredMixin, View):
@@ -1136,18 +1268,25 @@ class ClienteSearchView(LoginRequiredMixin, View):
     def get(self, request):
         selected_id = (request.GET.get("selected") or "").strip()
         query = (request.GET.get("q") or "").strip()
+        scope = (request.GET.get("scope") or "").strip().lower()
+        negozio = normalize_negozio_code(request.GET.get("negozio"))
         results = []
         seen_ids = set()
 
-        if selected_id:
-            selected = (
-                Anagrafica.objects.filter(
-                    pk=selected_id,
-                    is_active=True,
-                    tipo=Anagrafica.Tipo.CLIENTE,
-                )
-                .first()
+        def base_clienti_queryset():
+            qs = Anagrafica.objects.filter(
+                is_active=True,
+                tipo=Anagrafica.Tipo.CLIENTE,
             )
+            if scope == "pratiche":
+                pratica_q = Q(pratiche__is_active=True)
+                if negozio:
+                    pratica_q &= Q(pratiche__negozio=negozio)
+                qs = qs.filter(pratica_q).distinct()
+            return qs
+
+        if selected_id:
+            selected = base_clienti_queryset().filter(pk=selected_id).first()
             if selected:
                 results.append(serialize_cliente_search_result(selected))
                 seen_ids.add(selected.pk)
@@ -1161,12 +1300,7 @@ class ClienteSearchView(LoginRequiredMixin, View):
 
             queryset = (
                 annotate_anagrafica_cognome_priority(
-                    annotate_anagrafica_name_search(
-                        Anagrafica.objects.filter(
-                            is_active=True,
-                            tipo=Anagrafica.Tipo.CLIENTE,
-                        )
-                    ),
+                    annotate_anagrafica_name_search(base_clienti_queryset()),
                     query,
                 )
                 .filter(build_anagrafica_name_search_q(query, include_contacts=True))
@@ -1208,17 +1342,21 @@ class PraticaCreateView(LoginRequiredMixin, CreateView):
     def form_invalid(self, form):
         cliente = getattr(form, "documento_scaduto_cliente", None)
         if cliente:
-            messages.warning(self.request, documento_scaduto_message(cliente))
+            messages.warning(
+                self.request,
+                documento_scaduto_message(cliente, bloccante=True),
+            )
         if wants_json_response(self.request):
             payload = {
                 "ok": False,
-                "message": form_first_error_message(form),
+                "message": pratica_save_blocked_message(form),
                 "errors": form.errors.get_json_data(),
             }
             if cliente:
                 payload["documento_scaduto"] = True
-                payload["message"] = documento_scaduto_message(cliente)
+                payload["message"] = documento_scaduto_message(cliente, bloccante=True)
             return JsonResponse(payload, status=400)
+        messages.error(self.request, pratica_save_blocked_message(form))
         return super().form_invalid(form)
 
     def form_valid(self, form):
@@ -1226,7 +1364,7 @@ class PraticaCreateView(LoginRequiredMixin, CreateView):
         if not negozio:
             messages.error(
                 self.request,
-                "Negozio non selezionato. Effettua nuovamente l'accesso.",
+                "Impossibile salvare la scheda: negozio non selezionato. Effettua nuovamente l'accesso.",
             )
             if wants_json_response(self.request):
                 return JsonResponse(
@@ -1254,6 +1392,10 @@ class PraticaCreateView(LoginRequiredMixin, CreateView):
                     "message": "Riparazione creata correttamente.",
                     "pratica_id": self.object.pk,
                     "saved_fotos": saved_count,
+                    "cliente_id": self.object.cliente_id or "",
+                    "cliente_label": (
+                        self.object.cliente.display_name if self.object.cliente_id else ""
+                    ),
                     "edit_url": reverse(
                         "pratiche:pratica_update",
                         kwargs={"pk": self.object.pk},
@@ -1312,6 +1454,14 @@ class PraticaUpdateView(LoginRequiredMixin, UpdateView):
             )
         )
 
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        # Sync prima del render così Prezzo pagato / N. scontrino / Evasa compaiono subito.
+        result = notify_pagamento_da_cassa(request, self.object, show_message=True)
+        if result is not None and getattr(result, "updated", False):
+            self.object.refresh_from_db()
+        return super().get(request, *args, **kwargs)
+
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs["layout_compatto"] = layout_compatto(self.request)
@@ -1328,13 +1478,14 @@ class PraticaUpdateView(LoginRequiredMixin, UpdateView):
         if wants_json_response(self.request):
             payload = {
                 "ok": False,
-                "message": form_first_error_message(form),
+                "message": pratica_save_blocked_message(form),
                 "errors": form.errors.get_json_data(),
             }
             if cliente:
                 payload["documento_scaduto"] = True
                 payload["message"] = documento_scaduto_message(cliente)
             return JsonResponse(payload, status=400)
+        messages.error(self.request, pratica_save_blocked_message(form))
         return super().form_invalid(form)
 
     def form_valid(self, form):
@@ -1350,6 +1501,10 @@ class PraticaUpdateView(LoginRequiredMixin, UpdateView):
                     "message": "Scheda salvata.",
                     "saved_fotos": saved_count,
                     "pratica_id": self.object.pk,
+                    "cliente_id": self.object.cliente_id or "",
+                    "cliente_label": (
+                        self.object.cliente.display_name if self.object.cliente_id else ""
+                    ),
                     "edit_url": reverse(
                         "pratiche:pratica_update",
                         kwargs={"pk": self.object.pk},
@@ -1383,6 +1538,7 @@ class PraticaUpdateView(LoginRequiredMixin, UpdateView):
         context["comunicazione_form"] = ComunicazionePraticaForm(
             formato_data=get_comunicazioni_formato_data()
         )
+        context["ddt_collegato"] = self.object.ddt_collegato
         return context
 
     def get_success_url(self):
@@ -1617,11 +1773,18 @@ class ComunicazionePraticaPreviewView(LoginRequiredMixin, DetailView):
         return context
 
 
-class CategoriaPraticaListView(LoginRequiredMixin, ConfigurablePaginationMixin, ListView):
+class CategoriaPraticaListView(LoginRequiredMixin, ConfigurablePaginationMixin, SortableListMixin, ListView):
     model = CategoriaPratica
     template_name = "pratiche/categoria_pratica_list.html"
     context_object_name = "categorie"
     paginate_by = 20
+    sort_fields = {
+        "denominazione": "denominazione",
+        "descrizione": "descrizione",
+        "pratiche": "pratiche_attive",
+    }
+    default_sort = "denominazione"
+    default_dir = "asc"
 
     def get_queryset(self):
         queryset = CategoriaPratica.objects.filter(is_active=True).annotate(
@@ -1639,7 +1802,7 @@ class CategoriaPraticaListView(LoginRequiredMixin, ConfigurablePaginationMixin, 
                 | Q(descrizione__icontains=q)
             )
 
-        return queryset.order_by("denominazione")
+        return self.apply_list_ordering(queryset)
 
 
 class CategoriaPraticaCreateView(LoginRequiredMixin, CreateView):
@@ -1682,11 +1845,18 @@ class CategoriaPraticaDeleteView(LoginRequiredMixin, View):
         return redirect("pratiche:categoria_pratica_list")
 
 
-class MacroCategoriaPraticaListView(LoginRequiredMixin, ConfigurablePaginationMixin, ListView):
+class MacroCategoriaPraticaListView(LoginRequiredMixin, ConfigurablePaginationMixin, SortableListMixin, ListView):
     model = MacroCategoriaPratica
     template_name = "pratiche/macro_categoria_pratica_list.html"
     context_object_name = "macro_categorie"
     paginate_by = 20
+    sort_fields = {
+        "denominazione": "denominazione",
+        "categorie": "categorie_count",
+        "pratiche": "pratiche_attive",
+    }
+    default_sort = "denominazione"
+    default_dir = "asc"
 
     def get_queryset(self):
         queryset = MacroCategoriaPratica.objects.filter(is_active=True).annotate(
@@ -1706,7 +1876,9 @@ class MacroCategoriaPraticaListView(LoginRequiredMixin, ConfigurablePaginationMi
                 | Q(categorie__denominazione__icontains=q)
             )
 
-        return queryset.prefetch_related("categorie").order_by("denominazione").distinct()
+        return self.apply_list_ordering(
+            queryset.prefetch_related("categorie")
+        ).distinct()
 
 
 class MacroCategoriaPraticaCreateView(LoginRequiredMixin, CreateView):
@@ -2265,11 +2437,19 @@ class FolderPreviewFileDeleteView(LoginRequiredMixin, View):
         return JsonResponse({"deleted": True, "message": f"File eliminato: {file_path.name}"})
 
 
-class StudioTecnicoListView(LoginRequiredMixin, ConfigurablePaginationMixin, ListView):
+class StudioTecnicoListView(LoginRequiredMixin, ConfigurablePaginationMixin, SortableListMixin, ListView):
     model = StudioTecnico
     template_name = "pratiche/studio_tecnico_list.html"
     context_object_name = "studi_tecnici"
     paginate_by = 20
+    sort_fields = {
+        "denominazione": "denominazione",
+        "email": "email",
+        "telefono": "telefono",
+        "pratiche": "pratiche_attive",
+    }
+    default_sort = "denominazione"
+    default_dir = "asc"
 
     def get_queryset(self):
         queryset = StudioTecnico.objects.filter(is_active=True).annotate(
@@ -2288,7 +2468,7 @@ class StudioTecnicoListView(LoginRequiredMixin, ConfigurablePaginationMixin, Lis
                 | Q(telefono__icontains=q)
             )
 
-        return queryset.order_by("denominazione")
+        return self.apply_list_ordering(queryset)
 
 
 class StudioTecnicoCreateView(LoginRequiredMixin, CreateView):
@@ -2331,11 +2511,17 @@ class StudioTecnicoDeleteView(LoginRequiredMixin, View):
         return redirect("pratiche:studio_tecnico_list")
 
 
-class OperatoreListView(LoginRequiredMixin, ConfigurablePaginationMixin, ListView):
+class OperatoreListView(LoginRequiredMixin, ConfigurablePaginationMixin, SortableListMixin, ListView):
     model = Operatore
     template_name = "pratiche/operatore_list.html"
     context_object_name = "operatori"
     paginate_by = 20
+    sort_fields = {
+        "nominativo": "nominativo",
+        "pratiche": "riparazioni_attive",
+    }
+    default_sort = "nominativo"
+    default_dir = "asc"
 
     def get_queryset(self):
         queryset = Operatore.objects.filter(is_active=True).annotate(
@@ -2350,8 +2536,7 @@ class OperatoreListView(LoginRequiredMixin, ConfigurablePaginationMixin, ListVie
         if q:
             queryset = queryset.filter(nominativo__icontains=q)
 
-        return queryset.order_by("nominativo")
-
+        return self.apply_list_ordering(queryset)
 
 class OperatoreCreateView(LoginRequiredMixin, CreateView):
     model = Operatore
@@ -2393,11 +2578,19 @@ class OperatoreDeleteView(LoginRequiredMixin, View):
         return redirect("pratiche:operatore_list")
 
 
-class TipoOggettoListView(LoginRequiredMixin, ConfigurablePaginationMixin, ListView):
+class TipoOggettoListView(LoginRequiredMixin, ConfigurablePaginationMixin, SortableListMixin, ListView):
     model = TipoOggetto
     template_name = "pratiche/tipo_oggetto_list.html"
     context_object_name = "tipi_oggetto"
     paginate_by = 20
+    sort_fields = {
+        "denominazione": "denominazione",
+        "unita_misura": "unita_misura",
+        "descrizione": "descrizione",
+        "pratiche": "pratiche_attive",
+    }
+    default_sort = "denominazione"
+    default_dir = "asc"
 
     def get_queryset(self):
         queryset = TipoOggetto.objects.filter(is_active=True).annotate(
@@ -2415,7 +2608,7 @@ class TipoOggettoListView(LoginRequiredMixin, ConfigurablePaginationMixin, ListV
                 | Q(descrizione__icontains=q)
             )
 
-        return queryset.order_by("denominazione")
+        return self.apply_list_ordering(queryset)
 
 
 class TipoOggettoCreateView(LoginRequiredMixin, CreateView):

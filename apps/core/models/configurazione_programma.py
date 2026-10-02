@@ -190,6 +190,45 @@ class ConfigurazioneProgramma(BaseModel):
             "Segnaposto: {codice}, {cliente}, {nome}, {cognome}, {cellulare}, {telefono}."
         ),
     )
+    ddt_sezionale = models.CharField(
+        "Sezionale DDT",
+        max_length=10,
+        blank=True,
+        default="R",
+        help_text="Suffisso numerazione DDT (es. R → 100/R).",
+    )
+    ddt_numero_iniziale = models.PositiveIntegerField(
+        "Numerazione DDT iniziale",
+        default=1,
+        help_text=(
+            "Primo numero DDT da assegnare. I successivi partono dal massimo "
+            "esistente + 1, e non scendono sotto questo valore."
+        ),
+    )
+    ddt_causale = models.CharField(
+        "Causale DDT predefinita",
+        max_length=80,
+        blank=True,
+        default="C/RIPARAZIONE",
+    )
+    ddt_aspetto_beni = models.CharField(
+        "Aspetto beni DDT predefinito",
+        max_length=80,
+        blank=True,
+        default="SACCHETTO",
+    )
+    ddt_trasporto_a_cura = models.CharField(
+        "Trasporto a cura DDT predefinito",
+        max_length=80,
+        blank=True,
+        default="Vettore",
+    )
+    ddt_vettore = models.CharField(
+        "Vettore DDT predefinito",
+        max_length=120,
+        blank=True,
+        default="GLS",
+    )
 
     class Meta:
         verbose_name = "Configurazione programma"

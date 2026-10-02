@@ -23,7 +23,7 @@
 
         <div class="st-nav-section">Gestione</div>
 
-        <a class="st-nav-link {% if request.path|slice:':10' == '/pratiche/' and '/pratiche/categorie/' not in request.path and '/pratiche/macro-categorie/' not in request.path and '/pratiche/studi-tecnici/' not in request.path and '/pratiche/operatori/' not in request.path and '/pratiche/tipi-oggetto/' not in request.path %}active{% endif %}" href="/pratiche/">
+        <a class="st-nav-link {% if request.path|slice:':10' == '/pratiche/' and '/pratiche/categorie/' not in request.path and '/pratiche/macro-categorie/' not in request.path and '/pratiche/studi-tecnici/' not in request.path and '/pratiche/operatori/' not in request.path and '/pratiche/tipi-oggetto/' not in request.path and '/pratiche/ddt/' not in request.path %}active{% endif %}" href="/pratiche/">
             <i class="ti ti-folder"></i>
             <span>Riparazioni</span>
         </a>
@@ -41,6 +41,11 @@
         <a class="st-nav-link {% if request.path|slice:':8' == '/agenda/' and request.path|slice:':22' != '/agenda/parametri-mail/' and request.path|slice:':27' != '/agenda/parametri-programma/' and request.path|slice:':23' != '/agenda/comandi-vocali/' and request.path|slice:':18' != '/agenda/parametri-pc' %}active{% endif %}" href="/agenda/">
             <i class="ti ti-calendar"></i>
             <span>Agenda</span>
+        </a>
+
+        <a class="st-nav-link {% if request.path|slice:':13' == '/pratiche/ddt' %}active{% endif %}" href="{% url 'pratiche:ddt_list' %}">
+            <i class="ti ti-truck-delivery"></i>
+            <span>DDT</span>
         </a>
 
         {% if perms.dashboard.access_documenti %}
@@ -78,6 +83,11 @@
         <a class="st-nav-link {% if request.path|slice:':23' == '/pratiche/tipi-oggetto/' %}active{% endif %}" href="/pratiche/tipi-oggetto/">
             <i class="ti ti-diamond"></i>
             <span>Tipi di oggetto</span>
+        </a>
+
+        <a class="st-nav-link {% if request.path|slice:':19' == '/parametri/negozi/' %}active{% endif %}" href="{% url 'dashboard:negozio_list' %}">
+            <i class="ti ti-building-store"></i>
+            <span>Negozi</span>
         </a>
 
         {% if perms.dashboard.access_parametri_pc %}

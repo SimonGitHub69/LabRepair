@@ -1,4 +1,5 @@
 {% extends "base/layout.html" %}
+{% load list_sorting %}
 
 {% block page_title %}
 Aziende
@@ -25,6 +26,7 @@ Aziende
 <div class="card mb-3">
     <div class="card-body">
         <form method="get">
+            {% list_sort_hidden %}
             <div class="row g-2 align-items-end">
                 <div class="col-md-5">
                     <label class="form-label">Ricerca</label>
@@ -51,10 +53,10 @@ Aziende
             <thead>
                 <tr>
                     <th>Logo</th>
-                    <th>Ragione sociale</th>
-                    <th>P.IVA</th>
-                    <th>Email</th>
-                    <th>Comune</th>
+                    {% sort_header "ragione_sociale" "Ragione sociale" %}
+                    {% sort_header "partita_iva" "P.IVA" %}
+                    {% sort_header "email" "Email" %}
+                    {% sort_header "comune" "Comune" %}
                     <th class="text-end">Azioni</th>
                 </tr>
             </thead>

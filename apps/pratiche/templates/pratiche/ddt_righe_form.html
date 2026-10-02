@@ -1,0 +1,188 @@
+{% extends "base/layout.html" %}
+
+{% block page_title %}Modifica righe DDT {{ ddt.numero_display }}{% endblock %}
+
+{% block content %}
+<div class="st-form-stack st-ddt-form">
+    <div class="st-form-page-header st-ddt-form-header d-print-none">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div class="min-w-0">
+                <h2 class="page-title mb-0">Modifica righe DDT {{ ddt.numero_display }}</h2>
+                <div class="text-secondary st-ddt-form-subtitle">
+                    {{ ddt.data_documento|date:"d/m/Y" }} · {{ ddt.destinatario_ragione_sociale }}
+                </div>
+            </div>
+            <a href="{% url 'pratiche:ddt_print' ddt.pk %}?format=pdf" class="btn btn-outline-primary js-ddt-print">
+                <i class="ti ti-printer"></i>
+                Stampa DDT
+            </a>
+        </div>
+    </div>
+
+    <div class="card mb-3 st-form-section">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2">
+                <div class="st-form-section-icon">
+                    <i class="ti ti-package"></i>
+                </div>
+                <h3 class="card-title mb-0">Buste nel DDT</h3>
+            </div>
+            <span class="text-secondary small">{{ righe|length }} riga{{ righe|length|pluralize }}</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-vcenter card-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Codice</th>
+                        <th>Cliente</th>
+                        <th>Centro</th>
+                        <th>Oggetto</th>
+                        <th>Stato</th>
+                        <th>Articolo</th>
+                        <th>Descrizione DDT</th>
+                        <th class="w-1"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for riga in righe %}
+                    <tr>
+                        <td>{{ riga.ordine }}</td>
+                        <td><strong>{% if riga.pratica %}{{ riga.pratica.codice }}{% else %}{{ riga.articolo }}{% endif %}</strong></td>
+                        <td>{% if riga.pratica %}{{ riga.pratica.cliente_label }}{% else %}—{% endif %}</td>
+                        <td class="text-secondary">{% if riga.pratica and riga.pratica.centro_assistenza %}{{ riga.pratica.centro_assistenza.ragione_sociale }}{% else %}—{% endif %}</td>
+                        <td>{% if riga.pratica %}{{ riga.pratica.titolo }}{% else %}—{% endif %}</td>
+                        <td>{% if riga.pratica %}{{ riga.pratica.get_stato_display }}{% else %}—{% endif %}</td>
+                        <td class="text-secondary">{{ riga.articolo }}</td>
+                        <td class="text-secondary">{{ riga.descrizione }}</td>
+                        <td>
+                            <button type="button"
+                                    class="btn btn-icon btn-outline-danger js-delete-ddt-riga st-ddt-riga-delete"
+                                    title="Elimina riga"
+                                    {% if righe|length <= 1 %}disabled{% endif %}
+                                    data-delete-action="{% url 'pratiche:ddt_riga_delete' ddt.pk riga.pk %}"
+                                    data-delete-name="{{ riga.articolo|default:riga.descrizione }}">
+                                <i class="ti ti-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-secondary text-center py-4">
+                            Nessuna busta associata a questo DDT.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer">
+            <form method="post" action="{% url 'pratiche:ddt_riga_add' ddt.pk %}" class="row g-2 align-items-end">
+                {% csrf_token %}
+                <div class="col-md-5">
+                    <label class="form-label" for="id_ddt_riga_pratica">Aggiungi da elenco</label>
+                    <select name="pratica" id="id_ddt_riga_pratica" class="form-select">
+                        <option value="">Seleziona busta aperta…</option>
+                        {% for busta in buste_disponibili %}
+                        <option value="{{ busta.pk }}">
+                            {{ busta.codice }} — {{ busta.cliente_label }}{% if busta.centro_assistenza %} ({{ busta.centro_assistenza.ragione_sociale }}){% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="id_ddt_riga_codice">oppure numero busta</label>
+                    <input type="text" name="codice" id="id_ddt_riga_codice" class="form-control"
+                           placeholder="Es. P26-0123 o P260123" autocomplete="off">
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-outline-primary">
+                        <i class="ti ti-plus"></i>
+                        Aggiungi
+                    </button>
+                </div>
+            </form>
+            <div class="form-text mt-2">
+                Puoi aggiungere anche buste non collegate al centro assistenza del DDT.
+            </div>
+        </div>
+    </div>
+
+    <div class="st-form-actions">
+        <a href="{% url 'pratiche:ddt_detail' ddt.pk %}" class="btn btn-outline-secondary">
+            Annulla
+        </a>
+        <a href="{% url 'pratiche:ddt_print' ddt.pk %}?format=pdf" class="btn btn-outline-primary js-ddt-print">
+            <i class="ti ti-printer"></i>
+            Stampa DDT
+        </a>
+        <a href="{% url 'pratiche:ddt_detail' ddt.pk %}" class="btn btn-primary">
+            <i class="ti ti-check"></i>
+            Conferma
+        </a>
+    </div>
+</div>
+
+<div class="st-confirm" id="deleteDdtRigaModal" hidden>
+    <div class="st-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="deleteDdtRigaTitle">
+        <form method="post" id="deleteDdtRigaForm">
+            {% csrf_token %}
+            <div class="st-confirm-body">
+                <div class="st-confirm-icon">
+                    <i class="ti ti-trash"></i>
+                </div>
+                <div>
+                    <div class="st-confirm-title" id="deleteDdtRigaTitle">
+                        Eliminare questa riga?
+                    </div>
+                    <div class="st-confirm-text">
+                        <span class="st-confirm-name" id="deleteDdtRigaName">Riga selezionata</span>
+                        verrà rimossa dal DDT e la busta tornerà disponibile.
+                    </div>
+                </div>
+            </div>
+            <div class="st-confirm-footer">
+                <button type="button" class="btn btn-outline-secondary js-delete-riga-cancel">
+                    Annulla
+                </button>
+                <button type="submit" class="btn btn-danger">
+                    Elimina
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    var modal = document.getElementById("deleteDdtRigaModal");
+    var form = document.getElementById("deleteDdtRigaForm");
+    var nameEl = document.getElementById("deleteDdtRigaName");
+    if (!modal || !form) return;
+
+    function closeModal() {
+        modal.hidden = true;
+        form.action = "";
+    }
+
+    document.querySelectorAll(".js-delete-ddt-riga").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+            if (btn.disabled) return;
+            form.action = btn.getAttribute("data-delete-action") || "";
+            if (nameEl) nameEl.textContent = btn.getAttribute("data-delete-name") || "Riga selezionata";
+            modal.hidden = false;
+        });
+    });
+
+    document.querySelectorAll(".js-delete-riga-cancel").forEach(function (btn) {
+        btn.addEventListener("click", closeModal);
+    });
+
+    modal.addEventListener("click", function (event) {
+        if (event.target === modal) closeModal();
+    });
+})();
+</script>
+{% endblock %}

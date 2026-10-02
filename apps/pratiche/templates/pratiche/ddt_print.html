@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="it">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ document_title }}</title>
+    <style>
+        * { box-sizing: border-box; }
+        html, body {
+            background: #fff;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        #pdfFrame {
+            border: 0;
+            height: 1px;
+            left: -9999px;
+            opacity: 0;
+            pointer-events: none;
+            position: absolute;
+            top: 0;
+            width: 1px;
+        }
+    </style>
+</head>
+<body>
+    {{ return_url|json_script:"ddt-return-url" }}
+    {{ pdf_base64|json_script:"ddt-pdf-base64" }}
+    <iframe id="pdfFrame" title="{{ document_title }}"></iframe>
+    <script>
+    (function () {
+        var returnNode = document.getElementById("ddt-return-url");
+        var pdfNode = document.getElementById("ddt-pdf-base64");
+        var returnUrl = returnNode ? JSON.parse(returnNode.textContent) : "";
+        var pdfBase64 = pdfNode ? JSON.parse(pdfNode.textContent) : "";
+        var frame = document.getElementById("pdfFrame");
+        var printed = false;
+        var navigated = false;
+        var objectUrl = "";
+
+        function goBack() {
+            if (navigated) return;
+            navigated = true;
+            if (objectUrl) {
+                try { URL.revokeObjectURL(objectUrl); } catch (e) {}
+            }
+            if (returnUrl) {
+                window.location.replace(returnUrl);
+                return;
+            }
+            if (window.history.length > 1) {
+                window.history.back();
+            }
+        }
+
+        function base64ToBlob(base64, type) {
+            var binary = atob(base64);
+            var len = binary.length;
+            var bytes = new Uint8Array(len);
+            for (var i = 0; i < len; i += 1) {
+                bytes[i] = binary.charCodeAt(i);
+            }
+            return new Blob([bytes], { type: type || "application/pdf" });
+        }
+
+        function doPrint() {
+            if (printed) return;
+            printed = true;
+            window.addEventListener("afterprint", goBack, { once: true });
+            // Torna indietro solo dopo che l'utente ha chiuso il dialogo di stampa.
+            window.addEventListener("focus", function onFocus() {
+                setTimeout(function () {
+                    window.removeEventListener("focus", onFocus);
+                    goBack();
+                }, 500);
+            });
+            try {
+                var win = frame.contentWindow;
+                if (win) {
+                    win.focus();
+                    win.print();
+                    return;
+                }
+            } catch (e) {}
+            window.print();
+        }
+
+        if (!pdfBase64 || !frame) {
+            goBack();
+            return;
+        }
+
+        objectUrl = URL.createObjectURL(base64ToBlob(pdfBase64, "application/pdf"));
+        frame.onload = function () {
+            setTimeout(doPrint, 200);
+        };
+        frame.src = objectUrl;
+    })();
+    </script>
+</body>
+</html>

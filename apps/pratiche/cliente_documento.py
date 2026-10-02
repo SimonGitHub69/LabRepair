@@ -13,20 +13,32 @@ def is_documento_identita_scaduto(cliente):
     return scadenza < timezone.localdate()
 
 
-def documento_scaduto_message(cliente):
+def documento_scaduto_message(cliente, *, bloccante=False):
     scadenza = cliente.documento_data_scadenza
     scadenza_label = scadenza.strftime("%d/%m/%y") if scadenza else ""
     nome = (cliente.ragione_sociale or f"{cliente.cognome} {cliente.nome}").strip()
+    if bloccante:
+        if scadenza_label:
+            return (
+                f"Il documento di identità di {nome} è scaduto il {scadenza_label}. "
+                "Aggiornalo e premi «Salva documento», oppure usa «Forza registrazione» "
+                "per creare comunque la riparazione preziosa."
+            )
+        return (
+            f"Il documento di identità di {nome} risulta scaduto. "
+            "Aggiornalo e premi «Salva documento», oppure usa «Forza registrazione» "
+            "per creare comunque la riparazione preziosa."
+        )
     if scadenza_label:
         return (
             f"Il documento di identità di {nome} è scaduto il {scadenza_label}. "
-            "Aggiorna i dati nella sezione «Documento di identità» e premi "
-            "«Salva documento» prima di proseguire con la riparazione preziosa."
+            "Puoi aggiornarlo nella sezione «Documento di identità» "
+            "(non blocca il salvataggio della riparazione)."
         )
     return (
         f"Il documento di identità di {nome} risulta scaduto. "
-        "Aggiorna i dati nella sezione «Documento di identità» prima di proseguire "
-        "con la riparazione preziosa."
+        "Puoi aggiornarlo nella sezione «Documento di identità» "
+        "(non blocca il salvataggio della riparazione)."
     )
 
 

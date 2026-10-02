@@ -214,6 +214,10 @@
                 printBtn.hidden = false;
             }
         } catch (error) {
+            if (error && error.labrepairCancelled) {
+                closeModal();
+                return;
+            }
             setDocumentoWarning("");
             setStatus(error.message || "Errore durante la preparazione.", true);
         }

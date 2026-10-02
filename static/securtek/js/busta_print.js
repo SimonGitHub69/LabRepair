@@ -14,6 +14,8 @@
     let printHtml = "";
     let stampanteNome = "";
     let agentUrl = "http://127.0.0.1:17346";
+    let stampataUrl = "";
+    let bustaMarked = false;
     let skipFinalSave = false;
     let forceSave = false;
 
@@ -114,6 +116,15 @@
         const reserved = form.querySelector('input[name="codice_riservato"]');
         if (reserved) {
             reserved.remove();
+        }
+        if (
+            payload.cliente_id &&
+            typeof window.labrepairSelectCliente === "function"
+        ) {
+            window.labrepairSelectCliente(
+                payload.cliente_id,
+                payload.cliente_label || ""
+            );
         }
     }
 
@@ -321,6 +332,51 @@
         }
     }
 
+    function csrfToken() {
+        const input = document.querySelector(
+            '#praticaForm input[name="csrfmiddlewaretoken"]'
+        );
+        if (input && input.value) {
+            return input.value;
+        }
+        const match = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
+        return match ? decodeURIComponent(match[1]) : "";
+    }
+
+    async function markBustaStampata() {
+        if (bustaMarked) {
+            if (typeof window.labrepairLockCliente === "function") {
+                window.labrepairLockCliente();
+            }
+            return;
+        }
+        if (!stampataUrl) {
+            return;
+        }
+        try {
+            const response = await fetch(stampataUrl, {
+                method: "POST",
+                credentials: "same-origin",
+                headers: {
+                    "X-CSRFToken": csrfToken(),
+                    Accept: "application/json",
+                },
+            });
+            if (!response.ok) {
+                return;
+            }
+            const payload = await response.json().catch(function () {
+                return {};
+            });
+            bustaMarked = true;
+            if (typeof window.labrepairLockCliente === "function") {
+                window.labrepairLockCliente(payload);
+            }
+        } catch (error) {
+            // La stampa è già partita: un errore di rete non deve bloccare il seguito.
+        }
+    }
+
     function getReturnUrl() {
         const fromModal = (modal.getAttribute("data-busta-return-url") || "").trim();
         if (fromModal) {
@@ -399,6 +455,9 @@
         }
         stampanteNome = (payload.stampante_nome || "").trim();
         agentUrl = (payload.agent_url || "http://127.0.0.1:17346").trim();
+        if ((payload.stampata_url || "").trim()) {
+            stampataUrl = payload.stampata_url.trim();
+        }
         printHtml = await buildDocument(payload.sheet_html || "", payload.css_url || "");
         if (!stampanteNome) {
             throw new Error(
@@ -409,6 +468,32 @@
         return payload;
     }
 
+    function cancelledError(message) {
+        const err = new Error(message || "Operazione annullata.");
+        err.labrepairCancelled = true;
+        return err;
+    }
+
+    function isCancelledError(error) {
+        return !!(error && error.labrepairCancelled);
+    }
+
+    async function ensureTelefonoForSave() {
+        if (
+            typeof window.labrepairNeedsSenzaTelefonoForce === "function" &&
+            window.labrepairNeedsSenzaTelefonoForce()
+        ) {
+            const forza =
+                typeof window.labrepairPromptSenzaTelefonoForce === "function"
+                    ? await window.labrepairPromptSenzaTelefonoForce()
+                    : false;
+            if (!forza) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     async function maybeSaveBeforePrint() {
         if (skipFinalSave || !wantsSave()) {
             return null;
@@ -417,13 +502,22 @@
         if (!form || typeof window.labrepairSavePraticaForm !== "function") {
             return null;
         }
+        if (!(await ensureTelefonoForSave())) {
+            throw cancelledError();
+        }
         if (typeof window.labrepairValidatePraticaForm === "function") {
             const validation = window.labrepairValidatePraticaForm();
             if (!validation.ok) {
-                throw new Error(
-                    validation.message ||
-                        "Compila i campi obbligatori prima di stampare."
-                );
+                if (validation.reason === "telefono") {
+                    if (!(await ensureTelefonoForSave())) {
+                        throw cancelledError();
+                    }
+                } else {
+                    throw new Error(
+                        validation.message ||
+                            "Compila i campi obbligatori prima di stampare."
+                    );
+                }
             }
         }
         setStatus("Salvataggio scheda…", false);
@@ -448,6 +542,9 @@
                 html = printHtml;
             }
         } catch (error) {
+            if (isCancelledError(error)) {
+                return;
+            }
             const message = friendlyErrorMessage(error);
             showPrintReady(printHtml || html, message, true);
             throw new Error(message);
@@ -469,6 +566,7 @@
             const result = await printViaAgent(html, stampanteNome);
             const message = result.message || ("Busta inviata a " + stampanteNome);
             setStatus(message, false);
+            await markBustaStampata();
             await finishAfterPrint(message);
         } catch (error) {
             const message = friendlyErrorMessage(error);
@@ -490,11 +588,12 @@
                 html = printHtml;
             }
         } catch (error) {
+            if (isCancelledError(error)) {
+                throw error;
+            }
             setStatus(friendlyErrorMessage(error), true);
             throw error;
         }
-
-        printHtml = html || printHtml;
         if (!printHtml) {
             throw new Error("Documento busta non disponibile.");
         }
@@ -511,12 +610,14 @@
             const result = await printViaAgent(printHtml, stampanteNome);
             message = result.message || ("Busta inviata a " + stampanteNome);
             setStatus(message, false);
+            await markBustaStampata();
         } catch (error) {
             setStatus(
                 friendlyErrorMessage(error) + " Apro la stampa del browser…",
                 true
             );
             printDocumentBrowser(printHtml);
+            await markBustaStampata();
             await new Promise(function (resolve) {
                 window.setTimeout(resolve, 1200);
             });
@@ -532,6 +633,13 @@
         // skipSave: scheda appena salvata (es. «Stampa busta + Salva»).
         // Altrimenti, se Parametri PC richiede salvataggio, salva prima dell'anteprima
         // così la busta mostra le modifiche correnti del form.
+
+        // Conferme (es. telefono) PRIMA del modal busta, altrimenti restano sotto e bloccano.
+        if (!options.skipSave && !skipFinalSave && wantsSave()) {
+            if (!(await ensureTelefonoForSave())) {
+                return;
+            }
+        }
 
         // Flag PC «Stampa busta senza anteprima» → stampa diretta; altrimenti anteprima + Stampa.
         const directPrint = isDirectPrint();
@@ -565,6 +673,10 @@
                 try {
                     await printThenFinish(printHtml);
                 } catch (error) {
+                    if (isCancelledError(error)) {
+                        closeModal();
+                        return;
+                    }
                     setStatus(friendlyErrorMessage(error), true);
                     showPrintReady(printHtml, friendlyErrorMessage(error), true);
                     showBrowserFallback();
@@ -586,6 +698,10 @@
                 printBtn.hidden = false;
             }
         } catch (error) {
+            if (isCancelledError(error)) {
+                closeModal();
+                return;
+            }
             const message = friendlyErrorMessage(error);
             setStatus(message, true);
             if (printHtml) {
@@ -605,10 +721,20 @@
 
         forceSave = true;
 
+        if (!(await ensureTelefonoForSave())) {
+            return;
+        }
+
         if (typeof window.labrepairValidatePraticaForm === "function") {
             const validation = window.labrepairValidatePraticaForm();
             if (!validation.ok) {
-                return;
+                if (validation.reason === "telefono") {
+                    if (!(await ensureTelefonoForSave())) {
+                        return;
+                    }
+                } else {
+                    return;
+                }
             }
         } else if (typeof form.reportValidity === "function" && !form.reportValidity()) {
             return;
@@ -651,6 +777,10 @@
             setStatus("Riparazione salvata. Preparazione busta…", false);
             await loadBusta(saved.busta_url, { skipSave: true });
         } catch (error) {
+            if (isCancelledError(error)) {
+                closeModal();
+                return;
+            }
             setStatus(
                 friendlyErrorMessage(error) ||
                     "Impossibile salvare e stampare la busta.",
@@ -726,6 +856,7 @@
             }
             setStatus("Apro la stampa del browser…", false);
             printDocumentBrowser(printHtml);
+            markBustaStampata();
             window.setTimeout(function () {
                 skipFinalSave = true;
                 finishAfterPrint("Stampa browser aperta.").catch(function () {
@@ -754,6 +885,9 @@
 
             const html = printHtml;
             printDocument(html).catch(function (error) {
+                if (isCancelledError(error)) {
+                    return;
+                }
                 setStatus(friendlyErrorMessage(error), true);
                 showBrowserFallback();
             });

@@ -1,4 +1,5 @@
 {% extends "base/layout.html" %}
+{% load list_sorting %}
 
 {% block page_title %}
 Tipi di oggetto
@@ -25,6 +26,7 @@ Tipi di oggetto
 <div class="card mb-3">
     <div class="card-body">
         <form method="get">
+            {% list_sort_hidden %}
             <div class="row g-2 align-items-end">
                 <div class="col-md-5">
                     <label class="form-label">Ricerca</label>
@@ -50,10 +52,10 @@ Tipi di oggetto
         <table class="table table-vcenter">
             <thead>
                 <tr>
-                    <th>Denominazione</th>
-                    <th>UM</th>
-                    <th>Descrizione</th>
-                    <th>Riparazioni</th>
+                    {% sort_header "denominazione" "Denominazione" %}
+                    {% sort_header "unita_misura" "UM" %}
+                    {% sort_header "descrizione" "Descrizione" %}
+                    {% sort_header "pratiche" "Riparazioni" %}
                     <th class="text-end">Azioni</th>
                 </tr>
             </thead>

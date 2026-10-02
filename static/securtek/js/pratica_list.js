@@ -38,7 +38,8 @@
     }
 
     function initPraticaListFilters() {
-        const form = document.querySelector(".st-pratica-filter-card form");
+        const card = document.querySelector(".st-pratica-filter-card");
+        const form = card ? card.querySelector("form") : null;
         if (!form) {
             return;
         }

@@ -818,10 +818,10 @@ def _resolve_privacy_localita(pratica):
         if letter in CODICE_LETTER_LOCALITA:
             return CODICE_LETTER_LOCALITA[letter]
 
-    from apps.core.negozi import normalize_negozio_code
+    from apps.core.negozi import get_negozio_localita, normalize_negozio_code
 
     negozio = normalize_negozio_code(pratica.negozio)
-    return NEGOZIO_LOCALITA.get(negozio, "")
+    return get_negozio_localita(negozio) or NEGOZIO_LOCALITA.get(negozio, "")
 
 
 def build_privacy_data_line(pratica):

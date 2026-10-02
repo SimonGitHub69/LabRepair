@@ -10,7 +10,8 @@
     position: fixed;
     right: 0;
     top: 0;
-    z-index: 1080;
+    /* Sopra busta/privacy (1085): altrimenti la conferma telefono resta nascosta sotto */
+    z-index: 1100;
 }
 
 .st-confirm[hidden] {
@@ -73,7 +74,7 @@
     color: var(--tblr-danger, #d63939);
 }
 
-<body.st-confirm-open {
+body.st-confirm-open {
     overflow: hidden;
 }
 
@@ -391,6 +392,22 @@ body.st-anagrafica-overlay-open {
     color: #ae3ec9;
 }
 
+.st-form-section-icon.is-locked {
+    background: rgba(102, 112, 133, 0.14);
+    color: #667085;
+}
+
+.st-form-section.is-testata-locked [data-cliente-search-col],
+.st-form-section.is-testata-locked [data-cliente-search-summary],
+.st-form-section.is-testata-locked [data-cliente-search-reopen],
+.st-form-section.is-testata-locked [data-cliente-search-clear],
+.st-form-section.is-testata-locked .js-nuovo-cliente-link,
+.st-form-section.is-testata-locked [data-cliente-locked-name],
+.st-form-section.is-testata-locked .alert[data-testata-locked-hint],
+.st-form-section.is-testata-locked .alert:has([data-testata-locked-hint]) {
+    display: none !important;
+}
+
 .st-form-section .card-body {
     padding: 1.25rem 1.25rem 0.5rem;
 }
@@ -566,7 +583,8 @@ body.st-anagrafica-overlay-open {
 }
 
 .st-form-page-header {
-    margin-bottom: 0.65rem;
+    margin-bottom: 0.5rem;
+    margin-top: 0.15rem;
 }
 
 .st-form-page-header .page-title {
@@ -582,6 +600,48 @@ body.st-anagrafica-overlay-open {
     font-size: 0.8125rem;
     font-weight: 600;
     margin-left: 0.35rem;
+}
+
+/* Schede DDT: header più compatto */
+.st-ddt-form {
+    gap: 0.2rem;
+}
+
+.st-ddt-form-header,
+.st-ddt-page-header {
+    margin-bottom: 0.2rem;
+    margin-top: -0.15rem;
+    padding-bottom: 0;
+    padding-top: 0;
+}
+
+.st-ddt-form > .st-ddt-form-header {
+    margin-bottom: 0;
+    margin-top: -0.15rem;
+}
+
+.st-ddt-form-subtitle {
+    font-size: 0.8125rem;
+    line-height: 1.25;
+    margin-top: 0.05rem;
+}
+
+.st-ddt-numero-titolo {
+    margin-left: 0.15em;
+}
+
+.st-ddt-form > .card.st-form-section.mb-3 {
+    margin-top: 0;
+    margin-bottom: 0.65rem !important;
+}
+
+.st-ddt-page-header .page-title {
+    margin-bottom: 0;
+}
+
+.st-ddt-page-header + .card.mb-3,
+.st-ddt-page-header + .row.row-cards {
+    margin-top: 0;
 }
 
 .st-pratica-code {
@@ -604,10 +664,10 @@ body.st-anagrafica-overlay-open {
 .st-pratica-code-value {
     color: var(--st-primary);
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    font-size: 1.35rem;
+    font-size: 1.85rem;
     font-weight: 700;
     letter-spacing: 0.04em;
-    line-height: 1.2;
+    line-height: 1.15;
     margin-top: 0.15rem;
 }
 
@@ -661,7 +721,7 @@ body.st-anagrafica-overlay-open {
 }
 
 [data-layout-stile="compatta"] .st-pratica-code-value {
-    font-size: 1.15rem;
+    font-size: 1.55rem;
     margin-top: 0.05rem;
 }
 
@@ -1896,6 +1956,23 @@ body.st-anagrafica-overlay-open {
     min-width: 0;
 }
 
+.st-pratica-filter-card,
+.st-pratica-filter-card > .card-body,
+.st-pratica-filter-grid,
+.st-pratica-filter-cliente {
+    overflow: visible;
+}
+
+.st-pratica-filter-cliente {
+    position: relative;
+    z-index: 5;
+}
+
+.st-pratica-filter-cliente:has(.st-cliente-search-results:not([hidden])),
+.st-pratica-filter-cliente:has(.st-cliente-search-field.is-results-open) {
+    z-index: 40;
+}
+
 .st-pratica-filter-grid .form-label {
     line-height: 1.25;
     margin-bottom: 0.35rem;
@@ -2238,41 +2315,64 @@ body.st-anagrafica-overlay-open {
 }
 
 .st-pratica-codice {
-    background: rgba(32, 107, 196, 0.08);
-    border-radius: 0.35rem;
-    color: var(--st-primary, #206bc4);
+    background: rgba(32, 107, 196, 0.14);
+    border: 1px solid rgba(32, 107, 196, 0.28);
+    border-radius: 0.4rem;
+    color: var(--st-primary-dark, #174d8c);
     display: inline-block;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    font-size: 0.78rem;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    line-height: 1.2;
-    padding: 0.22rem 0.45rem;
+    font-size: 1.1rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    line-height: 1.25;
+    padding: 0.28rem 0.55rem;
     text-decoration: none;
 }
 
 .st-pratica-codice:hover {
-    background: rgba(32, 107, 196, 0.14);
+    background: rgba(32, 107, 196, 0.22);
+    border-color: rgba(32, 107, 196, 0.4);
     color: var(--st-primary-dark, #174d8c);
     text-decoration: none;
 }
 
-.st-priorita-dot {
-    border-radius: 50%;
-    display: inline-block;
-    height: 7px;
-    margin-left: 0.3rem;
+.st-pratica-list-numero {
+    align-items: flex-start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.4rem;
+}
+
+.st-priorita-badge {
+    align-items: center;
+    border-radius: 999px;
+    display: inline-flex;
+    font-size: 0.68rem;
+    font-weight: 700;
+    gap: 0.2rem;
+    letter-spacing: 0.02em;
+    line-height: 1;
+    padding: 0.22rem 0.5rem;
+    text-transform: uppercase;
     vertical-align: middle;
-    width: 7px;
+    white-space: nowrap;
+}
+
+.st-priorita-badge .ti {
+    font-size: 0.78rem;
+    line-height: 1;
 }
 
 .st-priorita-alta {
-    background: #f76707;
+    background: rgba(247, 103, 7, 0.12);
+    border: 1px solid rgba(247, 103, 7, 0.28);
+    color: #d6390f;
 }
 
 .st-priorita-urgente {
-    background: #d63939;
-    box-shadow: 0 0 0 2px rgba(214, 57, 57, 0.18);
+    background: rgba(214, 57, 57, 0.12);
+    border: 1px solid rgba(214, 57, 57, 0.3);
+    color: #b42318;
 }
 
 .st-oggetto-title {
@@ -2603,6 +2703,50 @@ body.st-anagrafica-overlay-open {
 
 .st-cliente-search-field.is-cliente-selected {
     margin-bottom: 0.25rem;
+}
+
+/* Testata Accettazione bloccata dopo stampa busta */
+.st-form-section.is-testata-locked .form-control:not(.st-date-native),
+.st-form-section.is-testata-locked .form-select,
+.st-form-section.is-testata-locked .form-control:not(.st-date-native):disabled,
+.st-form-section.is-testata-locked .form-select:disabled,
+.st-form-section.is-testata-locked .form-control:not(.st-date-native)[readonly],
+.st-form-section.is-testata-locked .form-select[readonly],
+.st-cliente-search-field.is-cliente-locked .form-control:not(.st-date-native),
+.st-cliente-search-field.is-cliente-locked .form-control:not(.st-date-native)[readonly] {
+    background-color: #f0f2f5;
+    border-color: #dde1e6;
+    color: #5b6572;
+    cursor: default;
+    opacity: 1;
+    box-shadow: none;
+}
+
+.st-form-section.is-testata-locked .form-select:disabled {
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: none;
+    padding-right: 0.75rem;
+}
+
+/* Data enhanced: non colorare il native (resta invisibile sull'icona). */
+.st-form-section.is-testata-locked .st-date-field > .st-date-native,
+.st-form-section.is-testata-locked .st-date-field > .st-date-native:disabled {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    color: transparent !important;
+    opacity: 0.01 !important;
+    pointer-events: none;
+}
+
+.st-form-section.is-testata-locked .st-date-field.is-locked .st-date-calendar-btn,
+.st-form-section.is-testata-locked .st-date-field:has(.st-date-native:disabled) .st-date-calendar-btn {
+    display: none;
+}
+
+.st-form-section.is-testata-locked .st-date-field > .st-date-text {
+    padding-right: 0.75rem;
 }
 
 .st-cliente-search-input-wrap {
@@ -3619,4 +3763,107 @@ button.st-password-toggle:focus-visible {
 button.st-password-toggle:focus-visible {
     outline: 2px solid rgba(32, 107, 196, 0.35);
     outline-offset: 1px;
+}
+
+/* Campi solo lettura N. DDT / Data DDT in scheda riparazione (bloccati) */
+.st-ddt-field {
+    align-items: center;
+    background: var(--tblr-bg-surface-secondary, #eef1f5);
+    border-color: var(--st-border, #d8dde6);
+    color: var(--st-text-muted, #667085);
+    cursor: not-allowed;
+    display: flex;
+    min-height: calc(1.4285714em + 0.875rem + 2px);
+    opacity: 1;
+    padding-block: 0.4rem;
+    pointer-events: none;
+    user-select: none;
+}
+
+.st-ddt-field.has-value {
+    background: #e8edf3;
+    color: #475467;
+}
+
+.st-ddt-field-lock-hint {
+    color: var(--st-text-muted, #98a2b3);
+    font-size: 0.85em;
+    margin-left: 0.25rem;
+    vertical-align: middle;
+}
+
+.st-ddt-field-value,
+.st-ddt-field-link {
+    align-items: center;
+    display: inline-flex;
+    font-weight: 600;
+    gap: 0.4rem;
+    line-height: 1.25;
+}
+
+.st-ddt-field-link {
+    color: var(--st-primary, #206bc4);
+    cursor: pointer;
+    pointer-events: auto;
+    text-decoration: none;
+}
+
+.st-ddt-field-link:hover {
+    text-decoration: underline;
+}
+
+.st-ddt-field-value .ti,
+.st-ddt-field-link .ti {
+    color: var(--st-text-muted, #667085);
+    font-size: 1rem;
+}
+
+.st-ddt-field-empty {
+    color: var(--st-text-muted, #98a2b3);
+}
+
+[data-bs-theme="dark"] .st-ddt-field,
+[data-bs-theme="dark"] .st-ddt-field.has-value {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: #98a2b3;
+}
+
+body.st-layout-alto-contrasto .st-ddt-field.has-value .st-ddt-field-value,
+body.st-layout-alto-contrasto .st-ddt-field.has-value .st-ddt-field-link {
+    color: #1d4ed8;
+}
+
+/* Anagrafica destinatario compatta in scheda DDT */
+.st-ddt-destinatario {
+    background: var(--tblr-bg-surface-secondary, #f1f5f9);
+    border: 1px solid var(--st-border, #e6e8eb);
+    border-radius: 0.5rem;
+    padding: 0.55rem 0.75rem;
+}
+
+.st-ddt-destinatario-line {
+    align-items: baseline;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.45rem;
+    line-height: 1.35;
+}
+
+.st-ddt-destinatario-check {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+[data-bs-theme="dark"] .st-ddt-destinatario {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.st-ddt-riga-delete {
+    height: 2.25rem;
+    width: 2.25rem;
+}
+
+.st-ddt-riga-delete .ti {
+    font-size: 1.25rem;
 }

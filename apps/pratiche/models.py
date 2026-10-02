@@ -212,6 +212,12 @@ class Pratica(BaseModel):
     prezzo_unita = models.DecimalField("Prezzo al", max_digits=10, decimal_places=2, default=0)
     prezzo_al = models.DecimalField("Prezzo al Pubblico", max_digits=10, decimal_places=2, default=0)
     prezzo_pagato = models.DecimalField("Prezzo pagato", max_digits=10, decimal_places=2, default=0)
+    numero_scontrino = models.CharField(
+        "N. scontrino",
+        max_length=30,
+        blank=True,
+        help_text="Numero scontrino letto da Database Cassa (GS_VENDITE_DETTAGLIO.NUM_SCONTRINO).",
+    )
     senza_spesa = models.BooleanField(
         "Senza spesa",
         default=False,
@@ -226,6 +232,27 @@ class Pratica(BaseModel):
         unique=True,
         help_text="EAN assegnato in TB_PREZZICASSE sul gestionale SQL casse.",
     )
+    ddt_numero = models.CharField(
+        "N. DDT",
+        max_length=30,
+        blank=True,
+        help_text="Numero documento di trasporto (es. 100/R) registrato sulla busta.",
+    )
+    ddt_data = models.DateField(
+        "Data DDT",
+        null=True,
+        blank=True,
+        help_text="Data del documento di trasporto associato alla busta.",
+    )
+    busta_stampata_il = models.DateTimeField(
+        "Busta stampata il",
+        null=True,
+        blank=True,
+        help_text=(
+            "Se valorizzata, i campi di accettazione (cliente/referente) "
+            "non sono più modificabili."
+        ),
+    )
 
     class Meta:
         verbose_name = "Riparazione"
@@ -234,6 +261,15 @@ class Pratica(BaseModel):
 
     def __str__(self):
         return f"{self.codice} - {self.titolo}" if self.codice else self.titolo
+
+    @property
+    def testata_bloccata(self):
+        """True dopo stampa busta oppure se la riparazione è Evasa."""
+        if not self.pk:
+            return False
+        if self.busta_stampata_il:
+            return True
+        return self.stato == self.Stato.EVASA
 
     @property
     def costo_metallo_aggiunto(self):
@@ -290,6 +326,16 @@ class Pratica(BaseModel):
             return self.cliente.display_name
         referente = f"{self.referente_cognome} {self.referente_nome}".strip()
         return referente or "Cliente non indicato"
+
+    @property
+    def ddt_collegato(self):
+        riga = (
+            self.ddt_righe.filter(is_active=True, ddt__is_active=True)
+            .select_related("ddt")
+            .order_by("-id")
+            .first()
+        )
+        return riga.ddt if riga else None
 
     def save(self, *args, **kwargs):
         if not self.codice:
@@ -571,3 +617,105 @@ class Operatore(BaseModel):
 
     def __str__(self):
         return self.nominativo
+
+
+class Ddt(BaseModel):
+    """Documento di trasporto riepilogativo delle buste verso un centro assistenza."""
+
+    numero = models.PositiveIntegerField("Numero")
+    sezionale = models.CharField("Sezionale", max_length=10, default="R")
+    negozio = models.CharField(
+        "Negozio",
+        max_length=2,
+        blank=True,
+        db_index=True,
+        help_text="Negozio di emissione (numerazione DDT indipendente per sede).",
+    )
+    data_documento = models.DateField("Data documento", default=timezone.localdate)
+    centro_assistenza = models.ForeignKey(
+        Anagrafica,
+        on_delete=models.PROTECT,
+        related_name="ddt",
+        verbose_name="Centro assistenza",
+        limit_choices_to={"tipo": Anagrafica.Tipo.CENTRO_ASSISTENZA, "is_active": True},
+    )
+    destinatario_ragione_sociale = models.CharField("Destinatario", max_length=200)
+    destinatario_indirizzo = models.CharField("Indirizzo destinatario", max_length=255, blank=True)
+    destinatario_cap = models.CharField("CAP", max_length=10, blank=True)
+    destinatario_comune = models.CharField("Comune", max_length=100, blank=True)
+    destinatario_provincia = models.CharField("Provincia", max_length=2, blank=True)
+    destinatario_partita_iva = models.CharField("Partita IVA destinatario", max_length=20, blank=True)
+    destinatario_codice_fiscale = models.CharField("Codice fiscale destinatario", max_length=20, blank=True)
+    destinatario_codice_cliente = models.CharField("Cod. cliente", max_length=30, blank=True)
+    destinazione_merce = models.TextField("Destinazione merce", blank=True)
+    causale = models.CharField("Causale", max_length=80, default="C/RIPARAZIONE")
+    aspetto_beni = models.CharField("Aspetto beni", max_length=80, default="SACCHETTO")
+    trasporto_a_cura = models.CharField("Trasporto a cura", max_length=80, default="Vettore")
+    vettore = models.CharField("Vettore", max_length=120, default="GLS")
+    peso_lordo_kg = models.DecimalField("Peso lordo (kg)", max_digits=10, decimal_places=2, default=0)
+    colli = models.PositiveIntegerField("Colli", default=1)
+    data_inizio_trasporto = models.DateField("Data inizio trasporto", null=True, blank=True)
+    ora_inizio_trasporto = models.TimeField("Ora inizio trasporto", null=True, blank=True)
+    agente = models.CharField("Agente", max_length=80, blank=True)
+
+    class Meta:
+        verbose_name = "DDT"
+        verbose_name_plural = "DDT"
+        ordering = ["-data_documento", "-numero", "-id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["numero", "sezionale", "negozio"],
+                condition=models.Q(is_active=True),
+                name="pratiche_ddt_numero_sezionale_negozio_attivi_uniq",
+            ),
+        ]
+
+    def __str__(self):
+        return self.numero_display
+
+    @property
+    def numero_display(self):
+        return f"{self.numero}/{self.sezionale}"
+
+    @property
+    def destinatario_citta_line(self):
+        parts = [self.destinatario_cap, self.destinatario_comune]
+        city = " ".join(part for part in parts if part).strip()
+        if self.destinatario_provincia:
+            city = f"{city}  {self.destinatario_provincia}".strip()
+        return city
+
+
+class DdtRiga(BaseModel):
+    ddt = models.ForeignKey(
+        Ddt,
+        on_delete=models.CASCADE,
+        related_name="righe",
+        verbose_name="DDT",
+    )
+    pratica = models.ForeignKey(
+        Pratica,
+        on_delete=models.PROTECT,
+        related_name="ddt_righe",
+        verbose_name="Riparazione",
+    )
+    ordine = models.PositiveIntegerField("Ordine", default=0)
+    articolo = models.CharField("Articolo", max_length=60, blank=True)
+    descrizione = models.CharField("Descrizione", max_length=255)
+    unita_misura = models.CharField("UM", max_length=10, default="NR")
+    quantita = models.DecimalField("Quantità", max_digits=10, decimal_places=2, default=1)
+
+    class Meta:
+        verbose_name = "Riga DDT"
+        verbose_name_plural = "Righe DDT"
+        ordering = ["ordine", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["ddt", "pratica"],
+                condition=models.Q(is_active=True),
+                name="pratiche_ddtriga_ddt_pratica_attivi_uniq",
+            ),
+        ]
+
+    def __str__(self):
+        return self.descrizione

@@ -17,9 +17,20 @@
                 </div>
             </div>
         </div>
+        {% if slip.urgente and slip_part == "b" %}
+        <div class="busta-urgente" aria-label="Priorità urgente">URGENTE</div>
+        {% endif %}
         <div class="busta-header-right">
-            <div class="busta-code">{{ slip.codice }}</div>
-            <div class="busta-barcode">{{ slip.barcode_value }}</div>
+            <div class="busta-code-stack">
+                <div class="busta-code">{{ slip.codice }}</div>
+                {% if slip.barcode_data_uri %}
+                <div class="busta-barcode">
+                    <img src="{{ slip.barcode_data_uri }}" alt="{{ slip.codice }}">
+                </div>
+                {% elif slip.barcode_value %}
+                <div class="busta-barcode busta-barcode--font">{{ slip.barcode_value }}</div>
+                {% endif %}
+            </div>
         </div>
     </div>
 

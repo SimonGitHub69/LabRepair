@@ -26,6 +26,41 @@
         return !!(field && field.value === "prezioso");
     }
 
+    function isNuovaRiparazione() {
+        const form = document.getElementById("praticaForm");
+        return !!(form && form.getAttribute("data-pratica-nuova") === "1");
+    }
+
+    /** Bloccante solo: Nuova riparazione + oggetto prezioso (finché non si forza). */
+    function isDocumentoScadutoBloccante() {
+        return isNuovaRiparazione() && isTipologiaPrezioso() && !isForzaDocumentoScaduto();
+    }
+
+    function getForzaDocumentoField() {
+        return document.getElementById("id_forza_documento_scaduto");
+    }
+
+    function isForzaDocumentoScaduto() {
+        const field = getForzaDocumentoField();
+        return !!(field && String(field.value || "").trim() === "1");
+    }
+
+    function setForzaDocumentoScaduto(on) {
+        const field = getForzaDocumentoField();
+        if (field) {
+            field.value = on ? "1" : "";
+        }
+    }
+
+    function needsDocumentoScadutoForce() {
+        return (
+            isNuovaRiparazione() &&
+            isTipologiaPrezioso() &&
+            !!(lastAnagrafica && lastAnagrafica.documento_scaduto) &&
+            !isForzaDocumentoScaduto()
+        );
+    }
+
     function getPanel() {
         return document.querySelector("[data-cliente-documento-panel]");
     }
@@ -254,39 +289,29 @@
         if (!anagrafica || !anagrafica.documento_scaduto) {
             return;
         }
-        if (isTipologiaPrezioso()) {
+        if (isForzaDocumentoScaduto()) {
             setAlert(
-                "Documento scaduto: obbligatorio aggiornarlo e premere «Salva documento» prima di salvare la riparazione preziosa.",
-                "danger"
-            );
-        } else {
-            setAlert(
-                "Documento scaduto: puoi aggiornarlo ora oppure lasciarlo invariato.",
+                "Documento scaduto: registrazione forzata consentita. Aggiorna il documento quando possibile.",
                 "warning"
             );
+            return;
         }
+        if (isDocumentoScadutoBloccante()) {
+            setAlert(
+                "Documento scaduto: aggiornalo e premi «Salva documento», oppure al Salva scegli «Forza registrazione».",
+                "danger"
+            );
+            return;
+        }
+        setAlert(
+            "Documento scaduto: puoi aggiornarlo ora oppure lasciarlo invariato (non blocca il salvataggio).",
+            "warning"
+        );
     }
 
-    function notifyDocumentoScaduto(anagrafica, options) {
-        options = options || {};
-        if (!anagrafica || !anagrafica.documento_scaduto) {
-            return;
-        }
-
-        const clienteId = anagrafica.id;
-        if (!options.force && lastNotifiedClienteId === clienteId) {
-            applyScadutoAlert(anagrafica);
-            return;
-        }
-        if (notifyInFlight) {
-            return;
-        }
-
-        lastNotifiedClienteId = clienteId;
+    function buildScadutoForceMessage(anagrafica) {
         const nome = anagrafica.display_name || "il cliente";
         const scadenza = anagrafica.documento_data_scadenza || "";
-        const prezioso = isTipologiaPrezioso();
-
         let message =
             "Il documento di identità di <strong>" +
             escapeHtml(nome) +
@@ -298,10 +323,16 @@
             message += " risulta scaduto.";
         }
         message +=
-            "<br><br>Vuoi aggiornare i dati sull'anagrafica adesso, oppure lasciare il documento invariato?";
-        if (prezioso) {
-            message +=
-                "<br><br><em>Con oggetti preziosi l'aggiornamento è obbligatorio per salvare la riparazione.</em>";
+            "<br><br>Per una <strong>nuova riparazione preziosa</strong> è consigliato aggiornare il documento.";
+        message +=
+            "<br><br>Puoi comunque <strong>forzare la registrazione</strong> per non bloccare il lavoro.";
+        return message;
+    }
+
+    function promptDocumentoScadutoForce(anagrafica) {
+        anagrafica = anagrafica || lastAnagrafica;
+        if (!anagrafica || !anagrafica.documento_scaduto) {
+            return Promise.resolve(true);
         }
 
         const ask =
@@ -310,47 +341,64 @@
                 : null;
 
         if (typeof ask !== "function") {
+            setForzaDocumentoScaduto(true);
+            applyScadutoAlert(anagrafica);
+            return Promise.resolve(true);
+        }
+
+        return ask({
+            title: "Documento scaduto",
+            message: buildScadutoForceMessage(anagrafica),
+            confirmLabel: "Forza registrazione",
+            cancelLabel: "Aggiorna documento",
+            confirmClass: "btn btn-warning",
+            variant: "danger",
+        }).then(function (forza) {
+            if (forza) {
+                setForzaDocumentoScaduto(true);
+                forceShowDocumento = true;
+                syncAnagraficaCompletaVisibility();
+                applyScadutoAlert(anagrafica);
+                return true;
+            }
+            setForzaDocumentoScaduto(false);
             forceShowDocumento = true;
             syncAnagraficaCompletaVisibility();
             applyScadutoAlert(anagrafica);
             focusDocumentoPanel();
+            return false;
+        });
+    }
+
+    function notifyDocumentoScaduto(anagrafica, options) {
+        options = options || {};
+        if (!anagrafica || !anagrafica.documento_scaduto) {
             return;
         }
 
-        notifyInFlight = true;
-        ask({
-            title: "Documento scaduto",
-            message: message,
-            confirmLabel: "Aggiorna documento",
-            cancelLabel: "Lascia invariato",
-            confirmClass: prezioso ? "btn btn-danger" : "btn btn-primary",
-            variant: prezioso ? "danger" : "info",
-        })
-            .then(function (aggiorna) {
-                if (aggiorna) {
-                    forceShowDocumento = true;
-                    syncAnagraficaCompletaVisibility();
-                    applyScadutoAlert(anagrafica);
-                    focusDocumentoPanel();
-                    return;
-                }
+        const clienteId = anagrafica.id;
+        const bloccante = isDocumentoScadutoBloccante();
 
-                // Lascia invariato: bloccante solo se prezioso.
-                if (prezioso) {
-                    forceShowDocumento = false;
-                    syncAnagraficaCompletaVisibility();
-                    applyScadutoAlert(anagrafica);
-                } else {
-                    forceShowDocumento = false;
-                    syncAnagraficaCompletaVisibility();
-                    setAlert("");
-                }
-                focusRiparatoreField();
-            })
-            .finally(function () {
-                notifyInFlight = false;
-                document.body.classList.remove("st-confirm-open");
-            });
+        // Fuori da Nuova+prezioso (o già forzato): solo avviso soft.
+        if (!bloccante) {
+            applyScadutoAlert(anagrafica);
+            return;
+        }
+
+        if (!options.force && lastNotifiedClienteId === clienteId) {
+            applyScadutoAlert(anagrafica);
+            return;
+        }
+        if (notifyInFlight) {
+            return;
+        }
+
+        lastNotifiedClienteId = clienteId;
+        notifyInFlight = true;
+        promptDocumentoScadutoForce(anagrafica).finally(function () {
+            notifyInFlight = false;
+            document.body.classList.remove("st-confirm-open");
+        });
     }
 
     function fillDocumentoFields(anagrafica, options) {
@@ -413,6 +461,7 @@
             }
         } else {
             forceShowDocumento = forceShowDocumento && !isTipologiaPrezioso();
+            setForzaDocumentoScaduto(false);
             syncAnagraficaCompletaVisibility();
             setAlert("");
         }
@@ -427,6 +476,7 @@
         lastAnagrafica = null;
         lastNotifiedClienteId = null;
         forceShowDocumento = false;
+        setForzaDocumentoScaduto(false);
 
         [
             "documento_tipo",
@@ -537,17 +587,15 @@
 
     function onTipologiaChanged() {
         syncAnagraficaCompletaVisibility();
-        if (
-            lastAnagrafica &&
-            lastAnagrafica.documento_scaduto &&
-            isTipologiaPrezioso()
-        ) {
-            notifyDocumentoScaduto(lastAnagrafica, { force: true });
-        } else if (lastAnagrafica && lastAnagrafica.documento_scaduto) {
-            applyScadutoAlert(lastAnagrafica);
-        } else {
+        if (!lastAnagrafica || !lastAnagrafica.documento_scaduto) {
             setAlert("");
+            return;
         }
+        if (isDocumentoScadutoBloccante()) {
+            notifyDocumentoScaduto(lastAnagrafica, { force: true });
+            return;
+        }
+        applyScadutoAlert(lastAnagrafica);
     }
 
     window.labrepairFillClienteDocumento = fillDocumentoFields;
@@ -555,6 +603,10 @@
     window.labrepairSaveClienteDocumento = saveDocumento;
     window.labrepairSyncAnagraficaCompletaVisibility = syncAnagraficaCompletaVisibility;
     window.labrepairOnTipologiaDocumentoCheck = onTipologiaChanged;
+    window.labrepairNeedsDocumentoScadutoForce = needsDocumentoScadutoForce;
+    window.labrepairPromptDocumentoScadutoForce = function () {
+        return promptDocumentoScadutoForce(lastAnagrafica);
+    };
 
     document.addEventListener("DOMContentLoaded", function () {
         const panel = getPanel();

@@ -1,12 +1,15 @@
-<div class="{{ col|default:'col-12' }}">
-    <div class="mb-3 st-cliente-search-field"
+<div class="{{ col|default:'col-12' }}"
+     data-cliente-search-col
+     {% if form.cliente_bloccato %}hidden{% endif %}>
+    <div class="mb-3 st-cliente-search-field{% if form.cliente_bloccato %} is-cliente-locked{% endif %}"
          data-cliente-search-root
          data-cliente-search-collapse="1"
          data-search-url="{% url 'pratiche:cliente_search' %}"
+         {% if form.cliente_bloccato %}data-cliente-locked="1"{% endif %}
          {% if referente_url_template %}data-referente-url-template="{{ referente_url_template }}"{% endif %}>
         <div class="st-cliente-search-summary"
              data-cliente-search-summary
-             {% if not form.selected_cliente %}hidden{% endif %}>
+             {% if not form.selected_cliente or form.cliente_bloccato %}hidden{% endif %}>
             <button type="button"
                     class="btn btn-sm btn-outline-secondary"
                     data-cliente-search-reopen
@@ -17,12 +20,13 @@
         </div>
 
         {{ form.cliente }}
-        <div data-cliente-search-panel {% if form.selected_cliente %}hidden{% endif %}>
+        <div data-cliente-search-panel {% if form.selected_cliente or form.cliente_bloccato %}hidden{% endif %}>
             <div class="st-cliente-search-header">
                 <label class="form-label mb-0" for="clienteSearchInput">
                     {{ form.cliente.label }}
                     <span class="text-secondary small fw-normal">(oppure Nome e Cognome)</span>
                 </label>
+                {% if not form.cliente_bloccato %}
                 <a href="{% url 'anagrafiche:anagrafica_create' %}?tipo=cliente&amp;embed=1"
                    class="btn btn-sm btn-outline-secondary js-nuovo-cliente-link"
                    id="nuovoClienteLink"
@@ -31,6 +35,7 @@
                     <i class="ti ti-user-plus"></i>
                     Nuovo cliente
                 </a>
+                {% endif %}
             </div>
             <div class="st-cliente-search">
                 <div class="st-cliente-search-input-wrap">
@@ -45,6 +50,7 @@
                                placeholder="Cerca cognome, nome, codice fiscale, telefono..."
                                autocomplete="off"
                                data-cliente-search-input
+                               {% if form.cliente_bloccato %}readonly{% endif %}
                                {% if form.selected_cliente %}data-selected-label="{{ form.selected_cliente.display_name }}"{% endif %}>
                     </span>
                     <button type="button"
@@ -52,7 +58,7 @@
                             data-cliente-search-clear
                             title="Rimuovi cliente"
                             tabindex="-1"
-                            {% if not form.selected_cliente %}hidden{% endif %}>
+                            {% if not form.selected_cliente or form.cliente_bloccato %}hidden{% endif %}>
                         <i class="ti ti-x"></i>
                     </button>
                 </div>

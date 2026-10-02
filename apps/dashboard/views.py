@@ -14,11 +14,12 @@ from urllib.parse import quote
 
 from apps.anagrafiche.models import Anagrafica
 from apps.core.list_pagination import ConfigurablePaginationMixin
-from apps.core.models import Azienda, ConfigurazioneMssql
+from apps.core.list_sorting import SortableListMixin
+from apps.core.models import Azienda, ConfigurazioneMssql, Negozio
 from apps.core.mssql import get_mssql_config
 from apps.core.version import get_changelog_entries, get_latest_changelog, get_version
 from apps.core.negozi import apply_negozio_queryset_filter, normalize_negozio_code
-from apps.dashboard.forms import AziendaForm
+from apps.dashboard.forms import AziendaForm, NegozioForm
 from apps.agenda.models import EventoAgenda
 from apps.pratiche.models import (
     ComunicazionePratica,
@@ -543,11 +544,93 @@ class WebcamView(LoginRequiredMixin, TemplateView):
     template_name = "dashboard/webcam.html"
 
 
-class AziendaListView(LoginRequiredMixin, ConfigurablePaginationMixin, ListView):
+class NegozioListView(LoginRequiredMixin, ConfigurablePaginationMixin, SortableListMixin, ListView):
+    model = Negozio
+    template_name = "dashboard/negozio_list.html"
+    context_object_name = "negozi"
+    paginate_by = 50
+    sort_fields = {
+        "codice": "codice",
+        "denominazione": "denominazione",
+        "sede": "sede_operativa",
+        "prefisso": "prefisso_pratica",
+        "localita": "localita_privacy",
+        "sezionale": "ddt_sezionale",
+        "ddt_iniziale": "ddt_numero_iniziale",
+        "ordine": "ordine",
+    }
+    default_sort = "ordine"
+    default_dir = "asc"
+
+    def get_queryset(self):
+        queryset = Negozio.objects.filter(is_active=True)
+        q = (self.request.GET.get("q") or "").strip()
+        if q:
+            queryset = queryset.filter(
+                Q(codice__icontains=q)
+                | Q(denominazione__icontains=q)
+                | Q(localita_privacy__icontains=q)
+                | Q(prefisso_pratica__icontains=q)
+                | Q(indirizzo__icontains=q)
+                | Q(comune__icontains=q)
+                | Q(cap__icontains=q)
+            )
+        return self.apply_list_ordering(queryset)
+
+
+class NegozioCreateView(LoginRequiredMixin, CreateView):
+    model = Negozio
+    form_class = NegozioForm
+    template_name = "dashboard/negozio_form.html"
+
+    def form_valid(self, form):
+        form.instance.created_by = self.request.user
+        form.instance.updated_by = self.request.user
+        messages.success(self.request, "Negozio creato correttamente.")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse("dashboard:negozio_list")
+
+
+class NegozioUpdateView(LoginRequiredMixin, UpdateView):
+    model = Negozio
+    form_class = NegozioForm
+    template_name = "dashboard/negozio_form.html"
+
+    def get_queryset(self):
+        return Negozio.objects.filter(is_active=True)
+
+    def form_valid(self, form):
+        form.instance.updated_by = self.request.user
+        messages.success(self.request, "Negozio aggiornato correttamente.")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse("dashboard:negozio_list")
+
+
+class NegozioDeleteView(LoginRequiredMixin, View):
+    def post(self, request, *args, **kwargs):
+        negozio = get_object_or_404(Negozio, pk=kwargs["pk"], is_active=True)
+        negozio.soft_delete(user=request.user)
+        messages.success(request, "Negozio eliminato correttamente.")
+        return redirect("dashboard:negozio_list")
+
+
+class AziendaListView(LoginRequiredMixin, ConfigurablePaginationMixin, SortableListMixin, ListView):
     model = Azienda
     template_name = "dashboard/azienda_list.html"
     context_object_name = "aziende"
     paginate_by = 20
+    sort_fields = {
+        "ragione_sociale": "ragione_sociale",
+        "partita_iva": "partita_iva",
+        "email": "email",
+        "comune": "comune",
+    }
+    default_sort = "ragione_sociale"
+    default_dir = "asc"
 
     def get_queryset(self):
         queryset = Azienda.objects.filter(is_active=True)
@@ -563,7 +646,7 @@ class AziendaListView(LoginRequiredMixin, ConfigurablePaginationMixin, ListView)
                 | Q(comune__icontains=q)
             )
 
-        return queryset.order_by("ragione_sociale")
+        return self.apply_list_ordering(queryset)
 
 
 class AziendaCreateView(LoginRequiredMixin, CreateView):
