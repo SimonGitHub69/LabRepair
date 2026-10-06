@@ -77,7 +77,7 @@
             <div class="card st-form-section{% if form.testata_bloccata %} is-testata-locked{% endif %}"
                  data-pratica-testata
                  {% if form.testata_bloccata %}data-testata-locked="1"{% endif %}>
-                <div class="card-header">
+                <div class="card-header flex-wrap">
                     <div class="st-form-section-icon{% if form.testata_bloccata %} is-locked{% endif %}">
                         {% if form.testata_bloccata %}
                             <i class="ti ti-lock"
@@ -89,6 +89,13 @@
                         {% endif %}
                     </div>
                     <h3 class="card-title mb-0">Accettazione</h3>
+                    <button type="button"
+                            class="btn btn-sm btn-outline-primary ms-auto d-print-none"
+                            id="modificaClienteContatti"
+                            {% if not form.selected_cliente %}hidden{% endif %}>
+                        <i class="ti ti-edit"></i>
+                        Modifica Cliente
+                    </button>
                 </div>
                 <div class="card-body">
                     <div class="row">
@@ -425,6 +432,7 @@
 {% include "partials/privacy_print_modal.html" %}
 {% include "partials/confirm_dialog.html" %}
 {% include "partials/anagrafica_overlay.html" %}
+{% include "pratiche/partials/cliente_contatti_modal.html" %}
 
 {# Form esterno: i campi documento usano form="clienteDocumentoForm" (no nested form). #}
 <form id="clienteDocumentoForm" method="post" hidden aria-hidden="true"></form>
@@ -434,7 +442,8 @@
 {% block extra_js %}
 {{ block.super }}
 <script src="{% static 'securtek/js/name_case.js' %}?v={{ app_version }}-case1"></script>
-<script src="{% static 'securtek/js/cliente_search.js' %}?v={{ app_version }}-cliente-lock11"></script>
+<script src="{% static 'securtek/js/cliente_search.js' %}?v={{ app_version }}-cliente-lock12"></script>
+<script src="{% static 'securtek/js/cliente_contatti.js' %}?v={{ app_version }}-contatti1"></script>
 <script src="{% static 'securtek/js/anagrafica_overlay.js' %}?v=20260915-overlay3"></script>
 <script src="{% static 'securtek/js/pratica_required.js' %}?v={{ app_version }}-req8"></script>
 <script src="{% static 'securtek/js/pratica_save.js' %}?v={{ app_version }}-save8"></script>

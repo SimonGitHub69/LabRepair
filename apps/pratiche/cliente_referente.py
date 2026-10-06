@@ -1,7 +1,74 @@
+from django import forms
 from django.urls import reverse
 
 from apps.anagrafiche.models import Anagrafica, Contatto, Indirizzo
 from apps.pratiche.cliente_documento import is_documento_identita_scaduto
+
+
+class ClienteContattiForm(forms.Form):
+    """Solo telefono, cellulare ed email. Nome e cognome non sono in questo form."""
+
+    telefono = forms.CharField(max_length=30, required=False)
+    cellulare = forms.CharField(max_length=30, required=False)
+    email = forms.EmailField(max_length=254, required=False)
+
+    def clean_telefono(self):
+        return (self.cleaned_data.get("telefono") or "").strip()
+
+    def clean_cellulare(self):
+        return (self.cleaned_data.get("cellulare") or "").strip()
+
+    def clean_email(self):
+        return (self.cleaned_data.get("email") or "").strip()
+
+    def clean(self):
+        cleaned = super().clean()
+        telefono = (cleaned.get("telefono") or "").strip()
+        cellulare = (cleaned.get("cellulare") or "").strip()
+        if not telefono and not cellulare:
+            message = "Inserisci almeno un recapito telefonico."
+            self.add_error("telefono", message)
+            self.add_error("cellulare", message)
+        return cleaned
+
+
+def _sync_contatto_tipo(anagrafica, tipo, valore, user=None):
+    """Allinea il contatto principale, così la scheda non rilegge un recapito vecchio."""
+    contatto = (
+        anagrafica.contatti.filter(is_active=True, tipo=tipo)
+        .order_by("-principale", "id")
+        .first()
+    )
+    valore = (valore or "").strip()
+    if not contatto:
+        return
+    if valore:
+        if contatto.valore == valore:
+            return
+        contatto.valore = valore
+        if user is not None:
+            contatto.updated_by = user
+        contatto.save(update_fields=["valore", "updated_by", "updated_at"])
+        return
+    contatto.is_active = False
+    if user is not None:
+        contatto.updated_by = user
+    contatto.save(update_fields=["is_active", "updated_by", "updated_at"])
+
+
+def apply_cliente_contatti(anagrafica, *, telefono, cellulare, email, user=None):
+    """Aggiorna solo i recapiti. Cognome, nome e gli altri dati anagrafici restano invariati."""
+    anagrafica.telefono = telefono
+    anagrafica.cellulare = cellulare
+    anagrafica.email = email
+    update_fields = ["telefono", "cellulare", "email", "updated_at"]
+    if user is not None:
+        anagrafica.updated_by = user
+        update_fields.append("updated_by")
+    anagrafica.save(update_fields=update_fields)
+    _sync_contatto_tipo(anagrafica, Contatto.TipoContatto.TELEFONO, telefono, user)
+    _sync_contatto_tipo(anagrafica, Contatto.TipoContatto.CELLULARE, cellulare, user)
+    _sync_contatto_tipo(anagrafica, Contatto.TipoContatto.EMAIL, email, user)
 
 
 def _pick_contatto(anagrafica, tipo):

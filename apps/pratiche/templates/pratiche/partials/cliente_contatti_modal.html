@@ -1,0 +1,59 @@
+{% url 'pratiche:cliente_contatti_update' pk=0 as cliente_contatti_url %}
+<div class="st-confirm" id="clienteContattiModal" hidden
+     data-url-template="{{ cliente_contatti_url }}"
+     data-pratica-id="{% if object %}{{ object.pk }}{% endif %}">
+    <div class="st-confirm-dialog st-cliente-contatti-dialog"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="clienteContattiTitle">
+        <form id="clienteContattiForm" method="post" action="#" autocomplete="off">
+            <div class="st-confirm-body">
+                <div class="st-confirm-title" id="clienteContattiTitle">Modifica Cliente</div>
+                <div class="st-confirm-text mb-3">
+                    <span id="clienteContattiName" class="st-confirm-name"></span>
+                    Solo telefono, cellulare ed email. Nome e cognome restano invariati.
+                </div>
+                <div class="alert alert-danger py-2" id="clienteContattiAlert" hidden></div>
+                <div class="mb-3">
+                    <label class="form-label" for="clienteContattiTelefono">Telefono</label>
+                    <input type="text"
+                           class="form-control"
+                           id="clienteContattiTelefono"
+                           name="telefono"
+                           maxlength="30"
+                           autocomplete="off"
+                           inputmode="tel">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="clienteContattiCellulare">Cellulare</label>
+                    <input type="text"
+                           class="form-control"
+                           id="clienteContattiCellulare"
+                           name="cellulare"
+                           maxlength="30"
+                           autocomplete="off"
+                           inputmode="tel">
+                </div>
+                <div class="mb-0">
+                    <label class="form-label" for="clienteContattiEmail">Email</label>
+                    <input type="email"
+                           class="form-control"
+                           id="clienteContattiEmail"
+                           name="email"
+                           maxlength="254"
+                           autocomplete="off"
+                           inputmode="email">
+                </div>
+            </div>
+            <div class="st-confirm-footer">
+                <button type="button" class="btn btn-outline-secondary" data-cliente-contatti-cancel>
+                    Annulla
+                </button>
+                <button type="submit" class="btn btn-primary" data-cliente-contatti-save>
+                    <i class="ti ti-device-floppy"></i>
+                    Salva
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

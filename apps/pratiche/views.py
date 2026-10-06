@@ -49,6 +49,8 @@ from apps.pratiche.cliente_documento import (
     is_documento_identita_scaduto,
 )
 from apps.pratiche.cliente_referente import (
+    ClienteContattiForm,
+    apply_cliente_contatti,
     cliente_referente_url_template,
     get_referente_from_cliente,
     get_referente_from_cliente_id,
@@ -1236,6 +1238,83 @@ class ClienteReferenteJsonView(LoginRequiredMixin, View):
         if referente is None:
             return JsonResponse({"error": "Cliente non trovato."}, status=404)
         return JsonResponse(referente)
+
+
+class ClienteContattiUpdateView(LoginRequiredMixin, View):
+    """Aggiorna solo telefono, cellulare ed email del cliente dalla riparazione."""
+
+    def post(self, request, pk):
+        anagrafica = get_object_or_404(
+            Anagrafica,
+            pk=pk,
+            is_active=True,
+            tipo=Anagrafica.Tipo.CLIENTE,
+        )
+        form = ClienteContattiForm(request.POST)
+        if not form.is_valid():
+            message = ""
+            if form.non_field_errors():
+                message = str(form.non_field_errors()[0])
+            else:
+                for errors in form.errors.values():
+                    if errors:
+                        message = str(errors[0])
+                        break
+            return JsonResponse(
+                {
+                    "ok": False,
+                    "message": message or "Controlla telefono, cellulare ed email.",
+                },
+                status=400,
+            )
+
+        telefono = form.cleaned_data["telefono"]
+        cellulare = form.cleaned_data["cellulare"]
+        email = form.cleaned_data["email"]
+
+        with transaction.atomic():
+            apply_cliente_contatti(
+                anagrafica,
+                telefono=telefono,
+                cellulare=cellulare,
+                email=email,
+                user=request.user,
+            )
+            pratica_id = (request.POST.get("pratica") or "").strip()
+            if pratica_id.isdigit():
+                pratica = (
+                    Pratica.objects.select_for_update()
+                    .filter(
+                        pk=int(pratica_id),
+                        cliente_id=anagrafica.pk,
+                        is_active=True,
+                    )
+                    .first()
+                )
+                if pratica:
+                    pratica.referente_telefono = telefono
+                    pratica.referente_cellulare = cellulare
+                    pratica.referente_email = email
+                    pratica.updated_by = request.user
+                    pratica.save(
+                        update_fields=[
+                            "referente_telefono",
+                            "referente_cellulare",
+                            "referente_email",
+                            "updated_by",
+                            "updated_at",
+                        ]
+                    )
+
+        return JsonResponse(
+            {
+                "ok": True,
+                "message": "Recapiti cliente aggiornati.",
+                "telefono": telefono,
+                "cellulare": cellulare,
+                "email": email,
+            }
+        )
 
 
 def serialize_cliente_search_result(anagrafica):

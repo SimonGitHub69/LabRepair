@@ -262,6 +262,15 @@ function initClienteSearch(root) {
         return root.dataset.clienteLocked === "1";
     }
 
+    function notifyClienteChanged(id) {
+        if (getFilterForm()) {
+            return;
+        }
+        document.dispatchEvent(new CustomEvent("labrepair:cliente-changed", {
+            detail: { id: id || "" },
+        }));
+    }
+
     function expandSearch(options) {
         if (isClienteLocked() || !canCollapse || !searchPanel || !summaryBox) {
             return;
@@ -498,6 +507,7 @@ function initClienteSearch(root) {
         searchInput.dataset.selectedLabel = label;
         closeResults();
         toggleClearButton();
+        notifyClienteChanged(id);
         fetchReferente(id).finally(function () {
             collapseSearch();
             focusReferenteCognome();
@@ -517,6 +527,7 @@ function initClienteSearch(root) {
         delete searchInput.dataset.selectedLabel;
         closeResults();
         toggleClearButton();
+        notifyClienteChanged("");
         clearReferenteFields();
         clearAnagraficaPanel();
         if (!options.keepExpanded) {

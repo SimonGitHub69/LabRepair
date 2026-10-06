@@ -9,6 +9,14 @@ La versione corrente è nel file `VERSION` e compare in sidebar, piè di pagina,
 
 ---
 
+# [0.9.31] - 2026-10-06
+
+## Aggiunto
+
+- Riparazione con busta stampata: **Modifica Cliente** aggiorna solo telefono, cellulare ed email. Nome e cognome restano invariati.
+
+---
+
 # [0.9.30] - 2026-10-02
 
 ## Corretto
