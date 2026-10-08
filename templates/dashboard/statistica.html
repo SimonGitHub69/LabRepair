@@ -1,0 +1,169 @@
+{% extends "base/layout.html" %}
+{% load static %}
+
+{% block title %}Statistica{% endblock %}
+
+{% block extra_css %}
+<style>
+    .st-stat-toolbar {
+        align-items: end;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem 1.5rem;
+    }
+    .st-stat-chart-wrap {
+        height: 420px;
+        position: relative;
+    }
+    .st-stat-chart-wrap canvas {
+        display: block;
+        height: 100%;
+        width: 100%;
+    }
+    .st-stat-tooltip {
+        background: #1d2733;
+        border-radius: 6px;
+        color: #fff;
+        font-size: 0.8rem;
+        line-height: 1.35;
+        padding: 0.45rem 0.6rem;
+        pointer-events: none;
+        position: absolute;
+        transform: translate(-50%, -120%);
+        white-space: nowrap;
+        z-index: 2;
+    }
+    .st-stat-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+    }
+    .st-stat-legend button {
+        align-items: center;
+        background: transparent;
+        border: 1px solid var(--tblr-border-color, #dadfe5);
+        border-radius: 999px;
+        display: inline-flex;
+        gap: 0.4rem;
+        padding: 0.2rem 0.65rem;
+    }
+    .st-stat-legend button.is-muted {
+        opacity: 0.4;
+    }
+    .st-stat-swatch {
+        border-radius: 99px;
+        display: inline-block;
+        height: 0.55rem;
+        width: 0.55rem;
+    }
+    .st-stat-table-wrap {
+        max-height: 320px;
+        overflow: auto;
+    }
+    .st-stat-table-wrap thead th {
+        background: var(--tblr-bg-surface, #fff);
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+    .st-stat-table-wrap tfoot th,
+    .st-stat-table-wrap tfoot td {
+        background: var(--tblr-bg-surface-secondary, #f6f8fb);
+        border-top: 2px solid var(--tblr-border-color, #dadfe5);
+        bottom: 0;
+        font-weight: 600;
+        position: sticky;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-print-none mb-3">
+    <h2 class="page-title">Statistica</h2>
+    <div class="text-secondary">Riparazioni acquisite per negozio, in base alla data di apertura.</div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" class="st-stat-toolbar">
+            <div>
+                <div class="form-label">Periodo</div>
+                <div class="btn-group" role="group" aria-label="Granularità">
+                    <a class="btn {% if granularita == 'giorno' %}btn-primary{% else %}btn-outline-secondary{% endif %}"
+                       href="{% url 'dashboard:statistica' %}?g=giorno">Giorno</a>
+                    <a class="btn {% if granularita == 'mese' %}btn-primary{% else %}btn-outline-secondary{% endif %}"
+                       href="{% url 'dashboard:statistica' %}?g=mese">Mese</a>
+                    <a class="btn {% if granularita == 'anno' %}btn-primary{% else %}btn-outline-secondary{% endif %}"
+                       href="{% url 'dashboard:statistica' %}?g=anno">Anno</a>
+                </div>
+            </div>
+            <input type="hidden" name="g" value="{{ granularita }}">
+            <div>
+                <label class="form-label" for="statDal">Dal</label>
+                <input class="form-control" type="date" id="statDal" name="dal" value="{{ dal }}">
+            </div>
+            <div>
+                <label class="form-label" for="statAl">Al</label>
+                <input class="form-control" type="date" id="statAl" name="al" value="{{ al }}">
+            </div>
+            <div>
+                <button type="submit" class="btn btn-primary">Aggiorna</button>
+            </div>
+            <div class="ms-lg-auto">
+                <div class="form-label">Valore</div>
+                <div class="btn-group" role="group" aria-label="Valore del grafico" id="statMetriche">
+                    <button type="button" class="btn btn-primary" data-metrica="numero">Numero riparazioni</button>
+                    <button type="button" class="btn btn-outline-secondary" data-metrica="prezzo_pubblico">Prezzo al pubblico</button>
+                    <button type="button" class="btn btn-outline-secondary" data-metrica="prezzo_pagato">Prezzo pagato</button>
+                    <button type="button" class="btn btn-outline-secondary" data-metrica="costo_totale">Costo totale</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row row-cards mb-3" id="statTotali"></div>
+
+<div class="card mb-3">
+    <div class="card-header">
+        <h3 class="card-title mb-0" id="statChartTitle">Numero riparazioni</h3>
+        <div class="card-actions st-stat-legend" id="statLegend"></div>
+    </div>
+    <div class="card-body">
+        <div class="st-stat-chart-wrap">
+            <canvas id="statChart" aria-label="Grafico riparazioni per negozio"></canvas>
+            <div class="st-stat-tooltip" id="statTooltip" hidden></div>
+        </div>
+        <div class="text-secondary small mt-2" id="statEmpty" hidden>Nessuna riparazione nel periodo selezionato.</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title mb-0">Dettaglio</h3>
+        <div class="card-actions btn-list">
+            <a class="btn btn-outline-secondary btn-sm"
+               data-stat-export="csv"
+               href="{% url 'dashboard:statistica_export' %}?formato=csv&amp;g={{ granularita }}&amp;dal={{ dal }}&amp;al={{ al }}">
+                <i class="ti ti-file-text"></i>
+                CSV
+            </a>
+            <a class="btn btn-outline-secondary btn-sm"
+               data-stat-export="xlsx"
+               href="{% url 'dashboard:statistica_export' %}?formato=xlsx&amp;g={{ granularita }}&amp;dal={{ dal }}&amp;al={{ al }}">
+                <i class="ti ti-file-spreadsheet"></i>
+                Excel
+            </a>
+        </div>
+    </div>
+    <div class="st-stat-table-wrap">
+        <table class="table table-vcenter card-table table-striped mb-0" id="statTable"></table>
+    </div>
+</div>
+
+{{ statistica|json_script:"statistica-data" }}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'securtek/js/statistica.js' %}?v={{ app_version }}-stat11"></script>
+{% endblock %}

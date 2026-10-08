@@ -2719,7 +2719,7 @@ body.st-anagrafica-overlay-open {
 
 /* Testata Accettazione bloccata dopo stampa busta */
 .st-form-section.is-testata-locked .form-control:not(.st-date-native),
-.st-form-section.is-testata-locked .form-select,
+.st-form-section.is-testata-locked .form-select:not(#id_operatore),
 .st-form-section.is-testata-locked .form-control:not(.st-date-native):disabled,
 .st-form-section.is-testata-locked .form-select:disabled,
 .st-form-section.is-testata-locked .form-control:not(.st-date-native)[readonly],

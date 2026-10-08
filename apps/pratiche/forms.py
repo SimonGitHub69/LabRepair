@@ -265,8 +265,12 @@ class PraticaForm(forms.ModelForm):
             self.instance.pk and getattr(self.instance, "testata_bloccata", False)
         )
         self.testata_bloccata = self.cliente_bloccato
+        # Operatore assente: si può inserire anche a testata bloccata. Se c'è già, resta bloccato.
+        self.operatore_inseribile = bool(self.instance.pk and not self.instance.operatore_id)
         if self.testata_bloccata:
             for field_name in PRATICA_TESTATA_FIELDS:
+                if field_name == "operatore" and self.operatore_inseribile:
+                    continue
                 field = self.fields.get(field_name)
                 if not field:
                     continue
@@ -292,6 +296,10 @@ class PraticaForm(forms.ModelForm):
         self.fields["operatore"].error_messages.update(
             {"required": "Seleziona un operatore."}
         )
+        if self.testata_bloccata and self.operatore_inseribile:
+            self.fields["operatore"].help_text = (
+                "Manca l'operatore: puoi inserirlo anche con la busta già stampata."
+            )
         self.fields["tipo_oggetto"].queryset = TipoOggetto.objects.filter(is_active=True).order_by("denominazione")
         self.fields["tipo_oggetto"].required = True
         self.fields["tipo_oggetto"].empty_label = "Seleziona tipo oggetto"
@@ -473,7 +481,8 @@ class PraticaForm(forms.ModelForm):
             # Valori POST ignorati: ripristina sempre la testata salvata in DB.
             cleaned_data["cliente"] = self.instance.cliente
             cliente = self.instance.cliente
-            cleaned_data["operatore"] = self.instance.operatore
+            if self.instance.operatore_id:
+                cleaned_data["operatore"] = self.instance.operatore
             cleaned_data["data_apertura"] = self.instance.data_apertura
             cleaned_data["referente_cognome"] = (self.instance.referente_cognome or "").strip().upper()
             cleaned_data["referente_nome"] = _format_referente_nome(self.instance.referente_nome)
@@ -606,7 +615,8 @@ class PraticaForm(forms.ModelForm):
             )
             if stored and stored.testata_bloccata:
                 instance.cliente_id = stored.cliente_id
-                instance.operatore_id = stored.operatore_id
+                if stored.operatore_id:
+                    instance.operatore_id = stored.operatore_id
                 instance.data_apertura = stored.data_apertura
                 instance.referente_cognome = stored.referente_cognome
                 instance.referente_nome = stored.referente_nome

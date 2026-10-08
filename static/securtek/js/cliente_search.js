@@ -840,6 +840,9 @@ window.labrepairLockTestata = function (payload) {
         if (valueById[id] != null && valueById[id] !== "") {
             field.value = valueById[id];
         }
+        if (id === "id_operatore" && !String(field.value || "").trim()) {
+            return;
+        }
         field.readOnly = true;
         field.disabled = true;
         field.setAttribute("aria-disabled", "true");

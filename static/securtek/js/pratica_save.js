@@ -146,9 +146,100 @@
         document.addEventListener("pointerup", releaseActionPointer, true);
         document.addEventListener("pointercancel", releaseActionPointer, true);
 
+        function comunicazioneDraft() {
+            var forms = document.querySelectorAll("form.st-com-new-form");
+            var index;
+            for (index = 0; index < forms.length; index += 1) {
+                var draft = forms[index];
+                if (draft.hidden || draft.getAttribute("aria-hidden") === "true") {
+                    continue;
+                }
+                var descrizione = draft.querySelector('[name="descrizione"]');
+                var allegato = draft.querySelector('input[type="file"][name="allegato"]');
+                var text = descrizione ? String(descrizione.value || "").trim() : "";
+                var hasFile = !!(allegato && allegato.files && allegato.files.length);
+                if (text || hasFile) {
+                    return draft;
+                }
+            }
+            return null;
+        }
+
+        function clearComunicazioneDraft(draft) {
+            var descrizione = draft.querySelector('[name="descrizione"]');
+            var allegato = draft.querySelector('input[type="file"][name="allegato"]');
+            if (descrizione) {
+                descrizione.value = "";
+            }
+            if (allegato) {
+                allegato.value = "";
+            }
+        }
+
+        function saveComunicazioneDraft(draft) {
+            var csrf = draft.querySelector("[name=csrfmiddlewaretoken]");
+            return fetch(draft.getAttribute("action") || draft.action, {
+                method: "POST",
+                body: new FormData(draft),
+                credentials: "same-origin",
+                headers: {
+                    Accept: "application/json",
+                    "X-Requested-With": "XMLHttpRequest",
+                    "X-CSRFToken": csrf ? csrf.value : "",
+                },
+            }).then(function (response) {
+                return response.json().catch(function () {
+                    return {};
+                }).then(function (payload) {
+                    return { response: response, payload: payload || {} };
+                });
+            });
+        }
+
         form.addEventListener(
             "submit",
             function (event) {
+                if (form.dataset.skipComunicazioneSave === "1") {
+                    delete form.dataset.skipComunicazioneSave;
+                } else if (form.dataset.savingComunicazione !== "1") {
+                    var draft = comunicazioneDraft();
+                    if (draft) {
+                        event.preventDefault();
+                        event.stopImmediatePropagation();
+                        form.dataset.savingComunicazione = "1";
+                        setSavingState(form, true);
+                        saveComunicazioneDraft(draft)
+                            .then(function (result) {
+                                var payload = result.payload;
+                                if (!result.response.ok || !payload.ok) {
+                                    throw new Error(
+                                        payload.message ||
+                                            "Controlla i dati della comunicazione."
+                                    );
+                                }
+                                clearComunicazioneDraft(draft);
+                                form.dataset.skipComunicazioneSave = "1";
+                                setSavingState(form, false);
+                                if (typeof form.requestSubmit === "function") {
+                                    form.requestSubmit();
+                                } else {
+                                    form.submit();
+                                }
+                            })
+                            .catch(function (error) {
+                                setSavingState(form, false);
+                                showBlockReason(
+                                    (error && error.message) ||
+                                        "Controlla i dati della comunicazione.",
+                                    { forceTop: true }
+                                );
+                            })
+                            .finally(function () {
+                                delete form.dataset.savingComunicazione;
+                            });
+                        return;
+                    }
+                }
                 if (form.dataset.saving === "1") {
                     event.preventDefault();
                     event.stopPropagation();

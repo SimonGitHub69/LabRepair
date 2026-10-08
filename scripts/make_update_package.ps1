@@ -17,7 +17,9 @@ Set-Location $Root
 if (-not $OutputName) {
     $OutputName = "LabRepair_update_{0:yyyyMMdd}.zip" -f (Get-Date)
 }
-$ZipPath = Join-Path $Root $OutputName
+$ZipDir = Join-Path $Root "zipped"
+New-Item -ItemType Directory -Path $ZipDir -Force | Out-Null
+$ZipPath = Join-Path $ZipDir $OutputName
 $Staging = Join-Path $env:TEMP ("LabRepair_update_" + [guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Path $Staging -Force | Out-Null
 

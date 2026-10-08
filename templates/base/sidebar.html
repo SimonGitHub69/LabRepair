@@ -58,9 +58,9 @@
         {% if perms.dashboard.access_report %}
         <div class="st-nav-section">Analisi</div>
 
-        <a class="st-nav-link {% if request.path|slice:':8' == '/report/' %}active{% endif %}" href="{% url 'dashboard:report' %}">
+        <a class="st-nav-link {% if request.path|slice:':12' == '/statistica/' %}active{% endif %}" href="{% url 'dashboard:statistica' %}">
             <i class="ti ti-chart-bar"></i>
-            <span>Report</span>
+            <span>Statistica</span>
         </a>
         {% endif %}
 

@@ -9,6 +9,36 @@ La versione corrente è nel file `VERSION` e compare in sidebar, piè di pagina,
 
 ---
 
+# [0.9.34] - 2026-10-08
+
+## Aggiunto
+
+- Menu Analisi → **Statistica**: riparazioni acquisite per negozio, grafico a barre giorno/mese/anno, valori numero / prezzo al pubblico / prezzo pagato, totali e export CSV/Excel.
+- Vista giorno: sotto ogni barra data e giorno della settimana (lun–dom).
+
+## Rimosso
+
+- Voce menu Report (segnaposto non più usata).
+
+---
+
+# [0.9.33] - 2026-10-08
+
+## Corretto
+
+- Sincronizzazione casse: `PRZ_DESCR` su TB_PREZZICASSE non contiene più a capo, ritorni a capo né altri caratteri di controllo.
+
+---
+
+# [0.9.32] - 2026-10-07
+
+## Aggiunto
+
+- Riparazione con busta stampata e operatore assente: all'apertura della scheda si può inserire l'operatore. Se è già presente, resta bloccato.
+- Salvataggio scheda (Ctrl+S o pulsante Salva): se c'è una nota o un allegato nuovo, viene salvata anche la comunicazione.
+
+---
+
 # [0.9.31] - 2026-10-06
 
 ## Aggiunto

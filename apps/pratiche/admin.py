@@ -51,7 +51,6 @@ class PraticaAdmin(admin.ModelAdmin):
             readonly.extend(
                 [
                     "cliente",
-                    "operatore",
                     "referente_cognome",
                     "referente_nome",
                     "referente_telefono",
@@ -60,6 +59,8 @@ class PraticaAdmin(admin.ModelAdmin):
                     "data_apertura",
                 ]
             )
+            if obj.operatore_id:
+                readonly.append("operatore")
         return readonly
 
     def save_model(self, request, obj, form, change):

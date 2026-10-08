@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.db.models import Count, Q, Sum
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.views import View
@@ -325,6 +326,50 @@ class ReportView(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
     template_name = "dashboard/report.html"
     permission_required = "dashboard.access_report"
     raise_exception = True
+
+
+class StatisticaView(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
+    template_name = "dashboard/statistica.html"
+    permission_required = "dashboard.access_report"
+    raise_exception = True
+
+    def get_context_data(self, **kwargs):
+        from apps.dashboard.statistica import statistica_from_query
+
+        context = super().get_context_data(**kwargs)
+        granularita, dal, al, payload = statistica_from_query(
+            self.request.GET.get("g"),
+            self.request.GET.get("dal"),
+            self.request.GET.get("al"),
+        )
+        context["granularita"] = granularita
+        context["dal"] = dal.isoformat()
+        context["al"] = al.isoformat()
+        context["statistica"] = payload
+        return context
+
+
+class StatisticaExportView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    permission_required = "dashboard.access_report"
+    raise_exception = True
+
+    def get(self, request):
+        from apps.dashboard.statistica import statistica_from_query
+        from apps.dashboard.statistica_export import export_statistica
+
+        granularita, dal, al, payload = statistica_from_query(
+            request.GET.get("g"),
+            request.GET.get("dal"),
+            request.GET.get("al"),
+        )
+        content, content_type, extension = export_statistica(
+            payload,
+            request.GET.get("formato"),
+        )
+        filename = f"statistica_{granularita}_{dal.isoformat()}_{al.isoformat()}.{extension}"
+        response = HttpResponse(content, content_type=content_type)
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
 
 
 class DocumentiView(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):

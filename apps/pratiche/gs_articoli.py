@@ -5,6 +5,7 @@ Allineato alla procedura 4D: DELETE per EAN + INSERT su TB_PREZZICASSE.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
@@ -44,6 +45,18 @@ def _clip(value, max_len: int) -> str:
     return str(value or "").strip()[:max_len]
 
 
+# A capo, tab e altri controlli: le casse li trattano come fine record o caratteri illeggibili.
+_PRZ_DESCR_CONTROLLI = re.compile(r"[\x00-\x1f\x7f\u0080-\u009f\u2028\u2029]+")
+_PRZ_DESCR_INVISIBILI = re.compile(r"[\u200b-\u200d\ufeff\u00ad]")
+
+
+def sanitize_prz_descr(value) -> str:
+    """Testo adatto a PRZ_DESCR: niente CR/LF né altri caratteri di controllo."""
+    text = _PRZ_DESCR_INVISIBILI.sub("", str(value or ""))
+    text = _PRZ_DESCR_CONTROLLI.sub(" ", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
 def format_gs_utente(user):
     username = getattr(user, "username", "") or "sistema"
     return f"LabRepair-{username}"
@@ -52,11 +65,11 @@ def format_gs_utente(user):
 def format_gs_descrizione(pratica):
     parts = []
     if pratica.tipo_oggetto_id:
-        parts.append(pratica.tipo_oggetto.denominazione.strip())
+        parts.append(sanitize_prz_descr(pratica.tipo_oggetto.denominazione))
     if pratica.descrizione:
-        parts.append(pratica.descrizione.strip())
+        parts.append(sanitize_prz_descr(pratica.descrizione))
     if not parts and pratica.titolo:
-        parts.append(pratica.titolo.strip())
+        parts.append(sanitize_prz_descr(pratica.titolo))
     text = " - ".join(part for part in parts if part)
     return _clip(text or "RIPARAZIONE", PRZ_DESCR_LEN)
 

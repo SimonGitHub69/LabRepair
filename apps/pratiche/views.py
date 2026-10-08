@@ -1674,6 +1674,7 @@ class ComunicazionePraticaCreateView(LoginRequiredMixin, View):
             request.FILES,
             formato_data=get_comunicazioni_formato_data(),
         )
+        json_mode = wants_json_response(request)
 
         if form.is_valid():
             comunicazione = form.save(commit=False)
@@ -1682,7 +1683,21 @@ class ComunicazionePraticaCreateView(LoginRequiredMixin, View):
             comunicazione.updated_by = request.user
             comunicazione.save()
             messages.success(request, "Comunicazione registrata correttamente.")
+            if json_mode:
+                return JsonResponse(
+                    {
+                        "ok": True,
+                        "message": "Comunicazione registrata correttamente.",
+                        "comunicazione_id": comunicazione.pk,
+                    }
+                )
         else:
+            message = form_first_error_message(form) or "Controlla i dati della comunicazione."
+            if json_mode:
+                return JsonResponse(
+                    {"ok": False, "message": message},
+                    status=400,
+                )
             messages.error(request, "Controlla i dati della comunicazione.")
 
         next_url = get_safe_next_url(request)

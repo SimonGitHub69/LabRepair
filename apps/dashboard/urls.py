@@ -13,6 +13,8 @@ from .views import (
     NovitaView,
     ReportView,
     SistemaView,
+    StatisticaExportView,
+    StatisticaView,
     WebcamView,
 )
 
@@ -21,6 +23,8 @@ app_name = "dashboard"
 urlpatterns = [
     path("", DashboardView.as_view(), name="index"),
     path("report/", ReportView.as_view(), name="report"),
+    path("statistica/", StatisticaView.as_view(), name="statistica"),
+    path("statistica/esporta/", StatisticaExportView.as_view(), name="statistica_export"),
     path("documenti/", DocumentiView.as_view(), name="documenti"),
     path("sistema/", SistemaView.as_view(), name="sistema"),
     path("sistema/novita/", NovitaView.as_view(), name="novita"),
